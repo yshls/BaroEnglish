@@ -23,9 +23,14 @@ export const STARTER_SEARCH_CHIPS = [
 export interface WordCacheState {
   cachedWords: Record<string, CoreWord>;
   recentWords: string[];
+  bookmarkedWordKeys: string[];
+  activeWord: CoreWord | null;
   hasHydrated: boolean;
   setHasHydrated: (hydrated: boolean) => void;
+  setActiveWord: (word: CoreWord | null) => void;
   saveWord: (word: CoreWord) => void;
+  toggleWordBookmark: (word: CoreWord) => void;
+  isWordBookmarked: (englishWord: string) => boolean;
   getCachedWord: (englishWord: string) => CoreWord | undefined;
   findCachedByQuery: (query: string) => CoreWord | undefined;
   clearCache: () => void;
@@ -36,10 +41,16 @@ export const useWordCacheStore = create<WordCacheState>()(
     (set, get) => ({
       cachedWords: {},
       recentWords: [],
+      bookmarkedWordKeys: [],
+      activeWord: null,
       hasHydrated: false,
 
       setHasHydrated: (hydrated: boolean) => {
         set({ hasHydrated: hydrated });
+      },
+
+      setActiveWord: (word: CoreWord | null) => {
+        set({ activeWord: word });
       },
 
       saveWord: (word: CoreWord) => {
@@ -53,10 +64,13 @@ export const useWordCacheStore = create<WordCacheState>()(
           [key]: word,
         };
 
-        // LRU 캐시 상한 유지
+        // LRU 캐시 상한 유지 (최근 검색어 + 북마크 단어는 절대 삭제하지 않음)
         const keys = Object.keys(nextMap);
         if (keys.length > MAX_CACHED_WORDS) {
-          const keepSet = new Set(nextRecent);
+          const keepSet = new Set([
+            ...nextRecent,
+            ...get().bookmarkedWordKeys,
+          ]);
           for (const candidate of keys) {
             if (Object.keys(nextMap).length <= MAX_CACHED_WORDS) break;
             if (!keepSet.has(candidate) && candidate !== key) {
@@ -69,6 +83,31 @@ export const useWordCacheStore = create<WordCacheState>()(
           cachedWords: nextMap,
           recentWords: nextRecent,
         });
+      },
+
+      toggleWordBookmark: (word: CoreWord) => {
+        if (!get().hasHydrated) return;
+        const key = word.word.toLowerCase();
+        const current = get().bookmarkedWordKeys;
+        const exists = current.includes(key);
+        const nextBookmarks = exists
+          ? current.filter((k) => k !== key)
+          : [key, ...current];
+
+        const prevMap = get().cachedWords;
+        const nextMap =
+          exists || prevMap[key]
+            ? prevMap
+            : { ...prevMap, [key]: word };
+
+        set({
+          bookmarkedWordKeys: nextBookmarks,
+          cachedWords: nextMap,
+        });
+      },
+
+      isWordBookmarked: (englishWord: string) => {
+        return get().bookmarkedWordKeys.includes(englishWord.trim().toLowerCase());
       },
 
       getCachedWord: (englishWord: string) => {
@@ -86,7 +125,15 @@ export const useWordCacheStore = create<WordCacheState>()(
       },
 
       clearCache: () => {
-        set({ cachedWords: {}, recentWords: [] });
+        const bookmarkedKeys = get().bookmarkedWordKeys;
+        const prevMap = get().cachedWords;
+        const preservedMap: Record<string, CoreWord> = {};
+        for (const key of bookmarkedKeys) {
+          if (prevMap[key]) {
+            preservedMap[key] = prevMap[key];
+          }
+        }
+        set({ cachedWords: preservedMap, recentWords: [] });
       },
     }),
     {
@@ -96,6 +143,7 @@ export const useWordCacheStore = create<WordCacheState>()(
       partialize: (state) => ({
         cachedWords: state.cachedWords,
         recentWords: state.recentWords,
+        bookmarkedWordKeys: state.bookmarkedWordKeys,
       }),
       onRehydrateStorage: () => (_state, error) => {
         if (error) {

@@ -33,7 +33,6 @@ import type { CoreWord, IpaSymbol } from '../../types/learning';
 
 export default function WordReaderScreen() {
   const [query, setQuery] = useState('');
-  const [displayedWord, setDisplayedWord] = useState<CoreWord | null>(null);
   const [activeSymbol, setActiveSymbol] = useState<IpaSymbol | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -52,8 +51,12 @@ export default function WordReaderScreen() {
 
   const cachedWords = useWordCacheStore((state) => state.cachedWords);
   const recentWords = useWordCacheStore((state) => state.recentWords);
+  const bookmarkedWordKeys = useWordCacheStore((state) => state.bookmarkedWordKeys);
+  const selectedWord = useWordCacheStore((state) => state.activeWord);
+  const setSelectedWord = useWordCacheStore((state) => state.setActiveWord);
   const cacheHasHydrated = useWordCacheStore((state) => state.hasHydrated);
   const saveWord = useWordCacheStore((state) => state.saveWord);
+  const toggleWordBookmark = useWordCacheStore((state) => state.toggleWordBookmark);
   const findCachedByQuery = useWordCacheStore((state) => state.findCachedByQuery);
 
   const { playNormal, playSlow, stop, activeKey } = useSpeechAudio();
@@ -88,7 +91,7 @@ export default function WordReaderScreen() {
       const cached = findCachedByQuery(trimmed);
       if (cached) {
         setIsLoading(false);
-        setDisplayedWord(cached);
+        setSelectedWord(cached);
         if (!options?.keepInput) setQuery('');
         return;
       }
@@ -101,17 +104,17 @@ export default function WordReaderScreen() {
 
         if (result.word) {
           saveWord(result.word);
-          setDisplayedWord(result.word);
+          setSelectedWord(result.word);
           if (!options?.keepInput) setQuery('');
         } else {
-          setDisplayedWord(null);
+          setSelectedWord(null);
           setFailedQuery(trimmed);
           setFailedErrorType(result.errorType ?? 'not_found');
           setFallbackSuggestions(result.suggestions);
         }
       } catch {
         if (requestSeqRef.current !== seq) return;
-        setDisplayedWord(null);
+        setSelectedWord(null);
         setFailedQuery(trimmed);
         setFailedErrorType('network');
         setFallbackSuggestions([]);
@@ -121,28 +124,67 @@ export default function WordReaderScreen() {
         }
       }
     },
-    [findCachedByQuery, saveWord, stop]
+    [findCachedByQuery, saveWord, setSelectedWord, stop]
   );
 
-  // AsyncStorage 캐시 하이드레이션 완료 후 초기 단어 복원 (오프라인 재실행 대응)
+  const firstRecentKey = recentWords[0];
+  const initialCachedWord =
+    cacheHasHydrated && firstRecentKey ? (cachedWords[firstRecentKey] ?? null) : null;
+  const displayedWord = selectedWord ?? (!failedQuery ? initialCachedWord : null);
+  const isInitialLoading =
+    cacheHasHydrated && !initialCachedWord && !selectedWord && !failedQuery;
+  const showLoading = isLoading || isInitialLoading;
+  const isDisplayedWordBookmarked = Boolean(
+    displayedWord && bookmarkedWordKeys.includes(displayedWord.word.toLowerCase())
+  );
+
+  // AsyncStorage 캐시 하이드레이션 완료 후 캐시가 비어 있으면 기본 추천 단어 최초 조회
   useEffect(() => {
     if (!cacheHasHydrated || didInitialLoadRef.current) return;
     didInitialLoadRef.current = true;
 
-    const firstRecentKey = recentWords[0];
-    if (firstRecentKey && cachedWords[firstRecentKey]) {
-      setDisplayedWord(cachedWords[firstRecentKey]);
+    if (initialCachedWord || selectedWord) {
       return;
     }
 
-    void executeLookup(STARTER_SEARCH_CHIPS[0].word);
-  }, [cacheHasHydrated, cachedWords, executeLookup, recentWords]);
+    const starterWord = STARTER_SEARCH_CHIPS[0].word;
+    requestSeqRef.current += 1;
+    const seq = requestSeqRef.current;
+
+    void (async () => {
+      try {
+        const result = await lookupWordFromApis(starterWord);
+        if (requestSeqRef.current !== seq) return;
+
+        if (result.word) {
+          saveWord(result.word);
+          setSelectedWord(result.word);
+        } else {
+          setFailedQuery(starterWord);
+          setFailedErrorType(result.errorType ?? 'not_found');
+          setFallbackSuggestions(result.suggestions);
+        }
+      } catch {
+        if (requestSeqRef.current !== seq) return;
+        setFailedQuery(starterWord);
+        setFailedErrorType('network');
+        setFallbackSuggestions([]);
+      }
+    })();
+  }, [cacheHasHydrated, initialCachedWord, saveWord, selectedWord, setSelectedWord]);
+
+  const handleQueryChange = (nextQuery: string) => {
+    setQuery(nextQuery);
+    const trimmed = nextQuery.trim();
+    if (trimmed.length < 2 || containsKorean(trimmed)) {
+      setSuggestions([]);
+    }
+  };
 
   // 영문 2글자 이상 입력 시 Datamuse 자동완성 칩 디바운스 조회
   useEffect(() => {
     const trimmed = query.trim();
     if (trimmed.length < 2 || containsKorean(trimmed)) {
-      setSuggestions([]);
       return;
     }
 
@@ -172,7 +214,7 @@ export default function WordReaderScreen() {
     setIsLoading(false);
     setFailedQuery(null);
     setFailedErrorType(null);
-    setDisplayedWord(item);
+    setSelectedWord(item);
   };
 
   const normalKey = displayedWord ? `word:${displayedWord.id}:normal` : '';
@@ -210,7 +252,7 @@ export default function WordReaderScreen() {
             <Ionicons name="search" size={24} color={COLORS.primary} />
             <TextInput
               value={query}
-              onChangeText={setQuery}
+              onChangeText={handleQueryChange}
               onSubmitEditing={() => void executeLookup(query)}
               placeholder="예: strawberry 또는 딸기"
               placeholderTextColor={COLORS.textMuted}
@@ -234,20 +276,17 @@ export default function WordReaderScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="검색어 지우기"
               >
-                <Ionicons name="close-circle" size={20} color={COLORS.text} />
-                <Text style={styles.clearBtnText} maxFontSizeMultiplier={1.3}>
-                  지우기
-                </Text>
+                <Ionicons name="close-circle" size={24} color={COLORS.textMuted} />
               </Pressable>
             ) : null}
           </View>
 
           <Pressable
             onPress={() => void executeLookup(query)}
-            disabled={!query.trim() || isLoading}
+            disabled={!query.trim() || showLoading}
             style={({ pressed }) => [
               styles.searchSubmitBtn,
-              (!query.trim() || isLoading) && styles.searchSubmitBtnDisabled,
+              (!query.trim() || showLoading) && styles.searchSubmitBtnDisabled,
               pressed && styles.pressed,
             ]}
             accessibilityRole="button"
@@ -255,7 +294,7 @@ export default function WordReaderScreen() {
           >
             <Ionicons name="search" size={22} color={COLORS.white} />
             <Text style={styles.searchSubmitBtnText} maxFontSizeMultiplier={1.35}>
-              {isLoading ? '단어를 찾는 중...' : '단어 찾기'}
+              {showLoading ? '찾는 중...' : '검색'}
             </Text>
           </Pressable>
 
@@ -263,7 +302,7 @@ export default function WordReaderScreen() {
           {suggestions.length > 0 ? (
             <View style={styles.chipsSection}>
               <Text style={styles.chipsLabel} maxFontSizeMultiplier={1.4}>
-                혹시 이 단어를 찾으시나요?
+                추천 검색어
               </Text>
               <View style={styles.chipsWrap}>
                 {suggestions.map((sug) => (
@@ -293,7 +332,7 @@ export default function WordReaderScreen() {
           {recentWordItems.length > 0 ? (
             <View style={styles.chipsSection}>
               <Text style={styles.chipsLabel} maxFontSizeMultiplier={1.4}>
-                최근 찾아본 단어 (오프라인 가능)
+                최근 검색
               </Text>
               <View style={styles.chipsWrap}>
                 {recentWordItems.map((item) => {
@@ -329,7 +368,7 @@ export default function WordReaderScreen() {
           {/* 바로 눌러보는 추천 검색어 */}
           <View style={styles.chipsSection}>
             <Text style={styles.chipsLabel} maxFontSizeMultiplier={1.4}>
-              바로 눌러보는 추천 기초 단어
+              추천 단어
             </Text>
             <View style={styles.chipsWrap}>
               {STARTER_SEARCH_CHIPS.map((chip) => {
@@ -364,7 +403,7 @@ export default function WordReaderScreen() {
         </View>
 
         {/* 로딩 카드 */}
-        {isLoading ? (
+        {showLoading ? (
           <View style={styles.loadingCard}>
             <ActivityIndicator size="large" color={COLORS.primary} />
             <Text style={styles.loadingTitle} maxFontSizeMultiplier={1.4}>
@@ -377,7 +416,7 @@ export default function WordReaderScreen() {
         ) : null}
 
         {/* 검색 실패 / 네트워크 오류 폴백 카드 */}
-        {!isLoading && failedQuery ? (
+        {!showLoading && !selectedWord && failedQuery ? (
           <View style={styles.fallbackCard}>
             <View style={styles.fallbackHeader}>
               <Ionicons
@@ -455,39 +494,61 @@ export default function WordReaderScreen() {
         ) : null}
 
         {/* 선택된 단어 해독기 Bento 카드 */}
-        {!isLoading && displayedWord ? (
+        {!showLoading && displayedWord ? (
           <>
             <View style={styles.wordHeroCard}>
+              <View style={styles.wordTopBar}>
+                <View style={styles.badgesRow}>
+                  {displayedWord.partOfSpeech ? (
+                    <View style={styles.posBadge}>
+                      <Text
+                        style={styles.posBadgeText}
+                        maxFontSizeMultiplier={1.35}
+                      >
+                        {displayedWord.partOfSpeech}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {displayedWord.audioUrl ? (
+                    <View style={styles.nativeAudioBadge}>
+                      <Ionicons
+                        name="mic"
+                        size={16}
+                        color={COLORS.primaryDark}
+                      />
+                      <Text
+                        style={styles.nativeAudioBadgeText}
+                        maxFontSizeMultiplier={1.35}
+                      >
+                        원어민 원음
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                <Pressable
+                  onPress={() => toggleWordBookmark(displayedWord)}
+                  style={({ pressed }) => [
+                    styles.bookmarkBtn,
+                    isDisplayedWordBookmarked && styles.bookmarkBtnActive,
+                    pressed && styles.pressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isDisplayedWordBookmarked }}
+                  accessibilityLabel={
+                    isDisplayedWordBookmarked ? '북마크 해제' : '북마크 저장'
+                  }
+                >
+                  <Ionicons
+                    name={isDisplayedWordBookmarked ? 'bookmark' : 'bookmark-outline'}
+                    size={24}
+                    color={isDisplayedWordBookmarked ? COLORS.accent : COLORS.text}
+                  />
+                </Pressable>
+              </View>
+
               <View style={styles.wordHeaderRow}>
                 <View style={styles.wordTitleGroup}>
-                  <View style={styles.badgesRow}>
-                    {displayedWord.partOfSpeech ? (
-                      <View style={styles.posBadge}>
-                        <Text
-                          style={styles.posBadgeText}
-                          maxFontSizeMultiplier={1.35}
-                        >
-                          {displayedWord.partOfSpeech}
-                        </Text>
-                      </View>
-                    ) : null}
-                    {displayedWord.audioUrl ? (
-                      <View style={styles.nativeAudioBadge}>
-                        <Ionicons
-                          name="mic"
-                          size={16}
-                          color={COLORS.primaryDark}
-                        />
-                        <Text
-                          style={styles.nativeAudioBadgeText}
-                          maxFontSizeMultiplier={1.35}
-                        >
-                          원어민 원음
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-
                   <Text style={styles.wordHero} maxFontSizeMultiplier={1.35}>
                     {displayedWord.word}
                   </Text>
@@ -513,11 +574,11 @@ export default function WordReaderScreen() {
                   ]}
                   accessibilityRole="switch"
                   accessibilityState={{ checked: showKoPronunciation }}
-                  accessibilityLabel="한글 발음 힌트 보기 토글"
+                  accessibilityLabel="한글 발음 힌트 토글"
                 >
                   <View style={styles.toggleTextGroup}>
                     <Text style={styles.toggleLabel} maxFontSizeMultiplier={1.4}>
-                      한글 발음 힌트 보기
+                      한글 발음 힌트
                     </Text>
                     {showKoPronunciation ? (
                       <Text
@@ -526,37 +587,22 @@ export default function WordReaderScreen() {
                       >
                         {displayedWord.koPronunciation}
                       </Text>
-                    ) : (
-                      <Text
-                        style={styles.koHiddenText}
-                        maxFontSizeMultiplier={1.4}
-                      >
-                        꺼짐 (발음기호와 소리에 집중해요)
-                      </Text>
-                    )}
+                    ) : null}
                   </View>
-                  <View style={styles.switchColumn}>
-                    <Switch
-                      value={showKoPronunciation}
-                      onValueChange={setShowKoPronunciation}
-                      trackColor={{
-                        false: COLORS.border,
-                        true: COLORS.primary,
-                      }}
-                      thumbColor={COLORS.white}
-                      accessibilityLabel="한글 발음 힌트 표시 켜기 끄기"
-                    />
-                    <Text
-                      style={styles.switchStateText}
-                      maxFontSizeMultiplier={1.3}
-                    >
-                      {showKoPronunciation ? '켜짐' : '꺼짐'}
-                    </Text>
-                  </View>
+                  <Switch
+                    value={showKoPronunciation}
+                    onValueChange={setShowKoPronunciation}
+                    trackColor={{
+                      false: COLORS.border,
+                      true: COLORS.primary,
+                    }}
+                    thumbColor={COLORS.white}
+                    accessibilityLabel="한글 발음 힌트 표시"
+                  />
                 </Pressable>
               ) : null}
 
-              {/* 1.0x 보통 속도 / 0.6x 천천히 듣기 버튼 */}
+              {/* 보통 속도 / 천천히 듣기 버튼 */}
               <View style={styles.audioButtonsRow}>
                 <Pressable
                   onPress={() =>
@@ -577,7 +623,7 @@ export default function WordReaderScreen() {
                 >
                   <Ionicons name="volume-high" size={24} color={COLORS.white} />
                   <Text style={styles.primaryBtnText} maxFontSizeMultiplier={1.3}>
-                    {isNormalPlaying ? '재생 중...' : '보통 속도 (1.0x)'}
+                    {isNormalPlaying ? '재생 중...' : '보통 속도'}
                   </Text>
                 </Pressable>
 
@@ -600,7 +646,7 @@ export default function WordReaderScreen() {
                     color={COLORS.primaryDark}
                   />
                   <Text style={styles.slowBtnText} maxFontSizeMultiplier={1.3}>
-                    {isSlowPlaying ? '천천히 중...' : '천천히 (0.6x)'}
+                    {isSlowPlaying ? '재생 중...' : '천천히'}
                   </Text>
                 </Pressable>
               </View>
@@ -609,11 +655,7 @@ export default function WordReaderScreen() {
             {/* 강세 리듬 블록 카드 */}
             <View style={styles.sectionCard}>
               <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
-                음절별 강약(강세) 리듬
-              </Text>
-              <Text style={styles.sectionGuide} maxFontSizeMultiplier={1.45}>
-                노란 테두리(⬤) 음절은 크고 또렷하게, 나머지 음절은 힘을 빼고 부드럽게
-                읽어 보세요.
+                강세 리듬
               </Text>
               <RhythmBlocks
                 syllables={displayedWord.syllables}
@@ -625,7 +667,7 @@ export default function WordReaderScreen() {
             {displayedWord.exampleEn ? (
               <View style={styles.sectionCard}>
                 <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
-                  짧은 예문으로 들어보기
+                  예문
                 </Text>
                 <Text style={styles.exampleSentence} maxFontSizeMultiplier={1.45}>
                   &ldquo;{displayedWord.exampleEn}&rdquo;
@@ -648,7 +690,7 @@ export default function WordReaderScreen() {
                     color={COLORS.primaryDark}
                   />
                   <Text style={styles.slowBtnText} maxFontSizeMultiplier={1.35}>
-                    {isExamplePlaying ? '예문 재생 중...' : '예문 천천히 듣기'}
+                    {isExamplePlaying ? '재생 중...' : '천천히 듣기'}
                   </Text>
                 </Pressable>
               </View>
@@ -658,10 +700,7 @@ export default function WordReaderScreen() {
             {displayedWord.symbolIds.length > 0 ? (
               <View style={styles.sectionCard}>
                 <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
-                  이 단어의 핵심 발음기호
-                </Text>
-                <Text style={styles.sectionGuide} maxFontSizeMultiplier={1.45}>
-                  기호 버튼을 누르면 입 모양과 소리 내는 법을 바로 확인할 수 있어요.
+                  쓰인 발음기호
                 </Text>
                 <View style={styles.symbolChipsWrap}>
                   {displayedWord.symbolIds.map((symbolId) => {
@@ -676,33 +715,27 @@ export default function WordReaderScreen() {
                           pressed && styles.pressed,
                         ]}
                         accessibilityRole="button"
-                        accessibilityLabel={`${sym.ipa} ${sym.titleKo} 읽는 법 보기`}
+                        accessibilityLabel={`${sym.ipa} ${sym.titleKo} 자세히 보기`}
                       >
-                        <Text
-                          style={styles.symbolBacktrackIpa}
-                          maxFontSizeMultiplier={1.35}
-                        >
-                          {sym.ipa}
-                        </Text>
+                        <View style={styles.symbolBacktrackTop}>
+                          <Text
+                            style={styles.symbolBacktrackIpa}
+                            maxFontSizeMultiplier={1.35}
+                          >
+                            {sym.ipa}
+                          </Text>
+                          <Ionicons
+                            name="chevron-forward"
+                            size={20}
+                            color={COLORS.primary}
+                          />
+                        </View>
                         <Text
                           style={styles.symbolBacktrackHint}
                           maxFontSizeMultiplier={1.4}
                         >
                           {sym.koHint}
                         </Text>
-                        <View style={styles.symbolBacktrackAction}>
-                          <Ionicons
-                            name="help-circle-outline"
-                            size={18}
-                            color={COLORS.primaryDark}
-                          />
-                          <Text
-                            style={styles.symbolBacktrackActionText}
-                            maxFontSizeMultiplier={1.35}
-                          >
-                            읽는 법
-                          </Text>
-                        </View>
                       </Pressable>
                     );
                   })}
@@ -777,16 +810,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   clearBtn: {
-    minHeight: TOUCH.minTarget,
-    paddingHorizontal: 10,
-    flexDirection: 'row',
+    width: TOUCH.minTarget,
+    height: TOUCH.minTarget,
     alignItems: 'center',
-    gap: 4,
-  },
-  clearBtnText: {
-    fontSize: TYPOGRAPHY.body,
-    fontWeight: '700',
-    color: COLORS.text,
+    justifyContent: 'center',
+    marginRight: -6,
   },
   searchSubmitBtn: {
     minHeight: TOUCH.recommendedHeight,
@@ -939,11 +967,31 @@ const styles = StyleSheet.create({
     minWidth: 170,
     gap: 4,
   },
+  wordTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
+  },
   badgesRow: {
+    flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginBottom: 4,
+  },
+  bookmarkBtn: {
+    width: TOUCH.minTarget,
+    height: TOUCH.minTarget,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bookmarkBtnActive: {
+    backgroundColor: COLORS.accentSoft,
+    borderColor: COLORS.accent,
   },
   posBadge: {
     backgroundColor: COLORS.background,
@@ -1020,19 +1068,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.text,
   },
-  koHiddenText: {
-    fontSize: TYPOGRAPHY.body,
-    color: COLORS.textMuted,
-  },
-  switchColumn: {
-    alignItems: 'center',
-    gap: 2,
-  },
-  switchStateText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.primaryDark,
-  },
   audioButtonsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1096,12 +1131,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.text,
   },
-  sectionGuide: {
-    fontSize: TYPOGRAPHY.body,
-    lineHeight: 26,
-    color: COLORS.textMuted,
-    marginBottom: 4,
-  },
   exampleSentence: {
     fontSize: TYPOGRAPHY.bodyLarge,
     lineHeight: 30,
@@ -1127,6 +1156,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     gap: 4,
   },
+  symbolBacktrackTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
   symbolBacktrackIpa: {
     fontSize: TYPOGRAPHY.ipa,
     fontWeight: '800',
@@ -1136,17 +1171,6 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.body,
     fontWeight: '700',
     color: COLORS.text,
-  },
-  symbolBacktrackAction: {
-    marginTop: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  symbolBacktrackActionText: {
-    fontSize: TYPOGRAPHY.body,
-    fontWeight: '700',
-    color: COLORS.primaryDark,
   },
   attributionBox: {
     paddingVertical: SPACING.sm,
