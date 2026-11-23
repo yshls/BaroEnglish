@@ -33,7 +33,6 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "verify": "node scripts/verify.mjs",
-    "loop:status": "node scripts/loop-status.mjs",
     "lint": "expo lint"
   },
   "private": true

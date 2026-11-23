@@ -172,9 +172,7 @@ $RECYCLE.BIN/
 .windsurf/
 .antigravity/
 .orca/
-.claude/settings.local.json
-.claude/projects/
-.claude/*.local.*
+.claude/
 CLAUDE.local.md
 AGENTS.local.md
 
@@ -186,3 +184,5 @@ SPEC.md
 AGENTS.md
 progress.md
 tasks.json
+scripts/loop-status.mjs
+docs/QA_CHECKLIST.md
