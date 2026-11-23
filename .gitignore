@@ -3,39 +3,74 @@
 # dependencies
 node_modules/
 
-# Expo
+# Expo & Web deploy
 .expo/
 dist/
 web-build/
 expo-env.d.ts
+.vercel/
+.netlify/
 
-# Native
+# Native & Build Artifacts
 .kotlin/
 *.orig.*
+*.ipa
+*.apk
+*.aab
+
+# Signing Keys, Certificates & Store Credentials (절대 커밋 금지)
 *.jks
+*.keystore
 *.p8
 *.p12
+*.pem
 *.key
+*.cer
+*.crt
+*.der
+*.certSigningRequest
 *.mobileprovision
+credentials.json
+*service-account*.json
+google-services.json
+GoogleService-Info.plist
 
-# Metro
+# Environment Variables (예시 파일 제외 전체 차단)
+.env
+.env.*
+!.env.example
+
+# Metro & Cache
 .metro-health-check*
+.eslintcache
+.cache/
+coverage/
 
-# debug
+# Debug & Logs
+*.log
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+pnpm-debug.*
 
-# macOS
+# OS (macOS / Windows / Linux)
 .DS_Store
-*.pem
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
 
-# local env files
-.env*.local
+# IDE & Local Agent Config
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+.claude/settings.local.json
 
-# typescript
+# TypeScript
 *.tsbuildinfo
 
-# generated native folders
+# Generated Native Folders (CNG)
 /ios
 /android
