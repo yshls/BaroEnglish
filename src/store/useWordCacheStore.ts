@@ -1,7 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { CoreWord } from '../types/learning';
+import { safeAsyncStorage } from './safeAsyncStorage';
 
 const MAX_CACHED_WORDS = 300;
 const MAX_RECENT_WORDS = 12;
@@ -23,6 +23,8 @@ export const STARTER_SEARCH_CHIPS = [
 export interface WordCacheState {
   cachedWords: Record<string, CoreWord>;
   recentWords: string[];
+  hasHydrated: boolean;
+  setHasHydrated: (hydrated: boolean) => void;
   saveWord: (word: CoreWord) => void;
   getCachedWord: (englishWord: string) => CoreWord | undefined;
   findCachedByQuery: (query: string) => CoreWord | undefined;
@@ -34,6 +36,11 @@ export const useWordCacheStore = create<WordCacheState>()(
     (set, get) => ({
       cachedWords: {},
       recentWords: [],
+      hasHydrated: false,
+
+      setHasHydrated: (hydrated: boolean) => {
+        set({ hasHydrated: hydrated });
+      },
 
       saveWord: (word: CoreWord) => {
         const key = word.word.toLowerCase();
@@ -84,11 +91,18 @@ export const useWordCacheStore = create<WordCacheState>()(
     }),
     {
       name: 'baro-english-word-cache-v1',
-      storage: createJSONStorage(() => AsyncStorage),
+      version: 1,
+      storage: createJSONStorage(() => safeAsyncStorage),
       partialize: (state) => ({
         cachedWords: state.cachedWords,
         recentWords: state.recentWords,
       }),
+      onRehydrateStorage: () => (_state, error) => {
+        if (error) {
+          void safeAsyncStorage.removeItem('baro-english-word-cache-v1');
+        }
+        useWordCacheStore.getState().setHasHydrated(true);
+      },
     }
   )
 );

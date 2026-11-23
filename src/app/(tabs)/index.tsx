@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SymbolDetailSheet } from '../../components/SymbolDetailSheet';
 import {
@@ -7,12 +8,14 @@ import {
   IPA_CATEGORIES,
   IPA_SYMBOLS,
 } from '../../data/categories';
+import { useSpeechAudio } from '../../hooks/useSpeechAudio';
 import { useLearningStore } from '../../store/useLearningStore';
 import { COLORS, RADIUS, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
 import type { IpaSymbol } from '../../types/learning';
 
 export default function IpaSymbolsScreen() {
   const [selectedSymbol, setSelectedSymbol] = useState<IpaSymbol | null>(null);
+  const { stop } = useSpeechAudio();
 
   const learnedSymbolIds = useLearningStore((state) => state.learnedSymbolIds);
   const hasHydrated = useLearningStore((state) => state.hasHydrated);
@@ -23,10 +26,28 @@ export default function IpaSymbolsScreen() {
     (state) => state.dismissWelcomeBanner
   );
 
+  // 탭 전환/화면 이탈 시 진행 중인 음성 즉시 중단
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        stop();
+      };
+    }, [stop])
+  );
+
+  // 유효한 18개 기호 ID만 필터링하고 0~100% 범위로 클램핑
+  const validSymbolIdSet = useMemo(
+    () => new Set(IPA_SYMBOLS.map((s) => s.id)),
+    []
+  );
   const totalCount = IPA_SYMBOLS.length;
-  const totalLearnedCount = learnedSymbolIds.length;
+  const totalLearnedCount = learnedSymbolIds.filter((id) =>
+    validSymbolIdSet.has(id)
+  ).length;
   const totalProgressPct =
-    totalCount === 0 ? 0 : Math.round((totalLearnedCount / totalCount) * 100);
+    totalCount === 0
+      ? 0
+      : Math.min(100, Math.max(0, Math.round((totalLearnedCount / totalCount) * 100)));
 
   return (
     <View style={styles.screen}>
@@ -40,7 +61,9 @@ export default function IpaSymbolsScreen() {
             <View style={styles.welcomeHeader}>
               <View style={styles.welcomeTitleRow}>
                 <Ionicons name="sparkles" size={24} color={COLORS.primaryDark} />
-                <Text style={styles.welcomeTitle}>바로영어에 오신 걸 환영해요!</Text>
+                <Text style={styles.welcomeTitle} maxFontSizeMultiplier={1.4}>
+                  바로영어에 오신 걸 환영해요!
+                </Text>
               </View>
               <Pressable
                 onPress={dismissWelcomeBanner}
@@ -52,10 +75,12 @@ export default function IpaSymbolsScreen() {
                 accessibilityLabel="안내 배너 닫기"
               >
                 <Ionicons name="close" size={20} color={COLORS.primaryDark} />
-                <Text style={styles.dismissBtnText}>닫기</Text>
+                <Text style={styles.dismissBtnText} maxFontSizeMultiplier={1.3}>
+                  닫기
+                </Text>
               </Pressable>
             </View>
-            <Text style={styles.welcomeBody}>
+            <Text style={styles.welcomeBody} maxFontSizeMultiplier={1.5}>
               꼭 필요한 발음기호 18개만 모아 두었어요. 아래 카드를 눌러 입 모양을 보고
               소리를 바로 따라 읽어 보세요.
             </Text>
@@ -65,14 +90,18 @@ export default function IpaSymbolsScreen() {
         {/* 전체 진도 Bento 요약 카드 */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
-            <View>
-              <Text style={styles.summaryLabel}>나의 발음기호 진도</Text>
-              <Text style={styles.summaryCount}>
+            <View style={styles.summaryTitleCol}>
+              <Text style={styles.summaryLabel} maxFontSizeMultiplier={1.4}>
+                나의 발음기호 진도
+              </Text>
+              <Text style={styles.summaryCount} maxFontSizeMultiplier={1.4}>
                 {totalLearnedCount} / {totalCount}개 익힘
               </Text>
             </View>
             <View style={styles.percentPill}>
-              <Text style={styles.percentPillText}>{totalProgressPct}%</Text>
+              <Text style={styles.percentPillText} maxFontSizeMultiplier={1.35}>
+                {totalProgressPct}%
+              </Text>
             </View>
           </View>
 
@@ -94,16 +123,19 @@ export default function IpaSymbolsScreen() {
             <View key={category.id} style={styles.categorySection}>
               <View style={styles.categoryHeader}>
                 <View style={styles.categoryTitleBlock}>
-                  <Text style={styles.categoryStep}>
+                  <Text style={styles.categoryStep} maxFontSizeMultiplier={1.4}>
                     {index + 1}단계 · {category.titleKo}
                   </Text>
-                  <Text style={styles.categorySubtitle}>
+                  <Text style={styles.categorySubtitle} maxFontSizeMultiplier={1.45}>
                     {category.subtitleKo}
                   </Text>
                 </View>
 
                 <View style={styles.categoryProgressBadge}>
-                  <Text style={styles.categoryProgressText}>
+                  <Text
+                    style={styles.categoryProgressText}
+                    maxFontSizeMultiplier={1.35}
+                  >
                     {learnedInCategory} / {symbols.length} 익힘
                   </Text>
                 </View>
@@ -128,7 +160,9 @@ export default function IpaSymbolsScreen() {
                       }`}
                     >
                       <View style={styles.symbolCardTop}>
-                        <Text style={styles.symbolIpa}>{symbol.ipa}</Text>
+                        <Text style={styles.symbolIpa} maxFontSizeMultiplier={1.35}>
+                          {symbol.ipa}
+                        </Text>
                         {isLearned ? (
                           <View style={styles.doneTag}>
                             <Ionicons
@@ -136,15 +170,28 @@ export default function IpaSymbolsScreen() {
                               size={18}
                               color={COLORS.primary}
                             />
-                            <Text style={styles.doneTagText}>익힘</Text>
+                            <Text
+                              style={styles.doneTagText}
+                              maxFontSizeMultiplier={1.25}
+                            >
+                              익힘
+                            </Text>
                           </View>
                         ) : null}
                       </View>
 
-                      <Text style={styles.symbolKoHint} numberOfLines={1}>
+                      <Text
+                        style={styles.symbolKoHint}
+                        numberOfLines={2}
+                        maxFontSizeMultiplier={1.4}
+                      >
                         {symbol.koHint}
                       </Text>
-                      <Text style={styles.symbolExamplePreview} numberOfLines={1}>
+                      <Text
+                        style={styles.symbolExamplePreview}
+                        numberOfLines={1}
+                        maxFontSizeMultiplier={1.4}
+                      >
                         예: {symbol.examples[0]?.word} ({symbol.examples[0]?.meaningKo})
                       </Text>
                     </Pressable>
@@ -185,12 +232,14 @@ const styles = StyleSheet.create({
   },
   welcomeHeader: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: SPACING.sm,
   },
   welcomeTitleRow: {
     flex: 1,
+    minWidth: 180,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -232,8 +281,14 @@ const styles = StyleSheet.create({
   },
   summaryRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  summaryTitleCol: {
+    flex: 1,
+    minWidth: 180,
   },
   summaryLabel: {
     fontSize: TYPOGRAPHY.body,
@@ -275,12 +330,14 @@ const styles = StyleSheet.create({
   },
   categoryHeader: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     gap: SPACING.sm,
   },
   categoryTitleBlock: {
     flex: 1,
+    minWidth: 190,
     gap: 2,
   },
   categoryStep: {
@@ -301,7 +358,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   categoryProgressText: {
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body,
     fontWeight: '700',
     color: COLORS.primaryDark,
   },
@@ -311,8 +368,10 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   symbolCard: {
-    width: '48.4%',
-    minHeight: 124,
+    flexBasis: '46%',
+    flexGrow: 1,
+    minWidth: 148,
+    minHeight: 128,
     backgroundColor: COLORS.card,
     borderColor: COLORS.border,
     borderWidth: 1,
@@ -328,8 +387,10 @@ const styles = StyleSheet.create({
   },
   symbolCardTop: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 4,
   },
   symbolIpa: {
     fontSize: TYPOGRAPHY.word,
@@ -346,7 +407,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.pill,
   },
   doneTagText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
     color: COLORS.primaryDark,
   },
@@ -356,7 +417,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   symbolExamplePreview: {
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body,
     color: COLORS.textMuted,
     fontWeight: '500',
   },

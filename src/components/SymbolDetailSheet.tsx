@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useRef } from 'react';
 import {
   Modal,
   Pressable,
@@ -7,7 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSpeechAudio } from '../hooks/useSpeechAudio';
 import { useLearningStore } from '../store/useLearningStore';
 import { COLORS, RADIUS, SPACING, TOUCH, TYPOGRAPHY } from '../theme/tokens';
@@ -27,13 +28,28 @@ export function SymbolDetailSheet({
   onClose,
   contextLabel,
 }: SymbolDetailSheetProps) {
+  const insets = useSafeAreaInsets();
   const { playNormal, playSlow, stop, activeKey } = useSpeechAudio();
   const learnedSymbolIds = useLearningStore((state) => state.learnedSymbolIds);
   const toggleSymbolLearned = useLearningStore((state) => state.toggleSymbolLearned);
 
-  if (!symbol) return null;
+  // 닫기 슬라이드 애니메이션 중 내용이 즉시 사라지지 않도록 직전 기호 유지
+  const lastSymbolRef = useRef<IpaSymbol | null>(symbol);
+  if (symbol) {
+    lastSymbolRef.current = symbol;
+  }
+  const activeSymbol = symbol ?? lastSymbolRef.current;
 
-  const isLearned = learnedSymbolIds.includes(symbol.id);
+  // 바텀시트가 열릴 때 이전 화면의 오디오 즉시 중단
+  useEffect(() => {
+    if (visible) {
+      stop();
+    }
+  }, [visible, stop]);
+
+  if (!activeSymbol) return null;
+
+  const isLearned = learnedSymbolIds.includes(activeSymbol.id);
 
   const handleClose = () => {
     stop();
@@ -45,6 +61,7 @@ export function SymbolDetailSheet({
       visible={visible}
       animationType="slide"
       transparent
+      statusBarTranslucent
       onRequestClose={handleClose}
     >
       <View style={styles.backdrop}>
@@ -53,7 +70,12 @@ export function SymbolDetailSheet({
           onPress={handleClose}
           accessibilityLabel="창 닫기"
         />
-        <SafeAreaView edges={['bottom']} style={styles.sheetContainer}>
+        <View
+          style={[
+            styles.sheetContainer,
+            { paddingBottom: Math.max(insets.bottom, SPACING.md) },
+          ]}
+        >
           <View style={styles.handleBar} />
 
           {/* 헤더 */}
@@ -61,11 +83,17 @@ export function SymbolDetailSheet({
             <View style={styles.headerLeft}>
               {contextLabel ? (
                 <View style={styles.contextBadge}>
-                  <Text style={styles.contextBadgeText}>{contextLabel}</Text>
+                  <Text style={styles.contextBadgeText} maxFontSizeMultiplier={1.35}>
+                    {contextLabel}
+                  </Text>
                 </View>
               ) : null}
-              <Text style={styles.ipaHero}>{symbol.ipa}</Text>
-              <Text style={styles.titleKo}>{symbol.titleKo}</Text>
+              <Text style={styles.ipaHero} maxFontSizeMultiplier={1.35}>
+                {activeSymbol.ipa}
+              </Text>
+              <Text style={styles.titleKo} maxFontSizeMultiplier={1.4}>
+                {activeSymbol.titleKo}
+              </Text>
             </View>
 
             <Pressable
@@ -78,7 +106,9 @@ export function SymbolDetailSheet({
               accessibilityLabel="닫기"
             >
               <Ionicons name="close" size={24} color={COLORS.text} />
-              <Text style={styles.closeButtonText}>닫기</Text>
+              <Text style={styles.closeButtonText} maxFontSizeMultiplier={1.3}>
+                닫기
+              </Text>
             </Pressable>
           </View>
 
@@ -91,29 +121,39 @@ export function SymbolDetailSheet({
             <View style={styles.guideCard}>
               <View style={styles.guideHeaderRow}>
                 <Ionicons name="happy-outline" size={24} color={COLORS.primary} />
-                <Text style={styles.guideLabel}>입 모양 · 혀 위치 안내</Text>
+                <Text style={styles.guideLabel} maxFontSizeMultiplier={1.4}>
+                  입 모양 · 혀 위치 안내
+                </Text>
               </View>
-              <Text style={styles.guideBody}>{symbol.mouthGuideKo}</Text>
+              <Text style={styles.guideBody} maxFontSizeMultiplier={1.5}>
+                {activeSymbol.mouthGuideKo}
+              </Text>
 
               <View style={styles.hintPill}>
-                <Text style={styles.hintPillLabel}>비슷한 한글 소리</Text>
-                <Text style={styles.hintPillValue}>{symbol.koHint}</Text>
+                <Text style={styles.hintPillLabel} maxFontSizeMultiplier={1.4}>
+                  비슷한 한글 소리
+                </Text>
+                <Text style={styles.hintPillValue} maxFontSizeMultiplier={1.4}>
+                  {activeSymbol.koHint}
+                </Text>
               </View>
             </View>
 
             {/* 대표 기초 단어 3개 */}
             <View style={styles.examplesSection}>
-              <Text style={styles.sectionTitle}>대표 기초 단어 3개 (눌러서 듣기)</Text>
+              <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
+                대표 기초 단어 3개 (눌러서 듣기)
+              </Text>
               <View style={styles.exampleList}>
-                {symbol.examples.map((ex) => {
-                  const normalKey = `sym:${symbol.id}:${ex.word}:normal`;
-                  const slowKey = `sym:${symbol.id}:${ex.word}:slow`;
+                {activeSymbol.examples.map((ex) => {
+                  const normalKey = `sym:${activeSymbol.id}:${ex.word}:normal`;
+                  const slowKey = `sym:${activeSymbol.id}:${ex.word}:slow`;
                   const isNormalPlaying = activeKey === normalKey;
                   const isSlowPlaying = activeKey === slowKey;
 
                   return (
                     <View
-                      key={`${symbol.id}-${ex.word}`}
+                      key={`${activeSymbol.id}-${ex.word}`}
                       style={[
                         styles.exampleCard,
                         (isNormalPlaying || isSlowPlaying) && styles.exampleCardActive,
@@ -125,8 +165,10 @@ export function SymbolDetailSheet({
                         accessibilityRole="button"
                         accessibilityLabel={`${ex.word} ${ex.meaningKo} 소리 듣기`}
                       >
-                        <Text style={styles.exampleWord}>{ex.word}</Text>
-                        <Text style={styles.exampleMeta}>
+                        <Text style={styles.exampleWord} maxFontSizeMultiplier={1.4}>
+                          {ex.word}
+                        </Text>
+                        <Text style={styles.exampleMeta} maxFontSizeMultiplier={1.45}>
                           {ex.ipa} · {ex.meaningKo}
                         </Text>
                       </Pressable>
@@ -147,7 +189,10 @@ export function SymbolDetailSheet({
                             size={20}
                             color={COLORS.white}
                           />
-                          <Text style={styles.playBtnPrimaryText}>
+                          <Text
+                            style={styles.playBtnPrimaryText}
+                            maxFontSizeMultiplier={1.3}
+                          >
                             {isNormalPlaying ? '재생 중' : '듣기'}
                           </Text>
                         </Pressable>
@@ -167,7 +212,10 @@ export function SymbolDetailSheet({
                             size={20}
                             color={COLORS.primaryDark}
                           />
-                          <Text style={styles.playBtnSlowText}>
+                          <Text
+                            style={styles.playBtnSlowText}
+                            maxFontSizeMultiplier={1.3}
+                          >
                             {isSlowPlaying ? '천천히 중' : '천천히'}
                           </Text>
                         </Pressable>
@@ -182,7 +230,7 @@ export function SymbolDetailSheet({
           {/* 하단 익혔어요 버튼 */}
           <View style={styles.footer}>
             <Pressable
-              onPress={() => toggleSymbolLearned(symbol.id)}
+              onPress={() => toggleSymbolLearned(activeSymbol.id)}
               style={({ pressed }) => [
                 styles.learnedButton,
                 isLearned ? styles.learnedButtonDone : styles.learnedButtonTodo,
@@ -202,12 +250,13 @@ export function SymbolDetailSheet({
                   styles.learnedButtonText,
                   isLearned ? styles.learnedButtonTextDone : styles.learnedButtonTextTodo,
                 ]}
+                maxFontSizeMultiplier={1.35}
               >
                 {isLearned ? '익힘 완료 (눌러서 해제)' : '익혔어요 (완료 체크)'}
               </Text>
             </Pressable>
           </View>
-        </SafeAreaView>
+        </View>
       </View>
     </Modal>
   );
@@ -260,7 +309,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   contextBadgeText: {
-    fontSize: 16,
+    fontSize: TYPOGRAPHY.body,
     fontWeight: '700',
     color: COLORS.primaryDark,
   },
@@ -329,9 +378,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: SPACING.md,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: SPACING.sm,
+    gap: SPACING.xs,
   },
   hintPillLabel: {
     fontSize: TYPOGRAPHY.body,
@@ -381,10 +431,12 @@ const styles = StyleSheet.create({
   },
   exampleButtons: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: SPACING.sm,
   },
   playBtnPrimary: {
-    flex: 1,
+    flexGrow: 1,
+    minWidth: 120,
     minHeight: TOUCH.minTarget,
     borderRadius: RADIUS.md,
     backgroundColor: COLORS.primary,
@@ -393,6 +445,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   playBtnPrimaryActive: {
     backgroundColor: COLORS.primaryDark,
@@ -403,7 +456,8 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   playBtnSlow: {
-    flex: 1,
+    flexGrow: 1,
+    minWidth: 120,
     minHeight: TOUCH.minTarget,
     borderRadius: RADIUS.md,
     backgroundColor: COLORS.tint,
@@ -414,6 +468,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   playBtnSlowActive: {
     backgroundColor: COLORS.accentSoft,
@@ -426,7 +481,6 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingTop: SPACING.sm,
-    paddingBottom: SPACING.md,
   },
   learnedButton: {
     minHeight: TOUCH.recommendedHeight,
@@ -436,6 +490,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     paddingHorizontal: SPACING.md,
+    paddingVertical: 12,
   },
   learnedButtonTodo: {
     backgroundColor: COLORS.primary,

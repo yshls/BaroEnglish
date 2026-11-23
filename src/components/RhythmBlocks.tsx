@@ -12,15 +12,27 @@ export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
     <View style={styles.container}>
       {/* 상단 강약 박자 리듬 요약 (● ⬤ ●) */}
       <View style={styles.rhythmBar}>
-        <Text style={styles.rhythmBarLabel}>강약 리듬 박자</Text>
+        <Text style={styles.rhythmBarLabel} maxFontSizeMultiplier={1.4}>
+          강약 리듬 박자
+        </Text>
         <View style={styles.dotsRow}>
           {syllables.map((syl, idx) => {
             const isPrimary = syl.stress === 'primary';
+            const isSecondary = syl.stress === 'secondary';
             return (
               <Text
                 key={`dot-${idx}-${syl.text}`}
-                style={isPrimary ? styles.dotPrimary : styles.dotNormal}
-                accessibilityLabel={isPrimary ? '강세 박자' : '약한 박자'}
+                style={
+                  isPrimary
+                    ? styles.dotPrimary
+                    : isSecondary
+                      ? styles.dotSecondary
+                      : styles.dotNormal
+                }
+                maxFontSizeMultiplier={1.25}
+                accessibilityLabel={
+                  isPrimary ? '강세 박자' : isSecondary ? '보조 강세 박자' : '약한 박자'
+                }
               >
                 {isPrimary ? '⬤' : '●'}
               </Text>
@@ -33,6 +45,7 @@ export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
       <View style={styles.blocksRow}>
         {syllables.map((syl, idx) => {
           const isPrimary = syl.stress === 'primary';
+          const isSecondary = syl.stress === 'secondary';
           const isSchwa = Boolean(syl.isSchwa);
 
           return (
@@ -41,13 +54,22 @@ export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
               style={[
                 styles.block,
                 isPrimary && styles.blockPrimary,
-                !isPrimary && isSchwa && styles.blockSchwa,
+                !isPrimary && isSecondary && styles.blockSecondary,
+                !isPrimary && !isSecondary && isSchwa && styles.blockSchwa,
               ]}
             >
               {/* 음절 상단 박자 배지 */}
               {isPrimary ? (
                 <View style={styles.primaryTag}>
-                  <Text style={styles.primaryTagText}>⬤ 강하게</Text>
+                  <Text style={styles.primaryTagText} maxFontSizeMultiplier={1.3}>
+                    ⬤ 강하게
+                  </Text>
+                </View>
+              ) : isSecondary ? (
+                <View style={styles.secondaryTag}>
+                  <Text style={styles.secondaryTagText} maxFontSizeMultiplier={1.3}>
+                    ● 살짝 강하게
+                  </Text>
                 </View>
               ) : (
                 <Text style={styles.normalDotSmall}>●</Text>
@@ -60,6 +82,7 @@ export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
                   isPrimary && styles.syllableTextPrimary,
                   !isPrimary && isSchwa && styles.syllableTextSchwa,
                 ]}
+                maxFontSizeMultiplier={1.4}
               >
                 {syl.text}
               </Text>
@@ -70,6 +93,7 @@ export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
                   styles.syllableIpa,
                   isPrimary && styles.syllableIpaPrimary,
                 ]}
+                maxFontSizeMultiplier={1.4}
               >
                 /{syl.ipa}/
               </Text>
@@ -81,6 +105,7 @@ export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
                     styles.syllableKoHint,
                     isPrimary && styles.syllableKoHintPrimary,
                   ]}
+                  maxFontSizeMultiplier={1.4}
                 >
                   {syl.koHint}
                 </Text>
@@ -89,7 +114,9 @@ export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
               {/* 약화 모음(Schwa) 힌트 */}
               {isSchwa ? (
                 <View style={styles.schwaBadge}>
-                  <Text style={styles.schwaBadgeText}>힘 빼고 약하게 &apos;어&apos;</Text>
+                  <Text style={styles.schwaBadgeText} maxFontSizeMultiplier={1.3}>
+                    힘 빼고 약하게 &apos;어&apos;
+                  </Text>
                 </View>
               ) : null}
             </View>
@@ -112,8 +139,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingVertical: 10,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: SPACING.xs,
   },
   rhythmBarLabel: {
     fontSize: TYPOGRAPHY.body,
@@ -127,7 +156,11 @@ const styles = StyleSheet.create({
   },
   dotPrimary: {
     fontSize: 26,
-    color: COLORS.accent,
+    color: COLORS.accentText, // #B45309 — #F7F5F0 배경 대비 4.5:1+ 고대비
+  },
+  dotSecondary: {
+    fontSize: 20,
+    color: COLORS.primary,
   },
   dotNormal: {
     fontSize: 16,
@@ -160,6 +193,12 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     paddingHorizontal: 16,
   },
+  blockSecondary: {
+    minWidth: 98,
+    backgroundColor: COLORS.tint,
+    borderColor: COLORS.primary,
+    borderWidth: 1.5,
+  },
   blockSchwa: {
     minWidth: 84,
     backgroundColor: COLORS.background,
@@ -174,12 +213,26 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   primaryTagText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '800',
     color: COLORS.white,
   },
+  secondaryTag: {
+    backgroundColor: COLORS.card,
+    borderColor: COLORS.primary,
+    borderWidth: 1,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginBottom: 4,
+  },
+  secondaryTagText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.primaryDark,
+  },
   normalDotSmall: {
-    fontSize: 14,
+    fontSize: 15,
     color: COLORS.textMuted,
     marginBottom: 2,
   },
@@ -227,7 +280,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   schwaBadgeText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
     color: COLORS.textMuted,
     textAlign: 'center',

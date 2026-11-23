@@ -1,6 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { safeAsyncStorage } from './safeAsyncStorage';
 
 export interface LearningState {
   learnedSymbolIds: string[];
@@ -29,6 +29,7 @@ export const useLearningStore = create<LearningState>()(
       },
 
       toggleSymbolLearned: (symbolId: string) => {
+        if (!get().hasHydrated) return;
         const current = get().learnedSymbolIds;
         const exists = current.includes(symbolId);
         const next = exists
@@ -42,14 +43,17 @@ export const useLearningStore = create<LearningState>()(
       },
 
       setShowKoPronunciation: (show: boolean) => {
+        if (!get().hasHydrated) return;
         set({ showKoPronunciation: show });
       },
 
       toggleShowKoPronunciation: () => {
+        if (!get().hasHydrated) return;
         set((state) => ({ showKoPronunciation: !state.showKoPronunciation }));
       },
 
       dismissWelcomeBanner: () => {
+        if (!get().hasHydrated) return;
         set({ hasDismissedWelcomeBanner: true });
       },
 
@@ -63,14 +67,18 @@ export const useLearningStore = create<LearningState>()(
     }),
     {
       name: 'baro-english-learning-storage-v1',
-      storage: createJSONStorage(() => AsyncStorage),
+      version: 1,
+      storage: createJSONStorage(() => safeAsyncStorage),
       partialize: (state) => ({
         learnedSymbolIds: state.learnedSymbolIds,
         showKoPronunciation: state.showKoPronunciation,
         hasDismissedWelcomeBanner: state.hasDismissedWelcomeBanner,
       }),
-      onRehydrateStorage: () => (state) => {
-        state?.setHasHydrated(true);
+      onRehydrateStorage: () => (_state, error) => {
+        if (error) {
+          void safeAsyncStorage.removeItem('baro-english-learning-storage-v1');
+        }
+        useLearningStore.getState().setHasHydrated(true);
       },
     }
   )
