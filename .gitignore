@@ -177,3 +177,12 @@ $RECYCLE.BIN/
 .claude/*.local.*
 CLAUDE.local.md
 AGENTS.local.md
+
+# ==================================================
+# 10. Internal Spec & Loop Workflow Docs (로컬 전용 — GitHub 미공개)
+# ==================================================
+LOOP.md
+SPEC.md
+AGENTS.md
+progress.md
+tasks.json
