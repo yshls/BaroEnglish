@@ -288,7 +288,7 @@ export default function WordReaderScreen() {
           >
             <Ionicons name="search" size={22} color={COLORS.white} />
             <Text style={styles.searchSubmitBtnText} maxFontSizeMultiplier={1.35}>
-              {showLoading ? '단어를 찾는 중...' : '단어 찾기'}
+              {showLoading ? '찾는 중...' : '검색'}
             </Text>
           </Pressable>
 
@@ -296,7 +296,7 @@ export default function WordReaderScreen() {
           {suggestions.length > 0 ? (
             <View style={styles.chipsSection}>
               <Text style={styles.chipsLabel} maxFontSizeMultiplier={1.4}>
-                혹시 이 단어를 찾으시나요?
+                추천 검색어
               </Text>
               <View style={styles.chipsWrap}>
                 {suggestions.map((sug) => (
@@ -326,7 +326,7 @@ export default function WordReaderScreen() {
           {recentWordItems.length > 0 ? (
             <View style={styles.chipsSection}>
               <Text style={styles.chipsLabel} maxFontSizeMultiplier={1.4}>
-                최근 찾아본 단어 (오프라인 가능)
+                최근 검색
               </Text>
               <View style={styles.chipsWrap}>
                 {recentWordItems.map((item) => {
@@ -362,7 +362,7 @@ export default function WordReaderScreen() {
           {/* 바로 눌러보는 추천 검색어 */}
           <View style={styles.chipsSection}>
             <Text style={styles.chipsLabel} maxFontSizeMultiplier={1.4}>
-              바로 눌러보는 추천 기초 단어
+              추천 단어
             </Text>
             <View style={styles.chipsWrap}>
               {STARTER_SEARCH_CHIPS.map((chip) => {
@@ -546,11 +546,11 @@ export default function WordReaderScreen() {
                   ]}
                   accessibilityRole="switch"
                   accessibilityState={{ checked: showKoPronunciation }}
-                  accessibilityLabel="한글 발음 힌트 보기 토글"
+                  accessibilityLabel="한글 발음 힌트 토글"
                 >
                   <View style={styles.toggleTextGroup}>
                     <Text style={styles.toggleLabel} maxFontSizeMultiplier={1.4}>
-                      한글 발음 힌트 보기
+                      한글 발음 힌트
                     </Text>
                     {showKoPronunciation ? (
                       <Text
@@ -559,37 +559,22 @@ export default function WordReaderScreen() {
                       >
                         {displayedWord.koPronunciation}
                       </Text>
-                    ) : (
-                      <Text
-                        style={styles.koHiddenText}
-                        maxFontSizeMultiplier={1.4}
-                      >
-                        꺼짐 (발음기호와 소리에 집중해요)
-                      </Text>
-                    )}
+                    ) : null}
                   </View>
-                  <View style={styles.switchColumn}>
-                    <Switch
-                      value={showKoPronunciation}
-                      onValueChange={setShowKoPronunciation}
-                      trackColor={{
-                        false: COLORS.border,
-                        true: COLORS.primary,
-                      }}
-                      thumbColor={COLORS.white}
-                      accessibilityLabel="한글 발음 힌트 표시 켜기 끄기"
-                    />
-                    <Text
-                      style={styles.switchStateText}
-                      maxFontSizeMultiplier={1.3}
-                    >
-                      {showKoPronunciation ? '켜짐' : '꺼짐'}
-                    </Text>
-                  </View>
+                  <Switch
+                    value={showKoPronunciation}
+                    onValueChange={setShowKoPronunciation}
+                    trackColor={{
+                      false: COLORS.border,
+                      true: COLORS.primary,
+                    }}
+                    thumbColor={COLORS.white}
+                    accessibilityLabel="한글 발음 힌트 표시"
+                  />
                 </Pressable>
               ) : null}
 
-              {/* 1.0x 보통 속도 / 0.6x 천천히 듣기 버튼 */}
+              {/* 보통 속도 / 천천히 듣기 버튼 */}
               <View style={styles.audioButtonsRow}>
                 <Pressable
                   onPress={() =>
@@ -610,7 +595,7 @@ export default function WordReaderScreen() {
                 >
                   <Ionicons name="volume-high" size={24} color={COLORS.white} />
                   <Text style={styles.primaryBtnText} maxFontSizeMultiplier={1.3}>
-                    {isNormalPlaying ? '재생 중...' : '보통 속도 (1.0x)'}
+                    {isNormalPlaying ? '재생 중...' : '보통 속도'}
                   </Text>
                 </Pressable>
 
@@ -633,7 +618,7 @@ export default function WordReaderScreen() {
                     color={COLORS.primaryDark}
                   />
                   <Text style={styles.slowBtnText} maxFontSizeMultiplier={1.3}>
-                    {isSlowPlaying ? '천천히 중...' : '천천히 (0.6x)'}
+                    {isSlowPlaying ? '재생 중...' : '천천히'}
                   </Text>
                 </Pressable>
               </View>
@@ -642,11 +627,7 @@ export default function WordReaderScreen() {
             {/* 강세 리듬 블록 카드 */}
             <View style={styles.sectionCard}>
               <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
-                음절별 강약(강세) 리듬
-              </Text>
-              <Text style={styles.sectionGuide} maxFontSizeMultiplier={1.45}>
-                노란 테두리(⬤) 음절은 크고 또렷하게, 나머지 음절은 힘을 빼고 부드럽게
-                읽어 보세요.
+                강세 리듬
               </Text>
               <RhythmBlocks
                 syllables={displayedWord.syllables}
@@ -658,7 +639,7 @@ export default function WordReaderScreen() {
             {displayedWord.exampleEn ? (
               <View style={styles.sectionCard}>
                 <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
-                  짧은 예문으로 들어보기
+                  예문
                 </Text>
                 <Text style={styles.exampleSentence} maxFontSizeMultiplier={1.45}>
                   &ldquo;{displayedWord.exampleEn}&rdquo;
@@ -681,7 +662,7 @@ export default function WordReaderScreen() {
                     color={COLORS.primaryDark}
                   />
                   <Text style={styles.slowBtnText} maxFontSizeMultiplier={1.35}>
-                    {isExamplePlaying ? '예문 재생 중...' : '예문 천천히 듣기'}
+                    {isExamplePlaying ? '재생 중...' : '천천히 듣기'}
                   </Text>
                 </Pressable>
               </View>
@@ -691,10 +672,7 @@ export default function WordReaderScreen() {
             {displayedWord.symbolIds.length > 0 ? (
               <View style={styles.sectionCard}>
                 <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
-                  이 단어의 핵심 발음기호
-                </Text>
-                <Text style={styles.sectionGuide} maxFontSizeMultiplier={1.45}>
-                  기호 버튼을 누르면 입 모양과 소리 내는 법을 바로 확인할 수 있어요.
+                  쓰인 발음기호
                 </Text>
                 <View style={styles.symbolChipsWrap}>
                   {displayedWord.symbolIds.map((symbolId) => {
@@ -709,33 +687,27 @@ export default function WordReaderScreen() {
                           pressed && styles.pressed,
                         ]}
                         accessibilityRole="button"
-                        accessibilityLabel={`${sym.ipa} ${sym.titleKo} 읽는 법 보기`}
+                        accessibilityLabel={`${sym.ipa} ${sym.titleKo} 자세히 보기`}
                       >
-                        <Text
-                          style={styles.symbolBacktrackIpa}
-                          maxFontSizeMultiplier={1.35}
-                        >
-                          {sym.ipa}
-                        </Text>
+                        <View style={styles.symbolBacktrackTop}>
+                          <Text
+                            style={styles.symbolBacktrackIpa}
+                            maxFontSizeMultiplier={1.35}
+                          >
+                            {sym.ipa}
+                          </Text>
+                          <Ionicons
+                            name="chevron-forward"
+                            size={20}
+                            color={COLORS.primary}
+                          />
+                        </View>
                         <Text
                           style={styles.symbolBacktrackHint}
                           maxFontSizeMultiplier={1.4}
                         >
                           {sym.koHint}
                         </Text>
-                        <View style={styles.symbolBacktrackAction}>
-                          <Ionicons
-                            name="help-circle-outline"
-                            size={18}
-                            color={COLORS.primaryDark}
-                          />
-                          <Text
-                            style={styles.symbolBacktrackActionText}
-                            maxFontSizeMultiplier={1.35}
-                          >
-                            읽는 법
-                          </Text>
-                        </View>
                       </Pressable>
                     );
                   })}
@@ -1048,19 +1020,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.text,
   },
-  koHiddenText: {
-    fontSize: TYPOGRAPHY.body,
-    color: COLORS.textMuted,
-  },
-  switchColumn: {
-    alignItems: 'center',
-    gap: 2,
-  },
-  switchStateText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.primaryDark,
-  },
   audioButtonsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1124,12 +1083,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.text,
   },
-  sectionGuide: {
-    fontSize: TYPOGRAPHY.body,
-    lineHeight: 26,
-    color: COLORS.textMuted,
-    marginBottom: 4,
-  },
   exampleSentence: {
     fontSize: TYPOGRAPHY.bodyLarge,
     lineHeight: 30,
@@ -1155,6 +1108,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     gap: 4,
   },
+  symbolBacktrackTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
   symbolBacktrackIpa: {
     fontSize: TYPOGRAPHY.ipa,
     fontWeight: '800',
@@ -1164,17 +1123,6 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.body,
     fontWeight: '700',
     color: COLORS.text,
-  },
-  symbolBacktrackAction: {
-    marginTop: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  symbolBacktrackActionText: {
-    fontSize: TYPOGRAPHY.body,
-    fontWeight: '700',
-    color: COLORS.primaryDark,
   },
   attributionBox: {
     paddingVertical: SPACING.sm,

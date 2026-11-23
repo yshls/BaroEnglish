@@ -119,7 +119,7 @@ export function SymbolDetailSheet({
               <View style={styles.guideHeaderRow}>
                 <Ionicons name="happy-outline" size={24} color={COLORS.primary} />
                 <Text style={styles.guideLabel} maxFontSizeMultiplier={1.4}>
-                  입 모양 · 혀 위치 안내
+                  입 모양 · 혀 위치
                 </Text>
               </View>
               <Text style={styles.guideBody} maxFontSizeMultiplier={1.5}>
@@ -139,7 +139,7 @@ export function SymbolDetailSheet({
             {/* 대표 기초 단어 3개 */}
             <View style={styles.examplesSection}>
               <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
-                대표 기초 단어 3개 (눌러서 듣기)
+                대표 단어
               </Text>
               <View style={styles.exampleList}>
                 {activeSymbol.examples.map((ex) => {
@@ -213,7 +213,7 @@ export function SymbolDetailSheet({
                             style={styles.playBtnSlowText}
                             maxFontSizeMultiplier={1.3}
                           >
-                            {isSlowPlaying ? '천천히 중' : '천천히'}
+                            {isSlowPlaying ? '재생 중' : '천천히'}
                           </Text>
                         </Pressable>
                       </View>
@@ -249,7 +249,7 @@ export function SymbolDetailSheet({
                 ]}
                 maxFontSizeMultiplier={1.35}
               >
-                {isLearned ? '익힘 완료 (눌러서 해제)' : '익혔어요 (완료 체크)'}
+                {isLearned ? '익힘 완료' : '익혔어요'}
               </Text>
             </Pressable>
           </View>
