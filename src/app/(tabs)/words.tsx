@@ -270,10 +270,7 @@ export default function WordReaderScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="검색어 지우기"
               >
-                <Ionicons name="close-circle" size={20} color={COLORS.text} />
-                <Text style={styles.clearBtnText} maxFontSizeMultiplier={1.3}>
-                  지우기
-                </Text>
+                <Ionicons name="close-circle" size={24} color={COLORS.textMuted} />
               </Pressable>
             ) : null}
           </View>
@@ -813,16 +810,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   clearBtn: {
-    minHeight: TOUCH.minTarget,
-    paddingHorizontal: 10,
-    flexDirection: 'row',
+    width: TOUCH.minTarget,
+    height: TOUCH.minTarget,
     alignItems: 'center',
-    gap: 4,
-  },
-  clearBtnText: {
-    fontSize: TYPOGRAPHY.body,
-    fontWeight: '700',
-    color: COLORS.text,
+    justifyContent: 'center',
+    marginRight: -6,
   },
   searchSubmitBtn: {
     minHeight: TOUCH.recommendedHeight,

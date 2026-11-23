@@ -105,10 +105,7 @@ export function SymbolDetailSheet({
               accessibilityRole="button"
               accessibilityLabel="닫기"
             >
-              <Ionicons name="close" size={24} color={COLORS.text} />
-              <Text style={styles.closeButtonText} maxFontSizeMultiplier={1.3}>
-                닫기
-              </Text>
+              <Ionicons name="close" size={26} color={COLORS.text} />
             </Pressable>
           </View>
 
@@ -324,22 +321,14 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   closeButton: {
-    minHeight: TOUCH.minTarget,
-    minWidth: TOUCH.minTarget,
-    paddingHorizontal: 14,
-    borderRadius: RADIUS.md,
+    width: TOUCH.minTarget,
+    height: TOUCH.minTarget,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.card,
     borderWidth: 1,
     borderColor: COLORS.border,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-  },
-  closeButtonText: {
-    fontSize: TYPOGRAPHY.body,
-    fontWeight: '700',
-    color: COLORS.text,
   },
   scrollBody: {
     flexGrow: 0,

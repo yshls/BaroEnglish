@@ -74,10 +74,7 @@ export default function IpaSymbolsScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="안내 배너 닫기"
               >
-                <Ionicons name="close" size={20} color={COLORS.primaryDark} />
-                <Text style={styles.dismissBtnText} maxFontSizeMultiplier={1.3}>
-                  닫기
-                </Text>
+                <Ionicons name="close" size={24} color={COLORS.primaryDark} />
               </Pressable>
             </View>
             <Text style={styles.welcomeBody} maxFontSizeMultiplier={1.5}>
@@ -251,20 +248,11 @@ const styles = StyleSheet.create({
     color: COLORS.primaryDark,
   },
   dismissBtn: {
-    minHeight: TOUCH.minTarget,
-    paddingHorizontal: 14,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.card,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    flexDirection: 'row',
+    width: TOUCH.minTarget,
+    height: TOUCH.minTarget,
+    borderRadius: RADIUS.pill,
     alignItems: 'center',
-    gap: 4,
-  },
-  dismissBtnText: {
-    fontSize: TYPOGRAPHY.body,
-    fontWeight: '700',
-    color: COLORS.primaryDark,
+    justifyContent: 'center',
   },
   welcomeBody: {
     fontSize: TYPOGRAPHY.body,
