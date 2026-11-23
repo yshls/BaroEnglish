@@ -1,0 +1,236 @@
+[
+  {
+    "id": "sym_ae",
+    "categoryId": "basic_vowels",
+    "ipa": "/æ/",
+    "titleKo": "입을 크게 벌리는 '애'",
+    "mouthGuideKo": "입꼬리를 양옆으로 당기면서 아래턱을 크게 내리고 '아' 하듯 '애' 소리를 내세요.",
+    "koHint": "애 (입 크게)",
+    "examples": [
+      { "word": "apple", "meaningKo": "사과", "ipa": "/ˈæpəl/", "wordId": "word_apple" },
+      { "word": "cat", "meaningKo": "고양이", "ipa": "/kæt/", "wordId": "word_cat" },
+      { "word": "happy", "meaningKo": "행복한", "ipa": "/ˈhæpi/", "wordId": "word_happy" }
+    ]
+  },
+  {
+    "id": "sym_ih",
+    "categoryId": "basic_vowels",
+    "ipa": "/ɪ/",
+    "titleKo": "힘 빼고 짧게 '이'",
+    "mouthGuideKo": "입술에 힘을 빼고 '이'와 '에' 사이 느낌으로 아주 짧게 툭 끊어 발음하세요.",
+    "koHint": "이 (짧게)",
+    "examples": [
+      { "word": "sit", "meaningKo": "앉다", "ipa": "/sɪt/", "wordId": "word_sit" },
+      { "word": "milk", "meaningKo": "우유", "ipa": "/mɪlk/", "wordId": "word_milk" },
+      { "word": "big", "meaningKo": "큰", "ipa": "/bɪɡ/", "wordId": "word_big" }
+    ]
+  },
+  {
+    "id": "sym_iy",
+    "categoryId": "basic_vowels",
+    "ipa": "/iː/",
+    "titleKo": "웃으며 길게 '이이'",
+    "mouthGuideKo": "환하게 웃듯 입꼬리를 양옆으로 쭉 당기고 '이—' 하고 길고 또렷하게 내세요.",
+    "koHint": "이— (길게)",
+    "examples": [
+      { "word": "tea", "meaningKo": "차", "ipa": "/tiː/", "wordId": "word_tea" },
+      { "word": "green", "meaningKo": "초록색", "ipa": "/ɡriːn/", "wordId": "word_green" },
+      { "word": "sleep", "meaningKo": "자다", "ipa": "/sliːp/", "wordId": "word_sleep" }
+    ]
+  },
+  {
+    "id": "sym_uh",
+    "categoryId": "basic_vowels",
+    "ipa": "/ʌ/",
+    "titleKo": "목 안쪽에서 짧게 '어'",
+    "mouthGuideKo": "입을 가볍게 벌리고 턱에 힘 없이 목 안쪽에서 짧고 선명하게 '어' 소리를 내세요.",
+    "koHint": "어 (짧게)",
+    "examples": [
+      { "word": "cup", "meaningKo": "컵", "ipa": "/kʌp/", "wordId": "word_cup" },
+      { "word": "sun", "meaningKo": "태양", "ipa": "/sʌn/", "wordId": "word_sun" },
+      { "word": "love", "meaningKo": "사랑", "ipa": "/lʌv/", "wordId": "word_love" }
+    ]
+  },
+  {
+    "id": "sym_schwa",
+    "categoryId": "basic_vowels",
+    "ipa": "/ə/",
+    "titleKo": "힘 빼고 스치듯 '어'",
+    "mouthGuideKo": "영어에서 가장 자주 나오는 약한 소리입니다. 입에 힘을 완전히 풀고 아주 약하게 '어' 하고 스쳐 지나가세요.",
+    "koHint": "어 (힘 빼고 약하게)",
+    "examples": [
+      { "word": "banana", "meaningKo": "바나나", "ipa": "/bəˈnænə/", "wordId": "word_banana" },
+      { "word": "family", "meaningKo": "가족", "ipa": "/ˈfæməli/", "wordId": "word_family" },
+      { "word": "today", "meaningKo": "오늘", "ipa": "/təˈdeɪ/", "wordId": "word_today" }
+    ]
+  },
+  {
+    "id": "sym_aa",
+    "categoryId": "basic_vowels",
+    "ipa": "/ɑː/",
+    "titleKo": "입을 둥글고 크게 '아—'",
+    "mouthGuideKo": "병원에서 '아—' 하듯 입을 위아래로 시원하게 벌리고 목 깊숙이에서 '아—' 소리를 내세요.",
+    "koHint": "아— (길고 크게)",
+    "examples": [
+      { "word": "father", "meaningKo": "아버지", "ipa": "/ˈfɑːðər/", "wordId": "word_father" },
+      { "word": "coffee", "meaningKo": "커피", "ipa": "/ˈkɑːfi/", "wordId": "word_coffee" },
+      { "word": "car", "meaningKo": "자동차", "ipa": "/kɑːr/", "wordId": "word_car" }
+    ]
+  },
+  {
+    "id": "sym_uw",
+    "categoryId": "basic_vowels",
+    "ipa": "/uː/",
+    "titleKo": "입술을 모아 길게 '우—'",
+    "mouthGuideKo": "휘파람 불듯 입술을 동그랗게 앞으로 쭉 내밀고 '우—' 하고 길게 소리 내세요.",
+    "koHint": "우— (입술 모아 길게)",
+    "examples": [
+      { "word": "food", "meaningKo": "음식", "ipa": "/fuːd/", "wordId": "word_food" },
+      { "word": "blue", "meaningKo": "파란색", "ipa": "/bluː/", "wordId": "word_blue" },
+      { "word": "moon", "meaningKo": "달", "ipa": "/muːn/", "wordId": "word_moon" }
+    ]
+  },
+  {
+    "id": "sym_ey",
+    "categoryId": "diphthongs",
+    "ipa": "/eɪ/",
+    "titleKo": "'에'에서 '이'로 이어지게",
+    "mouthGuideKo": "'에'로 시작해서 입꼬리를 살짝 당기며 자연스럽게 '이'로 미끄러지듯 이어 발음하세요.",
+    "koHint": "에이",
+    "examples": [
+      { "word": "name", "meaningKo": "이름", "ipa": "/neɪm/", "wordId": "word_name" },
+      { "word": "cake", "meaningKo": "케이크", "ipa": "/keɪk/", "wordId": "word_cake" },
+      { "word": "today", "meaningKo": "오늘", "ipa": "/təˈdeɪ/", "wordId": "word_today" }
+    ]
+  },
+  {
+    "id": "sym_ay",
+    "categoryId": "diphthongs",
+    "ipa": "/aɪ/",
+    "titleKo": "'아'에서 '이'로 이어지게",
+    "mouthGuideKo": "입을 크게 벌려 '아' 소리를 낸 뒤, 곧바로 '이'로 부드럽게 이어 주세요.",
+    "koHint": "아이",
+    "examples": [
+      { "word": "time", "meaningKo": "시간", "ipa": "/taɪm/", "wordId": "word_time" },
+      { "word": "rice", "meaningKo": "쌀·밥", "ipa": "/raɪs/", "wordId": "word_rice" },
+      { "word": "smile", "meaningKo": "미소", "ipa": "/smaɪl/", "wordId": "word_smile" }
+    ]
+  },
+  {
+    "id": "sym_ow",
+    "categoryId": "diphthongs",
+    "ipa": "/oʊ/",
+    "titleKo": "'오'에서 입술 오므려 '우'",
+    "mouthGuideKo": "'오'로 시작하면서 마지막에 입술을 동그랗게 오므려 '우' 느낌으로 마무리하세요.",
+    "koHint": "오우",
+    "examples": [
+      { "word": "home", "meaningKo": "집", "ipa": "/hoʊm/", "wordId": "word_home" },
+      { "word": "phone", "meaningKo": "전화기", "ipa": "/foʊn/", "wordId": "word_phone" },
+      { "word": "hello", "meaningKo": "안녕하세요", "ipa": "/həˈloʊ/", "wordId": "word_hello" }
+    ]
+  },
+  {
+    "id": "sym_aw",
+    "categoryId": "diphthongs",
+    "ipa": "/aʊ/",
+    "titleKo": "'아'에서 입술 모아 '우'",
+    "mouthGuideKo": "입을 크게 벌려 '아'를 낸 다음, 빠르게 입술을 둥글게 모으며 '우'로 이어 주세요.",
+    "koHint": "아우",
+    "examples": [
+      { "word": "house", "meaningKo": "집", "ipa": "/haʊs/", "wordId": "word_house" },
+      { "word": "flower", "meaningKo": "꽃", "ipa": "/ˈflaʊər/", "wordId": "word_flower" },
+      { "word": "cloud", "meaningKo": "구름", "ipa": "/klaʊd/", "wordId": "word_cloud" }
+    ]
+  },
+  {
+    "id": "sym_oy",
+    "categoryId": "diphthongs",
+    "ipa": "/ɔɪ/",
+    "titleKo": "'오'에서 '이'로 이어지게",
+    "mouthGuideKo": "입술을 살짝 둥글게 해 '오' 소리를 내고 곧바로 입꼬리를 당겨 '이'로 이어 주세요.",
+    "koHint": "오이",
+    "examples": [
+      { "word": "boy", "meaningKo": "소년", "ipa": "/bɔɪ/", "wordId": "word_boy" },
+      { "word": "voice", "meaningKo": "목소리", "ipa": "/vɔɪs/", "wordId": "word_voice" },
+      { "word": "enjoy", "meaningKo": "즐기다", "ipa": "/ɪnˈdʒɔɪ/", "wordId": "word_enjoy" }
+    ]
+  },
+  {
+    "id": "sym_th_voiceless",
+    "categoryId": "key_consonants",
+    "ipa": "/θ/",
+    "titleKo": "혀끝을 살짝 물고 바람 '쓰'",
+    "mouthGuideKo": "혀끝을 윗니와 아랫니 사이에 살짝 내밀고, 목을 울리지 않은 채 바람만 '쓰—' 내보내세요.",
+    "koHint": "쓰 (혀끝 살짝 물고)",
+    "examples": [
+      { "word": "thank", "meaningKo": "감사하다", "ipa": "/θæŋk/", "wordId": "word_thank" },
+      { "word": "three", "meaningKo": "숫자 3", "ipa": "/θriː/", "wordId": "word_three" },
+      { "word": "health", "meaningKo": "건강", "ipa": "/helθ/", "wordId": "word_health" }
+    ]
+  },
+  {
+    "id": "sym_th_voiced",
+    "categoryId": "key_consonants",
+    "ipa": "/ð/",
+    "titleKo": "혀끝을 물고 목 울리며 '드'",
+    "mouthGuideKo": "혀끝을 윗니와 아랫니 사이에 살짝 댄 상태에서, 목청을 울리며 부드럽게 '드/즈' 소리를 내세요.",
+    "koHint": "드 (혀끝 물고 울림)",
+    "examples": [
+      { "word": "this", "meaningKo": "이것", "ipa": "/ðɪs/", "wordId": "word_this" },
+      { "word": "mother", "meaningKo": "어머니", "ipa": "/ˈmʌðər/", "wordId": "word_mother" },
+      { "word": "father", "meaningKo": "아버지", "ipa": "/ˈfɑːðər/", "wordId": "word_father" }
+    ]
+  },
+  {
+    "id": "sym_f",
+    "categoryId": "key_consonants",
+    "ipa": "/f/",
+    "titleKo": "윗니로 아랫입술 대고 '프'",
+    "mouthGuideKo": "윗니 끝을 아랫입술 안쪽에 가볍게 대고, 입술 사이로 바람을 '후—/프—' 내보내세요. (두 입술을 붙이지 마세요)",
+    "koHint": "프 (윗니+아랫입술)",
+    "examples": [
+      { "word": "family", "meaningKo": "가족", "ipa": "/ˈfæməli/", "wordId": "word_family" },
+      { "word": "coffee", "meaningKo": "커피", "ipa": "/ˈkɑːfi/", "wordId": "word_coffee" },
+      { "word": "food", "meaningKo": "음식", "ipa": "/fuːd/", "wordId": "word_food" }
+    ]
+  },
+  {
+    "id": "sym_v",
+    "categoryId": "key_consonants",
+    "ipa": "/v/",
+    "titleKo": "윗니+아랫입술 울리며 '브'",
+    "mouthGuideKo": "/f/와 똑같이 윗니를 아랫입술에 가볍게 댄 채, 목청을 '브으—' 울려 주세요.",
+    "koHint": "브 (윗니+아랫입술 울림)",
+    "examples": [
+      { "word": "very", "meaningKo": "매우", "ipa": "/ˈveri/", "wordId": "word_very" },
+      { "word": "love", "meaningKo": "사랑", "ipa": "/lʌv/", "wordId": "word_love" },
+      { "word": "voice", "meaningKo": "목소리", "ipa": "/vɔɪs/", "wordId": "word_voice" }
+    ]
+  },
+  {
+    "id": "sym_r",
+    "categoryId": "key_consonants",
+    "ipa": "/r/",
+    "titleKo": "혀를 입천장에 안 대고 '르'",
+    "mouthGuideKo": "입술을 살짝 오므리고 혀끝을 뒤로 살짝 말아 올리세요. 혀가 입천장에 닿지 않게 '우르'처럼 소리 냅니다.",
+    "koHint": "르 (혀 안 닿게)",
+    "examples": [
+      { "word": "rice", "meaningKo": "쌀·밥", "ipa": "/raɪs/", "wordId": "word_rice" },
+      { "word": "rain", "meaningKo": "비", "ipa": "/reɪn/", "wordId": "word_rain" },
+      { "word": "green", "meaningKo": "초록색", "ipa": "/ɡriːn/", "wordId": "word_green" }
+    ]
+  },
+  {
+    "id": "sym_l",
+    "categoryId": "key_consonants",
+    "ipa": "/l/",
+    "titleKo": "혀끝을 윗니 뒤에 붙이고 '을'",
+    "mouthGuideKo": "혀끝을 윗니 바로 뒤 잇몸에 확실히 붙인 상태에서 부드럽게 '을/를' 소리를 내세요.",
+    "koHint": "을/를 (혀끝 윗니 뒤)",
+    "examples": [
+      { "word": "love", "meaningKo": "사랑", "ipa": "/lʌv/", "wordId": "word_love" },
+      { "word": "hello", "meaningKo": "안녕하세요", "ipa": "/həˈloʊ/", "wordId": "word_hello" },
+      { "word": "milk", "meaningKo": "우유", "ipa": "/mɪlk/", "wordId": "word_milk" }
+    ]
+  }
+]
