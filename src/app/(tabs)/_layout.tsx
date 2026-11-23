@@ -41,7 +41,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: '발음기호 기초',
-          tabBarLabel: '발음기호 기초',
+          tabBarLabel: '발음기호',
           tabBarIcon: ({ focused }) => (
             <Ionicons
               name={focused ? 'volume-high' : 'volume-high-outline'}
@@ -55,10 +55,24 @@ export default function TabLayout() {
         name="words"
         options={{
           title: '단어 바로 읽기',
-          tabBarLabel: '단어 바로 읽기',
+          tabBarLabel: '단어 읽기',
           tabBarIcon: ({ focused }) => (
             <Ionicons
               name={focused ? 'book' : 'book-outline'}
+              size={26}
+              color={focused ? COLORS.primary : COLORS.textMuted}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="bookmarks"
+        options={{
+          title: '북마크',
+          tabBarLabel: '북마크',
+          tabBarIcon: ({ focused }) => (
+            <Ionicons
+              name={focused ? 'bookmark' : 'bookmark-outline'}
               size={26}
               color={focused ? COLORS.primary : COLORS.textMuted}
             />

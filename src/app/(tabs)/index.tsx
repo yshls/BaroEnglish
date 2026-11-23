@@ -18,6 +18,9 @@ export default function IpaSymbolsScreen() {
   const { stop } = useSpeechAudio();
 
   const learnedSymbolIds = useLearningStore((state) => state.learnedSymbolIds);
+  const bookmarkedSymbolIds = useLearningStore(
+    (state) => state.bookmarkedSymbolIds
+  );
   const hasHydrated = useLearningStore((state) => state.hasHydrated);
   const hasDismissedWelcomeBanner = useLearningStore(
     (state) => state.hasDismissedWelcomeBanner
@@ -141,6 +144,7 @@ export default function IpaSymbolsScreen() {
               <View style={styles.grid}>
                 {symbols.map((symbol) => {
                   const isLearned = learnedSymbolIds.includes(symbol.id);
+                  const isBookmarked = bookmarkedSymbolIds.includes(symbol.id);
 
                   return (
                     <Pressable
@@ -160,13 +164,22 @@ export default function IpaSymbolsScreen() {
                         <Text style={styles.symbolIpa} maxFontSizeMultiplier={1.35}>
                           {symbol.ipa}
                         </Text>
-                        {isLearned ? (
-                          <Ionicons
-                            name="checkmark-circle"
-                            size={24}
-                            color={COLORS.primary}
-                          />
-                        ) : null}
+                        <View style={styles.symbolCardIcons}>
+                          {isBookmarked ? (
+                            <Ionicons
+                              name="bookmark"
+                              size={20}
+                              color={COLORS.accent}
+                            />
+                          ) : null}
+                          {isLearned ? (
+                            <Ionicons
+                              name="checkmark-circle"
+                              size={24}
+                              color={COLORS.primary}
+                            />
+                          ) : null}
+                        </View>
                       </View>
 
                       <Text
@@ -376,6 +389,11 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.word,
     fontWeight: '800',
     color: COLORS.primaryDark,
+  },
+  symbolCardIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   symbolKoHint: {
     fontSize: TYPOGRAPHY.body,

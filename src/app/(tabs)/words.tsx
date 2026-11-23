@@ -33,7 +33,6 @@ import type { CoreWord, IpaSymbol } from '../../types/learning';
 
 export default function WordReaderScreen() {
   const [query, setQuery] = useState('');
-  const [selectedWord, setSelectedWord] = useState<CoreWord | null>(null);
   const [activeSymbol, setActiveSymbol] = useState<IpaSymbol | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -52,8 +51,12 @@ export default function WordReaderScreen() {
 
   const cachedWords = useWordCacheStore((state) => state.cachedWords);
   const recentWords = useWordCacheStore((state) => state.recentWords);
+  const bookmarkedWordKeys = useWordCacheStore((state) => state.bookmarkedWordKeys);
+  const selectedWord = useWordCacheStore((state) => state.activeWord);
+  const setSelectedWord = useWordCacheStore((state) => state.setActiveWord);
   const cacheHasHydrated = useWordCacheStore((state) => state.hasHydrated);
   const saveWord = useWordCacheStore((state) => state.saveWord);
+  const toggleWordBookmark = useWordCacheStore((state) => state.toggleWordBookmark);
   const findCachedByQuery = useWordCacheStore((state) => state.findCachedByQuery);
 
   const { playNormal, playSlow, stop, activeKey } = useSpeechAudio();
@@ -121,7 +124,7 @@ export default function WordReaderScreen() {
         }
       }
     },
-    [findCachedByQuery, saveWord, stop]
+    [findCachedByQuery, saveWord, setSelectedWord, stop]
   );
 
   const firstRecentKey = recentWords[0];
@@ -131,13 +134,16 @@ export default function WordReaderScreen() {
   const isInitialLoading =
     cacheHasHydrated && !initialCachedWord && !selectedWord && !failedQuery;
   const showLoading = isLoading || isInitialLoading;
+  const isDisplayedWordBookmarked = Boolean(
+    displayedWord && bookmarkedWordKeys.includes(displayedWord.word.toLowerCase())
+  );
 
   // AsyncStorage 캐시 하이드레이션 완료 후 캐시가 비어 있으면 기본 추천 단어 최초 조회
   useEffect(() => {
     if (!cacheHasHydrated || didInitialLoadRef.current) return;
     didInitialLoadRef.current = true;
 
-    if (initialCachedWord) {
+    if (initialCachedWord || selectedWord) {
       return;
     }
 
@@ -165,7 +171,7 @@ export default function WordReaderScreen() {
         setFallbackSuggestions([]);
       }
     })();
-  }, [cacheHasHydrated, initialCachedWord, saveWord]);
+  }, [cacheHasHydrated, initialCachedWord, saveWord, selectedWord, setSelectedWord]);
 
   const handleQueryChange = (nextQuery: string) => {
     setQuery(nextQuery);
@@ -410,7 +416,7 @@ export default function WordReaderScreen() {
         ) : null}
 
         {/* 검색 실패 / 네트워크 오류 폴백 카드 */}
-        {!showLoading && failedQuery ? (
+        {!showLoading && !selectedWord && failedQuery ? (
           <View style={styles.fallbackCard}>
             <View style={styles.fallbackHeader}>
               <Ionicons
@@ -491,36 +497,58 @@ export default function WordReaderScreen() {
         {!showLoading && displayedWord ? (
           <>
             <View style={styles.wordHeroCard}>
+              <View style={styles.wordTopBar}>
+                <View style={styles.badgesRow}>
+                  {displayedWord.partOfSpeech ? (
+                    <View style={styles.posBadge}>
+                      <Text
+                        style={styles.posBadgeText}
+                        maxFontSizeMultiplier={1.35}
+                      >
+                        {displayedWord.partOfSpeech}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {displayedWord.audioUrl ? (
+                    <View style={styles.nativeAudioBadge}>
+                      <Ionicons
+                        name="mic"
+                        size={16}
+                        color={COLORS.primaryDark}
+                      />
+                      <Text
+                        style={styles.nativeAudioBadgeText}
+                        maxFontSizeMultiplier={1.35}
+                      >
+                        원어민 원음
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                <Pressable
+                  onPress={() => toggleWordBookmark(displayedWord)}
+                  style={({ pressed }) => [
+                    styles.bookmarkBtn,
+                    isDisplayedWordBookmarked && styles.bookmarkBtnActive,
+                    pressed && styles.pressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isDisplayedWordBookmarked }}
+                  accessibilityLabel={
+                    isDisplayedWordBookmarked ? '북마크 해제' : '북마크 저장'
+                  }
+                >
+                  <Ionicons
+                    name={isDisplayedWordBookmarked ? 'bookmark' : 'bookmark-outline'}
+                    size={24}
+                    color={isDisplayedWordBookmarked ? COLORS.accent : COLORS.text}
+                  />
+                </Pressable>
+              </View>
+
               <View style={styles.wordHeaderRow}>
                 <View style={styles.wordTitleGroup}>
-                  <View style={styles.badgesRow}>
-                    {displayedWord.partOfSpeech ? (
-                      <View style={styles.posBadge}>
-                        <Text
-                          style={styles.posBadgeText}
-                          maxFontSizeMultiplier={1.35}
-                        >
-                          {displayedWord.partOfSpeech}
-                        </Text>
-                      </View>
-                    ) : null}
-                    {displayedWord.audioUrl ? (
-                      <View style={styles.nativeAudioBadge}>
-                        <Ionicons
-                          name="mic"
-                          size={16}
-                          color={COLORS.primaryDark}
-                        />
-                        <Text
-                          style={styles.nativeAudioBadgeText}
-                          maxFontSizeMultiplier={1.35}
-                        >
-                          원어민 원음
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-
                   <Text style={styles.wordHero} maxFontSizeMultiplier={1.35}>
                     {displayedWord.word}
                   </Text>
@@ -939,11 +967,31 @@ const styles = StyleSheet.create({
     minWidth: 170,
     gap: 4,
   },
+  wordTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
+  },
   badgesRow: {
+    flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginBottom: 4,
+  },
+  bookmarkBtn: {
+    width: TOUCH.minTarget,
+    height: TOUCH.minTarget,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bookmarkBtnActive: {
+    backgroundColor: COLORS.accentSoft,
+    borderColor: COLORS.accent,
   },
   posBadge: {
     backgroundColor: COLORS.background,

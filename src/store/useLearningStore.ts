@@ -4,12 +4,15 @@ import { safeAsyncStorage } from './safeAsyncStorage';
 
 export interface LearningState {
   learnedSymbolIds: string[];
+  bookmarkedSymbolIds: string[];
   showKoPronunciation: boolean;
   hasDismissedWelcomeBanner: boolean;
   hasHydrated: boolean;
   setHasHydrated: (hydrated: boolean) => void;
   toggleSymbolLearned: (symbolId: string) => void;
   isSymbolLearned: (symbolId: string) => boolean;
+  toggleSymbolBookmark: (symbolId: string) => void;
+  isSymbolBookmarked: (symbolId: string) => boolean;
   setShowKoPronunciation: (show: boolean) => void;
   toggleShowKoPronunciation: () => void;
   dismissWelcomeBanner: () => void;
@@ -20,6 +23,7 @@ export const useLearningStore = create<LearningState>()(
   persist(
     (set, get) => ({
       learnedSymbolIds: [],
+      bookmarkedSymbolIds: [],
       showKoPronunciation: true,
       hasDismissedWelcomeBanner: false,
       hasHydrated: false,
@@ -42,6 +46,20 @@ export const useLearningStore = create<LearningState>()(
         return get().learnedSymbolIds.includes(symbolId);
       },
 
+      toggleSymbolBookmark: (symbolId: string) => {
+        if (!get().hasHydrated) return;
+        const current = get().bookmarkedSymbolIds;
+        const exists = current.includes(symbolId);
+        const next = exists
+          ? current.filter((id) => id !== symbolId)
+          : [symbolId, ...current];
+        set({ bookmarkedSymbolIds: next });
+      },
+
+      isSymbolBookmarked: (symbolId: string) => {
+        return get().bookmarkedSymbolIds.includes(symbolId);
+      },
+
       setShowKoPronunciation: (show: boolean) => {
         if (!get().hasHydrated) return;
         set({ showKoPronunciation: show });
@@ -60,6 +78,7 @@ export const useLearningStore = create<LearningState>()(
       resetProgress: () => {
         set({
           learnedSymbolIds: [],
+          bookmarkedSymbolIds: [],
           showKoPronunciation: true,
           hasDismissedWelcomeBanner: false,
         });
@@ -71,6 +90,7 @@ export const useLearningStore = create<LearningState>()(
       storage: createJSONStorage(() => safeAsyncStorage),
       partialize: (state) => ({
         learnedSymbolIds: state.learnedSymbolIds,
+        bookmarkedSymbolIds: state.bookmarkedSymbolIds,
         showKoPronunciation: state.showKoPronunciation,
         hasDismissedWelcomeBanner: state.hasDismissedWelcomeBanner,
       }),

@@ -32,6 +32,12 @@ export function SymbolDetailSheet({
   const { playNormal, playSlow, stop, activeKey } = useSpeechAudio();
   const learnedSymbolIds = useLearningStore((state) => state.learnedSymbolIds);
   const toggleSymbolLearned = useLearningStore((state) => state.toggleSymbolLearned);
+  const bookmarkedSymbolIds = useLearningStore(
+    (state) => state.bookmarkedSymbolIds
+  );
+  const toggleSymbolBookmark = useLearningStore(
+    (state) => state.toggleSymbolBookmark
+  );
 
   // 닫기 슬라이드 애니메이션 중 내용이 즉시 사라지지 않도록 직전 기호 유지
   const [cachedSymbol, setCachedSymbol] = useState<IpaSymbol | null>(symbol);
@@ -50,6 +56,7 @@ export function SymbolDetailSheet({
   if (!activeSymbol) return null;
 
   const isLearned = learnedSymbolIds.includes(activeSymbol.id);
+  const isBookmarked = bookmarkedSymbolIds.includes(activeSymbol.id);
 
   const handleClose = () => {
     stop();
@@ -96,17 +103,37 @@ export function SymbolDetailSheet({
               </Text>
             </View>
 
-            <Pressable
-              onPress={handleClose}
-              style={({ pressed }) => [
-                styles.closeButton,
-                pressed && styles.buttonPressed,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel="닫기"
-            >
-              <Ionicons name="close" size={26} color={COLORS.text} />
-            </Pressable>
+            <View style={styles.headerActions}>
+              <Pressable
+                onPress={() => toggleSymbolBookmark(activeSymbol.id)}
+                style={({ pressed }) => [
+                  styles.iconActionButton,
+                  isBookmarked && styles.bookmarkButtonActive,
+                  pressed && styles.buttonPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isBookmarked }}
+                accessibilityLabel={isBookmarked ? '북마크 해제' : '북마크 저장'}
+              >
+                <Ionicons
+                  name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+                  size={24}
+                  color={isBookmarked ? COLORS.accent : COLORS.text}
+                />
+              </Pressable>
+
+              <Pressable
+                onPress={handleClose}
+                style={({ pressed }) => [
+                  styles.iconActionButton,
+                  pressed && styles.buttonPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="닫기"
+              >
+                <Ionicons name="close" size={26} color={COLORS.text} />
+              </Pressable>
+            </View>
           </View>
 
           <ScrollView
@@ -320,7 +347,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.text,
   },
-  closeButton: {
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  iconActionButton: {
     width: TOUCH.minTarget,
     height: TOUCH.minTarget,
     borderRadius: RADIUS.pill,
@@ -329,6 +361,10 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  bookmarkButtonActive: {
+    backgroundColor: COLORS.accentSoft,
+    borderColor: COLORS.accent,
   },
   scrollBody: {
     flexGrow: 0,
