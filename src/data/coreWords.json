@@ -1,0 +1,579 @@
+[
+  {
+    "id": "word_banana",
+    "word": "banana",
+    "meaningKo": "바나나",
+    "ipa": "/bəˈnænə/",
+    "syllables": [
+      { "text": "ba", "ipa": "bə", "stress": "none", "isSchwa": true, "koHint": "버" },
+      { "text": "na", "ipa": "næ", "stress": "primary", "koHint": "내" },
+      { "text": "na", "ipa": "nə", "stress": "none", "isSchwa": true, "koHint": "너" }
+    ],
+    "koPronunciation": "버-내-너",
+    "symbolIds": ["sym_schwa", "sym_ae"]
+  },
+  {
+    "id": "word_apple",
+    "word": "apple",
+    "meaningKo": "사과",
+    "ipa": "/ˈæpəl/",
+    "syllables": [
+      { "text": "ap", "ipa": "æp", "stress": "primary", "koHint": "애프" },
+      { "text": "ple", "ipa": "əl", "stress": "none", "isSchwa": true, "koHint": "을" }
+    ],
+    "koPronunciation": "애-플",
+    "symbolIds": ["sym_ae", "sym_schwa", "sym_l"]
+  },
+  {
+    "id": "word_family",
+    "word": "family",
+    "meaningKo": "가족",
+    "ipa": "/ˈfæməli/",
+    "syllables": [
+      { "text": "fam", "ipa": "fæm", "stress": "primary", "koHint": "팸" },
+      { "text": "i", "ipa": "ə", "stress": "none", "isSchwa": true, "koHint": "어" },
+      { "text": "ly", "ipa": "li", "stress": "none", "koHint": "리" }
+    ],
+    "koPronunciation": "패-머-리",
+    "symbolIds": ["sym_f", "sym_ae", "sym_schwa", "sym_l"]
+  },
+  {
+    "id": "word_coffee",
+    "word": "coffee",
+    "meaningKo": "커피",
+    "ipa": "/ˈkɑːfi/",
+    "syllables": [
+      { "text": "cof", "ipa": "kɑː", "stress": "primary", "koHint": "카" },
+      { "text": "fee", "ipa": "fi", "stress": "none", "koHint": "피" }
+    ],
+    "koPronunciation": "카-피",
+    "symbolIds": ["sym_aa", "sym_f", "sym_iy"]
+  },
+  {
+    "id": "word_today",
+    "word": "today",
+    "meaningKo": "오늘",
+    "ipa": "/təˈdeɪ/",
+    "syllables": [
+      { "text": "to", "ipa": "tə", "stress": "none", "isSchwa": true, "koHint": "터" },
+      { "text": "day", "ipa": "deɪ", "stress": "primary", "koHint": "데이" }
+    ],
+    "koPronunciation": "터-데이",
+    "symbolIds": ["sym_schwa", "sym_ey"]
+  },
+  {
+    "id": "word_hello",
+    "word": "hello",
+    "meaningKo": "안녕하세요",
+    "ipa": "/həˈloʊ/",
+    "syllables": [
+      { "text": "hel", "ipa": "hə", "stress": "none", "isSchwa": true, "koHint": "허" },
+      { "text": "lo", "ipa": "loʊ", "stress": "primary", "koHint": "로우" }
+    ],
+    "koPronunciation": "허-로우",
+    "symbolIds": ["sym_schwa", "sym_l", "sym_ow"]
+  },
+  {
+    "id": "word_father",
+    "word": "father",
+    "meaningKo": "아버지",
+    "ipa": "/ˈfɑːðər/",
+    "syllables": [
+      { "text": "fa", "ipa": "fɑː", "stress": "primary", "koHint": "파" },
+      { "text": "ther", "ipa": "ðər", "stress": "none", "isSchwa": true, "koHint": "더르" }
+    ],
+    "koPronunciation": "파-더르",
+    "symbolIds": ["sym_f", "sym_aa", "sym_th_voiced", "sym_schwa", "sym_r"]
+  },
+  {
+    "id": "word_mother",
+    "word": "mother",
+    "meaningKo": "어머니",
+    "ipa": "/ˈmʌðər/",
+    "syllables": [
+      { "text": "mo", "ipa": "mʌ", "stress": "primary", "koHint": "머" },
+      { "text": "ther", "ipa": "ðər", "stress": "none", "isSchwa": true, "koHint": "더르" }
+    ],
+    "koPronunciation": "머-더르",
+    "symbolIds": ["sym_uh", "sym_th_voiced", "sym_schwa", "sym_r"]
+  },
+  {
+    "id": "word_water",
+    "word": "water",
+    "meaningKo": "물",
+    "ipa": "/ˈwɑːtər/",
+    "syllables": [
+      { "text": "wa", "ipa": "wɑː", "stress": "primary", "koHint": "워" },
+      { "text": "ter", "ipa": "tər", "stress": "none", "isSchwa": true, "koHint": "러르" }
+    ],
+    "koPronunciation": "워-러르",
+    "symbolIds": ["sym_aa", "sym_schwa", "sym_r"]
+  },
+  {
+    "id": "word_hospital",
+    "word": "hospital",
+    "meaningKo": "병원",
+    "ipa": "/ˈhɑːspɪtəl/",
+    "syllables": [
+      { "text": "hos", "ipa": "hɑːs", "stress": "primary", "koHint": "하스" },
+      { "text": "pi", "ipa": "pɪ", "stress": "none", "koHint": "피" },
+      { "text": "tal", "ipa": "təl", "stress": "none", "isSchwa": true, "koHint": "털" }
+    ],
+    "koPronunciation": "하스-피-털",
+    "symbolIds": ["sym_aa", "sym_ih", "sym_schwa", "sym_l"]
+  },
+  {
+    "id": "word_tomorrow",
+    "word": "tomorrow",
+    "meaningKo": "내일",
+    "ipa": "/təˈmɑːroʊ/",
+    "syllables": [
+      { "text": "to", "ipa": "tə", "stress": "none", "isSchwa": true, "koHint": "터" },
+      { "text": "mor", "ipa": "mɑː", "stress": "primary", "koHint": "마" },
+      { "text": "row", "ipa": "roʊ", "stress": "none", "koHint": "로우" }
+    ],
+    "koPronunciation": "터-마-로우",
+    "symbolIds": ["sym_schwa", "sym_aa", "sym_r", "sym_ow"]
+  },
+  {
+    "id": "word_computer",
+    "word": "computer",
+    "meaningKo": "컴퓨터",
+    "ipa": "/kəmˈpjuːtər/",
+    "syllables": [
+      { "text": "com", "ipa": "kəm", "stress": "none", "isSchwa": true, "koHint": "컴" },
+      { "text": "pu", "ipa": "pjuː", "stress": "primary", "koHint": "퓨" },
+      { "text": "ter", "ipa": "tər", "stress": "none", "isSchwa": true, "koHint": "터르" }
+    ],
+    "koPronunciation": "컴-퓨-터르",
+    "symbolIds": ["sym_schwa", "sym_uw", "sym_r"]
+  },
+  {
+    "id": "word_together",
+    "word": "together",
+    "meaningKo": "함께",
+    "ipa": "/təˈɡeðər/",
+    "syllables": [
+      { "text": "to", "ipa": "tə", "stress": "none", "isSchwa": true, "koHint": "터" },
+      { "text": "ge", "ipa": "ɡe", "stress": "primary", "koHint": "게" },
+      { "text": "ther", "ipa": "ðər", "stress": "none", "isSchwa": true, "koHint": "더르" }
+    ],
+    "koPronunciation": "터-게-더르",
+    "symbolIds": ["sym_schwa", "sym_th_voiced", "sym_r"]
+  },
+  {
+    "id": "word_hotel",
+    "word": "hotel",
+    "meaningKo": "호텔",
+    "ipa": "/hoʊˈtel/",
+    "syllables": [
+      { "text": "ho", "ipa": "hoʊ", "stress": "none", "koHint": "호우" },
+      { "text": "tel", "ipa": "tel", "stress": "primary", "koHint": "텔" }
+    ],
+    "koPronunciation": "호우-텔",
+    "symbolIds": ["sym_ow", "sym_l"]
+  },
+  {
+    "id": "word_morning",
+    "word": "morning",
+    "meaningKo": "아침",
+    "ipa": "/ˈmɔːrnɪŋ/",
+    "syllables": [
+      { "text": "mor", "ipa": "mɔːr", "stress": "primary", "koHint": "모르" },
+      { "text": "ning", "ipa": "nɪŋ", "stress": "none", "koHint": "닝" }
+    ],
+    "koPronunciation": "모르-닝",
+    "symbolIds": ["sym_r", "sym_ih"]
+  },
+  {
+    "id": "word_delicious",
+    "word": "delicious",
+    "meaningKo": "맛있는",
+    "ipa": "/dɪˈlɪʃəs/",
+    "syllables": [
+      { "text": "de", "ipa": "dɪ", "stress": "none", "koHint": "디" },
+      { "text": "li", "ipa": "lɪ", "stress": "primary", "koHint": "리" },
+      { "text": "cious", "ipa": "ʃəs", "stress": "none", "isSchwa": true, "koHint": "셔스" }
+    ],
+    "koPronunciation": "디-리-셔스",
+    "symbolIds": ["sym_ih", "sym_l", "sym_schwa"]
+  },
+  {
+    "id": "word_happy",
+    "word": "happy",
+    "meaningKo": "행복한",
+    "ipa": "/ˈhæpi/",
+    "syllables": [
+      { "text": "hap", "ipa": "hæp", "stress": "primary", "koHint": "해프" },
+      { "text": "py", "ipa": "i", "stress": "none", "koHint": "이" }
+    ],
+    "koPronunciation": "해-피",
+    "symbolIds": ["sym_ae", "sym_iy"]
+  },
+  {
+    "id": "word_flower",
+    "word": "flower",
+    "meaningKo": "꽃",
+    "ipa": "/ˈflaʊər/",
+    "syllables": [
+      { "text": "flow", "ipa": "flaʊ", "stress": "primary", "koHint": "플라우" },
+      { "text": "er", "ipa": "ər", "stress": "none", "isSchwa": true, "koHint": "어르" }
+    ],
+    "koPronunciation": "플라우-어르",
+    "symbolIds": ["sym_f", "sym_l", "sym_aw", "sym_schwa", "sym_r"]
+  },
+  {
+    "id": "word_enjoy",
+    "word": "enjoy",
+    "meaningKo": "즐기다",
+    "ipa": "/ɪnˈdʒɔɪ/",
+    "syllables": [
+      { "text": "en", "ipa": "ɪn", "stress": "none", "koHint": "인" },
+      { "text": "joy", "ipa": "dʒɔɪ", "stress": "primary", "koHint": "조이" }
+    ],
+    "koPronunciation": "인-조이",
+    "symbolIds": ["sym_ih", "sym_oy"]
+  },
+  {
+    "id": "word_very",
+    "word": "very",
+    "meaningKo": "매우",
+    "ipa": "/ˈveri/",
+    "syllables": [
+      { "text": "ve", "ipa": "ve", "stress": "primary", "koHint": "베" },
+      { "text": "ry", "ipa": "ri", "stress": "none", "koHint": "리" }
+    ],
+    "koPronunciation": "베-리",
+    "symbolIds": ["sym_v", "sym_r", "sym_iy"]
+  },
+  {
+    "id": "word_cat",
+    "word": "cat",
+    "meaningKo": "고양이",
+    "ipa": "/kæt/",
+    "syllables": [
+      { "text": "cat", "ipa": "kæt", "stress": "primary", "koHint": "캣" }
+    ],
+    "koPronunciation": "캣",
+    "symbolIds": ["sym_ae"]
+  },
+  {
+    "id": "word_sit",
+    "word": "sit",
+    "meaningKo": "앉다",
+    "ipa": "/sɪt/",
+    "syllables": [
+      { "text": "sit", "ipa": "sɪt", "stress": "primary", "koHint": "싯" }
+    ],
+    "koPronunciation": "싯",
+    "symbolIds": ["sym_ih"]
+  },
+  {
+    "id": "word_milk",
+    "word": "milk",
+    "meaningKo": "우유",
+    "ipa": "/mɪlk/",
+    "syllables": [
+      { "text": "milk", "ipa": "mɪlk", "stress": "primary", "koHint": "밀크" }
+    ],
+    "koPronunciation": "밀크",
+    "symbolIds": ["sym_ih", "sym_l"]
+  },
+  {
+    "id": "word_big",
+    "word": "big",
+    "meaningKo": "큰",
+    "ipa": "/bɪɡ/",
+    "syllables": [
+      { "text": "big", "ipa": "bɪɡ", "stress": "primary", "koHint": "빅" }
+    ],
+    "koPronunciation": "빅",
+    "symbolIds": ["sym_ih"]
+  },
+  {
+    "id": "word_tea",
+    "word": "tea",
+    "meaningKo": "차",
+    "ipa": "/tiː/",
+    "syllables": [
+      { "text": "tea", "ipa": "tiː", "stress": "primary", "koHint": "티—" }
+    ],
+    "koPronunciation": "티—",
+    "symbolIds": ["sym_iy"]
+  },
+  {
+    "id": "word_green",
+    "word": "green",
+    "meaningKo": "초록색",
+    "ipa": "/ɡriːn/",
+    "syllables": [
+      { "text": "green", "ipa": "ɡriːn", "stress": "primary", "koHint": "그린" }
+    ],
+    "koPronunciation": "그린",
+    "symbolIds": ["sym_r", "sym_iy"]
+  },
+  {
+    "id": "word_sleep",
+    "word": "sleep",
+    "meaningKo": "자다",
+    "ipa": "/sliːp/",
+    "syllables": [
+      { "text": "sleep", "ipa": "sliːp", "stress": "primary", "koHint": "슬립" }
+    ],
+    "koPronunciation": "슬립",
+    "symbolIds": ["sym_l", "sym_iy"]
+  },
+  {
+    "id": "word_cup",
+    "word": "cup",
+    "meaningKo": "컵",
+    "ipa": "/kʌp/",
+    "syllables": [
+      { "text": "cup", "ipa": "kʌp", "stress": "primary", "koHint": "컵" }
+    ],
+    "koPronunciation": "컵",
+    "symbolIds": ["sym_uh"]
+  },
+  {
+    "id": "word_sun",
+    "word": "sun",
+    "meaningKo": "태양",
+    "ipa": "/sʌn/",
+    "syllables": [
+      { "text": "sun", "ipa": "sʌn", "stress": "primary", "koHint": "선" }
+    ],
+    "koPronunciation": "선",
+    "symbolIds": ["sym_uh"]
+  },
+  {
+    "id": "word_love",
+    "word": "love",
+    "meaningKo": "사랑",
+    "ipa": "/lʌv/",
+    "syllables": [
+      { "text": "love", "ipa": "lʌv", "stress": "primary", "koHint": "러브" }
+    ],
+    "koPronunciation": "러브",
+    "symbolIds": ["sym_l", "sym_uh", "sym_v"]
+  },
+  {
+    "id": "word_car",
+    "word": "car",
+    "meaningKo": "자동차",
+    "ipa": "/kɑːr/",
+    "syllables": [
+      { "text": "car", "ipa": "kɑːr", "stress": "primary", "koHint": "카르" }
+    ],
+    "koPronunciation": "카르",
+    "symbolIds": ["sym_aa", "sym_r"]
+  },
+  {
+    "id": "word_food",
+    "word": "food",
+    "meaningKo": "음식",
+    "ipa": "/fuːd/",
+    "syllables": [
+      { "text": "food", "ipa": "fuːd", "stress": "primary", "koHint": "푸드" }
+    ],
+    "koPronunciation": "푸드",
+    "symbolIds": ["sym_f", "sym_uw"]
+  },
+  {
+    "id": "word_blue",
+    "word": "blue",
+    "meaningKo": "파란색",
+    "ipa": "/bluː/",
+    "syllables": [
+      { "text": "blue", "ipa": "bluː", "stress": "primary", "koHint": "블루" }
+    ],
+    "koPronunciation": "블루",
+    "symbolIds": ["sym_l", "sym_uw"]
+  },
+  {
+    "id": "word_moon",
+    "word": "moon",
+    "meaningKo": "달",
+    "ipa": "/muːn/",
+    "syllables": [
+      { "text": "moon", "ipa": "muːn", "stress": "primary", "koHint": "문" }
+    ],
+    "koPronunciation": "문",
+    "symbolIds": ["sym_uw"]
+  },
+  {
+    "id": "word_name",
+    "word": "name",
+    "meaningKo": "이름",
+    "ipa": "/neɪm/",
+    "syllables": [
+      { "text": "name", "ipa": "neɪm", "stress": "primary", "koHint": "네임" }
+    ],
+    "koPronunciation": "네임",
+    "symbolIds": ["sym_ey"]
+  },
+  {
+    "id": "word_cake",
+    "word": "cake",
+    "meaningKo": "케이크",
+    "ipa": "/keɪk/",
+    "syllables": [
+      { "text": "cake", "ipa": "keɪk", "stress": "primary", "koHint": "케이크" }
+    ],
+    "koPronunciation": "케이크",
+    "symbolIds": ["sym_ey"]
+  },
+  {
+    "id": "word_time",
+    "word": "time",
+    "meaningKo": "시간",
+    "ipa": "/taɪm/",
+    "syllables": [
+      { "text": "time", "ipa": "taɪm", "stress": "primary", "koHint": "타임" }
+    ],
+    "koPronunciation": "타임",
+    "symbolIds": ["sym_ay"]
+  },
+  {
+    "id": "word_rice",
+    "word": "rice",
+    "meaningKo": "쌀·밥",
+    "ipa": "/raɪs/",
+    "syllables": [
+      { "text": "rice", "ipa": "raɪs", "stress": "primary", "koHint": "라이스" }
+    ],
+    "koPronunciation": "라이스",
+    "symbolIds": ["sym_r", "sym_ay"]
+  },
+  {
+    "id": "word_smile",
+    "word": "smile",
+    "meaningKo": "미소",
+    "ipa": "/smaɪl/",
+    "syllables": [
+      { "text": "smile", "ipa": "smaɪl", "stress": "primary", "koHint": "스마일" }
+    ],
+    "koPronunciation": "스마일",
+    "symbolIds": ["sym_ay", "sym_l"]
+  },
+  {
+    "id": "word_home",
+    "word": "home",
+    "meaningKo": "집",
+    "ipa": "/hoʊm/",
+    "syllables": [
+      { "text": "home", "ipa": "hoʊm", "stress": "primary", "koHint": "호움" }
+    ],
+    "koPronunciation": "호움",
+    "symbolIds": ["sym_ow"]
+  },
+  {
+    "id": "word_phone",
+    "word": "phone",
+    "meaningKo": "전화기",
+    "ipa": "/foʊn/",
+    "syllables": [
+      { "text": "phone", "ipa": "foʊn", "stress": "primary", "koHint": "포운" }
+    ],
+    "koPronunciation": "포운",
+    "symbolIds": ["sym_f", "sym_ow"]
+  },
+  {
+    "id": "word_house",
+    "word": "house",
+    "meaningKo": "집",
+    "ipa": "/haʊs/",
+    "syllables": [
+      { "text": "house", "ipa": "haʊs", "stress": "primary", "koHint": "하우스" }
+    ],
+    "koPronunciation": "하우스",
+    "symbolIds": ["sym_aw"]
+  },
+  {
+    "id": "word_cloud",
+    "word": "cloud",
+    "meaningKo": "구름",
+    "ipa": "/klaʊd/",
+    "syllables": [
+      { "text": "cloud", "ipa": "klaʊd", "stress": "primary", "koHint": "클라우드" }
+    ],
+    "koPronunciation": "클라우드",
+    "symbolIds": ["sym_l", "sym_aw"]
+  },
+  {
+    "id": "word_boy",
+    "word": "boy",
+    "meaningKo": "소년",
+    "ipa": "/bɔɪ/",
+    "syllables": [
+      { "text": "boy", "ipa": "bɔɪ", "stress": "primary", "koHint": "보이" }
+    ],
+    "koPronunciation": "보이",
+    "symbolIds": ["sym_oy"]
+  },
+  {
+    "id": "word_voice",
+    "word": "voice",
+    "meaningKo": "목소리",
+    "ipa": "/vɔɪs/",
+    "syllables": [
+      { "text": "voice", "ipa": "vɔɪs", "stress": "primary", "koHint": "보이스" }
+    ],
+    "koPronunciation": "보이스",
+    "symbolIds": ["sym_v", "sym_oy"]
+  },
+  {
+    "id": "word_thank",
+    "word": "thank",
+    "meaningKo": "감사하다",
+    "ipa": "/θæŋk/",
+    "syllables": [
+      { "text": "thank", "ipa": "θæŋk", "stress": "primary", "koHint": "쌩크" }
+    ],
+    "koPronunciation": "쌩크",
+    "symbolIds": ["sym_th_voiceless", "sym_ae"]
+  },
+  {
+    "id": "word_three",
+    "word": "three",
+    "meaningKo": "숫자 3",
+    "ipa": "/θriː/",
+    "syllables": [
+      { "text": "three", "ipa": "θriː", "stress": "primary", "koHint": "쓰리" }
+    ],
+    "koPronunciation": "쓰리",
+    "symbolIds": ["sym_th_voiceless", "sym_r", "sym_iy"]
+  },
+  {
+    "id": "word_health",
+    "word": "health",
+    "meaningKo": "건강",
+    "ipa": "/helθ/",
+    "syllables": [
+      { "text": "health", "ipa": "helθ", "stress": "primary", "koHint": "헬쓰" }
+    ],
+    "koPronunciation": "헬쓰",
+    "symbolIds": ["sym_l", "sym_th_voiceless"]
+  },
+  {
+    "id": "word_this",
+    "word": "this",
+    "meaningKo": "이것",
+    "ipa": "/ðɪs/",
+    "syllables": [
+      { "text": "this", "ipa": "ðɪs", "stress": "primary", "koHint": "디스" }
+    ],
+    "koPronunciation": "디스",
+    "symbolIds": ["sym_th_voiced", "sym_ih"]
+  },
+  {
+    "id": "word_rain",
+    "word": "rain",
+    "meaningKo": "비",
+    "ipa": "/reɪn/",
+    "syllables": [
+      { "text": "rain", "ipa": "reɪn", "stress": "primary", "koHint": "레인" }
+    ],
+    "koPronunciation": "레인",
+    "symbolIds": ["sym_r", "sym_ey"]
+  }
+]
