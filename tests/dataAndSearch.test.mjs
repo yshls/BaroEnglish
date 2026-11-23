@@ -46,3 +46,20 @@ test('schwa words include sym_schwa in symbolIds for Tab 1 backtracking', () => 
     }
   }
 });
+
+test('English and Korean search finds expected core words', () => {
+  const byEn = coreWords.filter((w) => w.word.toLowerCase().includes('ban'));
+  const byKo = coreWords.filter((w) => w.meaningKo.includes('바나나'));
+  assert.equal(byEn[0]?.id, 'word_banana');
+  assert.equal(byKo[0]?.id, 'word_banana');
+});
+
+test('every word in coreWords.json maps cleanly to at least one symbol in ipaSymbols.json', () => {
+  const symbolMap = new Map(ipaSymbols.map((s) => [s.id, s]));
+  for (const word of coreWords) {
+    assert.ok(word.symbolIds.length > 0, `${word.id} must have symbolIds`);
+    for (const sid of word.symbolIds) {
+      assert.ok(symbolMap.has(sid), `${word.id} references unknown symbol ${sid}`);
+    }
+  }
+});
