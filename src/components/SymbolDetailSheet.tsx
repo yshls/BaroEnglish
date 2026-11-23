@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -34,11 +34,11 @@ export function SymbolDetailSheet({
   const toggleSymbolLearned = useLearningStore((state) => state.toggleSymbolLearned);
 
   // 닫기 슬라이드 애니메이션 중 내용이 즉시 사라지지 않도록 직전 기호 유지
-  const lastSymbolRef = useRef<IpaSymbol | null>(symbol);
-  if (symbol) {
-    lastSymbolRef.current = symbol;
+  const [cachedSymbol, setCachedSymbol] = useState<IpaSymbol | null>(symbol);
+  if (symbol && symbol !== cachedSymbol) {
+    setCachedSymbol(symbol);
   }
-  const activeSymbol = symbol ?? lastSymbolRef.current;
+  const activeSymbol = symbol ?? cachedSymbol;
 
   // 바텀시트가 열릴 때 이전 화면의 오디오 즉시 중단
   useEffect(() => {

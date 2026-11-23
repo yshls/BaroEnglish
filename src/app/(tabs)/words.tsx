@@ -33,7 +33,7 @@ import type { CoreWord, IpaSymbol } from '../../types/learning';
 
 export default function WordReaderScreen() {
   const [query, setQuery] = useState('');
-  const [displayedWord, setDisplayedWord] = useState<CoreWord | null>(null);
+  const [selectedWord, setSelectedWord] = useState<CoreWord | null>(null);
   const [activeSymbol, setActiveSymbol] = useState<IpaSymbol | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -88,7 +88,7 @@ export default function WordReaderScreen() {
       const cached = findCachedByQuery(trimmed);
       if (cached) {
         setIsLoading(false);
-        setDisplayedWord(cached);
+        setSelectedWord(cached);
         if (!options?.keepInput) setQuery('');
         return;
       }
@@ -101,17 +101,17 @@ export default function WordReaderScreen() {
 
         if (result.word) {
           saveWord(result.word);
-          setDisplayedWord(result.word);
+          setSelectedWord(result.word);
           if (!options?.keepInput) setQuery('');
         } else {
-          setDisplayedWord(null);
+          setSelectedWord(null);
           setFailedQuery(trimmed);
           setFailedErrorType(result.errorType ?? 'not_found');
           setFallbackSuggestions(result.suggestions);
         }
       } catch {
         if (requestSeqRef.current !== seq) return;
-        setDisplayedWord(null);
+        setSelectedWord(null);
         setFailedQuery(trimmed);
         setFailedErrorType('network');
         setFallbackSuggestions([]);
@@ -124,25 +124,61 @@ export default function WordReaderScreen() {
     [findCachedByQuery, saveWord, stop]
   );
 
-  // AsyncStorage 캐시 하이드레이션 완료 후 초기 단어 복원 (오프라인 재실행 대응)
+  const firstRecentKey = recentWords[0];
+  const initialCachedWord =
+    cacheHasHydrated && firstRecentKey ? (cachedWords[firstRecentKey] ?? null) : null;
+  const displayedWord = selectedWord ?? (!failedQuery ? initialCachedWord : null);
+  const isInitialLoading =
+    cacheHasHydrated && !initialCachedWord && !selectedWord && !failedQuery;
+  const showLoading = isLoading || isInitialLoading;
+
+  // AsyncStorage 캐시 하이드레이션 완료 후 캐시가 비어 있으면 기본 추천 단어 최초 조회
   useEffect(() => {
     if (!cacheHasHydrated || didInitialLoadRef.current) return;
     didInitialLoadRef.current = true;
 
-    const firstRecentKey = recentWords[0];
-    if (firstRecentKey && cachedWords[firstRecentKey]) {
-      setDisplayedWord(cachedWords[firstRecentKey]);
+    if (initialCachedWord) {
       return;
     }
 
-    void executeLookup(STARTER_SEARCH_CHIPS[0].word);
-  }, [cacheHasHydrated, cachedWords, executeLookup, recentWords]);
+    const starterWord = STARTER_SEARCH_CHIPS[0].word;
+    requestSeqRef.current += 1;
+    const seq = requestSeqRef.current;
+
+    void (async () => {
+      try {
+        const result = await lookupWordFromApis(starterWord);
+        if (requestSeqRef.current !== seq) return;
+
+        if (result.word) {
+          saveWord(result.word);
+          setSelectedWord(result.word);
+        } else {
+          setFailedQuery(starterWord);
+          setFailedErrorType(result.errorType ?? 'not_found');
+          setFallbackSuggestions(result.suggestions);
+        }
+      } catch {
+        if (requestSeqRef.current !== seq) return;
+        setFailedQuery(starterWord);
+        setFailedErrorType('network');
+        setFallbackSuggestions([]);
+      }
+    })();
+  }, [cacheHasHydrated, initialCachedWord, saveWord]);
+
+  const handleQueryChange = (nextQuery: string) => {
+    setQuery(nextQuery);
+    const trimmed = nextQuery.trim();
+    if (trimmed.length < 2 || containsKorean(trimmed)) {
+      setSuggestions([]);
+    }
+  };
 
   // 영문 2글자 이상 입력 시 Datamuse 자동완성 칩 디바운스 조회
   useEffect(() => {
     const trimmed = query.trim();
     if (trimmed.length < 2 || containsKorean(trimmed)) {
-      setSuggestions([]);
       return;
     }
 
@@ -172,7 +208,7 @@ export default function WordReaderScreen() {
     setIsLoading(false);
     setFailedQuery(null);
     setFailedErrorType(null);
-    setDisplayedWord(item);
+    setSelectedWord(item);
   };
 
   const normalKey = displayedWord ? `word:${displayedWord.id}:normal` : '';
@@ -210,7 +246,7 @@ export default function WordReaderScreen() {
             <Ionicons name="search" size={24} color={COLORS.primary} />
             <TextInput
               value={query}
-              onChangeText={setQuery}
+              onChangeText={handleQueryChange}
               onSubmitEditing={() => void executeLookup(query)}
               placeholder="예: strawberry 또는 딸기"
               placeholderTextColor={COLORS.textMuted}
@@ -244,10 +280,10 @@ export default function WordReaderScreen() {
 
           <Pressable
             onPress={() => void executeLookup(query)}
-            disabled={!query.trim() || isLoading}
+            disabled={!query.trim() || showLoading}
             style={({ pressed }) => [
               styles.searchSubmitBtn,
-              (!query.trim() || isLoading) && styles.searchSubmitBtnDisabled,
+              (!query.trim() || showLoading) && styles.searchSubmitBtnDisabled,
               pressed && styles.pressed,
             ]}
             accessibilityRole="button"
@@ -255,7 +291,7 @@ export default function WordReaderScreen() {
           >
             <Ionicons name="search" size={22} color={COLORS.white} />
             <Text style={styles.searchSubmitBtnText} maxFontSizeMultiplier={1.35}>
-              {isLoading ? '단어를 찾는 중...' : '단어 찾기'}
+              {showLoading ? '단어를 찾는 중...' : '단어 찾기'}
             </Text>
           </Pressable>
 
@@ -364,7 +400,7 @@ export default function WordReaderScreen() {
         </View>
 
         {/* 로딩 카드 */}
-        {isLoading ? (
+        {showLoading ? (
           <View style={styles.loadingCard}>
             <ActivityIndicator size="large" color={COLORS.primary} />
             <Text style={styles.loadingTitle} maxFontSizeMultiplier={1.4}>
@@ -377,7 +413,7 @@ export default function WordReaderScreen() {
         ) : null}
 
         {/* 검색 실패 / 네트워크 오류 폴백 카드 */}
-        {!isLoading && failedQuery ? (
+        {!showLoading && failedQuery ? (
           <View style={styles.fallbackCard}>
             <View style={styles.fallbackHeader}>
               <Ionicons
@@ -455,7 +491,7 @@ export default function WordReaderScreen() {
         ) : null}
 
         {/* 선택된 단어 해독기 Bento 카드 */}
-        {!isLoading && displayedWord ? (
+        {!showLoading && displayedWord ? (
           <>
             <View style={styles.wordHeroCard}>
               <View style={styles.wordHeaderRow}>
