@@ -7,59 +7,40 @@ const root = process.cwd();
 const ipaSymbols = JSON.parse(
   fs.readFileSync(path.join(root, 'src/data/ipaSymbols.json'), 'utf8')
 );
-const coreWords = JSON.parse(
-  fs.readFileSync(path.join(root, 'src/data/coreWords.json'), 'utf8')
-);
 
-test('all example wordIds in ipaSymbols.json exist in coreWords.json', () => {
-  const wordIdSet = new Set(coreWords.map((w) => w.id));
+test('ipaSymbols.json has 18 symbols across 3 fixed categories with 3 examples each', () => {
+  assert.equal(ipaSymbols.length, 18);
+  const byCategory = { basic_vowels: 0, diphthongs: 0, key_consonants: 0 };
   for (const sym of ipaSymbols) {
-    for (const ex of sym.examples) {
-      if (ex.wordId) {
-        assert.ok(
-          wordIdSet.has(ex.wordId),
-          `Symbol ${sym.id} example "${ex.word}" references missing wordId "${ex.wordId}"`
-        );
-      }
-    }
+    byCategory[sym.categoryId] += 1;
+    assert.equal(sym.examples.length, 3, `${sym.id} must have 3 examples`);
   }
+  assert.deepEqual(byCategory, {
+    basic_vowels: 7,
+    diphthongs: 5,
+    key_consonants: 6,
+  });
 });
 
-test('every multi-syllable word in coreWords.json has at least one primary stress syllable', () => {
-  for (const word of coreWords) {
-    const hasPrimary = word.syllables.some((s) => s.stress === 'primary');
-    assert.ok(
-      hasPrimary,
-      `Word "${word.word}" (${word.id}) must have a primary stress syllable`
-    );
-  }
+test('no hardcoded coreWords.json exists (words are fetched via commercial-free APIs + AsyncStorage cache)', () => {
+  assert.equal(
+    fs.existsSync(path.join(root, 'src/data/coreWords.json')),
+    false,
+    'Hardcoded coreWords.json must not exist'
+  );
 });
 
-test('schwa words include sym_schwa in symbolIds for Tab 1 backtracking', () => {
-  for (const word of coreWords) {
-    const hasSchwaSyllable = word.syllables.some((s) => s.isSchwa === true);
-    if (hasSchwaSyllable) {
-      assert.ok(
-        word.symbolIds.includes('sym_schwa'),
-        `Word "${word.word}" has isSchwa syllable but lacks "sym_schwa" in symbolIds`
-      );
-    }
-  }
+test('commercial-free wordApi and phoneticsParser modules exist and expose required endpoints', () => {
+  const wordApiSrc = fs.readFileSync(path.join(root, 'src/services/wordApi.ts'), 'utf8');
+  assert.ok(wordApiSrc.includes('api.dictionaryapi.dev'), 'Missing dictionaryapi.dev');
+  assert.ok(wordApiSrc.includes('api.datamuse.com'), 'Missing Datamuse API');
+  assert.ok(wordApiSrc.includes('freedictionaryapi.com'), 'Missing freedictionaryapi.com');
+  assert.ok(wordApiSrc.includes('ko.wiktionary.org'), 'Missing ko.wiktionary.org');
+  assert.ok(wordApiSrc.includes('api.mymemory.translated.net'), 'Missing MyMemory API');
 });
 
-test('English and Korean search finds expected core words', () => {
-  const byEn = coreWords.filter((w) => w.word.toLowerCase().includes('ban'));
-  const byKo = coreWords.filter((w) => w.meaningKo.includes('바나나'));
-  assert.equal(byEn[0]?.id, 'word_banana');
-  assert.equal(byKo[0]?.id, 'word_banana');
-});
-
-test('every word in coreWords.json maps cleanly to at least one symbol in ipaSymbols.json', () => {
-  const symbolMap = new Map(ipaSymbols.map((s) => [s.id, s]));
-  for (const word of coreWords) {
-    assert.ok(word.symbolIds.length > 0, `${word.id} must have symbolIds`);
-    for (const sid of word.symbolIds) {
-      assert.ok(symbolMap.has(sid), `${word.id} references unknown symbol ${sid}`);
-    }
-  }
+test('words.tsx displays open-license commercial attribution', () => {
+  const wordsScreenSrc = fs.readFileSync(path.join(root, 'src/app/(tabs)/words.tsx'), 'utf8');
+  assert.ok(wordsScreenSrc.includes('CC BY-SA 4.0'), 'Missing CC BY-SA 4.0 attribution');
+  assert.ok(wordsScreenSrc.includes('Datamuse'), 'Missing Datamuse attribution');
 });

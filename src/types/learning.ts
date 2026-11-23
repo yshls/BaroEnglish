@@ -16,7 +16,11 @@ export interface CoreWord {
   syllables: SyllableItem[];
   koPronunciation: string;
   symbolIds: string[];
+  audioUrl?: string;
   audioAsset?: string;
+  partOfSpeech?: string;
+  exampleEn?: string;
+  sourceAttribution?: string;
 }
 
 export type IpaCategoryId = 'basic_vowels' | 'diphthongs' | 'key_consonants';

@@ -56,9 +56,6 @@ for (const file of sourceFiles) {
   if (content.includes('expo-av')) {
     forbiddenMatches.push(`${path.relative(root, file)} references expo-av`);
   }
-  if (content.includes('dictionaryapi.dev')) {
-    forbiddenMatches.push(`${path.relative(root, file)} references dictionaryapi.dev`);
-  }
 }
 if (forbiddenMatches.length > 0) {
   fail('Guardrail (source)', forbiddenMatches.join('; '));
