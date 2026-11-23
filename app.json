@@ -36,7 +36,9 @@
           "enableBackgroundPlayback": false,
           "enableBackgroundRecording": false
         }
-      ]
+      ],
+      "expo-font",
+      "expo-asset"
     ]
   }
 }

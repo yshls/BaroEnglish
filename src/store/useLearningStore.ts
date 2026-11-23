@@ -6,6 +6,8 @@ export interface LearningState {
   learnedSymbolIds: string[];
   showKoPronunciation: boolean;
   hasDismissedWelcomeBanner: boolean;
+  hasHydrated: boolean;
+  setHasHydrated: (hydrated: boolean) => void;
   toggleSymbolLearned: (symbolId: string) => void;
   isSymbolLearned: (symbolId: string) => boolean;
   setShowKoPronunciation: (show: boolean) => void;
@@ -20,6 +22,11 @@ export const useLearningStore = create<LearningState>()(
       learnedSymbolIds: [],
       showKoPronunciation: true,
       hasDismissedWelcomeBanner: false,
+      hasHydrated: false,
+
+      setHasHydrated: (hydrated: boolean) => {
+        set({ hasHydrated: hydrated });
+      },
 
       toggleSymbolLearned: (symbolId: string) => {
         const current = get().learnedSymbolIds;
@@ -62,6 +69,9 @@ export const useLearningStore = create<LearningState>()(
         showKoPronunciation: state.showKoPronunciation,
         hasDismissedWelcomeBanner: state.hasDismissedWelcomeBanner,
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

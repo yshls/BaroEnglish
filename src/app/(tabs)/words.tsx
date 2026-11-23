@@ -196,23 +196,31 @@ export default function WordReaderScreen() {
               먼저 소리를 천천히 들어보시거나 아래 비슷한 기초 단어를 눌러 보세요.
             </Text>
 
-            <Pressable
-              onPress={() => playSlow(trimmedQuery, { key: fallbackSlowKey })}
-              style={({ pressed }) => [
-                styles.primaryBtn,
-                isFallbackSlowPlaying && styles.primaryBtnActive,
-                pressed && styles.pressed,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={`${trimmedQuery} 천천히 소리만 먼저 듣기`}
-            >
-              <Ionicons name="volume-high" size={24} color={COLORS.white} />
-              <Text style={styles.primaryBtnText}>
-                {isFallbackSlowPlaying
-                  ? '천천히 소리 재생 중...'
-                  : '천천히 소리만 먼저 듣기'}
-              </Text>
-            </Pressable>
+            {/[a-zA-Z]/.test(trimmedQuery) ? (
+              <Pressable
+                onPress={() => playSlow(trimmedQuery, { key: fallbackSlowKey })}
+                style={({ pressed }) => [
+                  styles.primaryBtn,
+                  isFallbackSlowPlaying && styles.primaryBtnActive,
+                  pressed && styles.pressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={`${trimmedQuery} 천천히 소리만 먼저 듣기`}
+              >
+                <Ionicons name="volume-high" size={24} color={COLORS.white} />
+                <Text style={styles.primaryBtnText}>
+                  {isFallbackSlowPlaying
+                    ? '천천히 소리 재생 중...'
+                    : '천천히 소리만 먼저 듣기'}
+                </Text>
+              </Pressable>
+            ) : (
+              <View style={styles.koreanOnlyNotice}>
+                <Text style={styles.koreanOnlyNoticeText}>
+                  영어 철자로 입력하시면 천천히 소리만 먼저 들어볼 수 있어요.
+                </Text>
+              </View>
+            )}
 
             <View style={styles.fallbackSuggestions}>
               <Text style={styles.chipsLabel}>비슷한 기초 단어 추천</Text>
@@ -533,6 +541,19 @@ const styles = StyleSheet.create({
   },
   fallbackSuggestions: {
     gap: 8,
+  },
+  koreanOnlyNotice: {
+    backgroundColor: COLORS.background,
+    borderColor: COLORS.border,
+    borderWidth: 1,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+  },
+  koreanOnlyNoticeText: {
+    fontSize: TYPOGRAPHY.body,
+    lineHeight: 26,
+    fontWeight: '600',
+    color: COLORS.textMuted,
   },
   wordHeroCard: {
     backgroundColor: COLORS.card,

@@ -15,6 +15,7 @@ export default function IpaSymbolsScreen() {
   const [selectedSymbol, setSelectedSymbol] = useState<IpaSymbol | null>(null);
 
   const learnedSymbolIds = useLearningStore((state) => state.learnedSymbolIds);
+  const hasHydrated = useLearningStore((state) => state.hasHydrated);
   const hasDismissedWelcomeBanner = useLearningStore(
     (state) => state.hasDismissedWelcomeBanner
   );
@@ -33,8 +34,8 @@ export default function IpaSymbolsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 최초 실행 1회성 안내 배너 */}
-        {!hasDismissedWelcomeBanner ? (
+        {/* 최초 실행 1회성 안내 배너 (AsyncStorage 하이드레이션 후 표시) */}
+        {hasHydrated && !hasDismissedWelcomeBanner ? (
           <View style={styles.welcomeBanner}>
             <View style={styles.welcomeHeader}>
               <View style={styles.welcomeTitleRow}>
