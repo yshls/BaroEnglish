@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Tap } from './Tap';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSpeechAudio } from '../hooks/useSpeechAudio';
 import { useLearningStore } from '../store/useLearningStore';
@@ -103,37 +104,17 @@ export function SymbolDetailSheet({
               </Text>
             </View>
 
-            <View style={styles.headerActions}>
-              <Pressable
-                onPress={() => toggleSymbolBookmark(activeSymbol.id)}
-                style={({ pressed }) => [
-                  styles.iconActionButton,
-                  isBookmarked && styles.bookmarkButtonActive,
-                  pressed && styles.buttonPressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityState={{ selected: isBookmarked }}
-                accessibilityLabel={isBookmarked ? '북마크 해제' : '북마크 저장'}
-              >
-                <Ionicons
-                  name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
-                  size={24}
-                  color={isBookmarked ? COLORS.accent : COLORS.text}
-                />
-              </Pressable>
-
-              <Pressable
-                onPress={handleClose}
-                style={({ pressed }) => [
-                  styles.iconActionButton,
-                  pressed && styles.buttonPressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel="닫기"
-              >
-                <Ionicons name="close" size={26} color={COLORS.text} />
-              </Pressable>
-            </View>
+            <Tap
+              onPress={handleClose}
+              style={styles.closeButton}
+              accessibilityRole="button"
+              accessibilityLabel="닫기"
+            >
+              <Ionicons name="close" size={24} color={COLORS.text} />
+              <Text style={styles.closeButtonText} maxFontSizeMultiplier={1.3}>
+                닫기
+              </Text>
+            </Tap>
           </View>
 
           <ScrollView
@@ -183,7 +164,7 @@ export function SymbolDetailSheet({
                         (isNormalPlaying || isSlowPlaying) && styles.exampleCardActive,
                       ]}
                     >
-                      <Pressable
+                      <Tap
                         style={styles.exampleInfoArea}
                         onPress={() => playNormal(ex.word, { key: normalKey })}
                         accessibilityRole="button"
@@ -195,15 +176,14 @@ export function SymbolDetailSheet({
                         <Text style={styles.exampleMeta} maxFontSizeMultiplier={1.45}>
                           {ex.ipa} · {ex.meaningKo}
                         </Text>
-                      </Pressable>
+                      </Tap>
 
                       <View style={styles.exampleButtons}>
-                        <Pressable
+                        <Tap
                           onPress={() => playNormal(ex.word, { key: normalKey })}
-                          style={({ pressed }) => [
+                          style={[
                             styles.playBtnPrimary,
                             isNormalPlaying && styles.playBtnPrimaryActive,
-                            pressed && styles.buttonPressed,
                           ]}
                           accessibilityRole="button"
                           accessibilityLabel={`${ex.word} 소리 듣기`}
@@ -219,14 +199,13 @@ export function SymbolDetailSheet({
                           >
                             {isNormalPlaying ? '재생 중' : '듣기'}
                           </Text>
-                        </Pressable>
+                        </Tap>
 
-                        <Pressable
+                        <Tap
                           onPress={() => playSlow(ex.word, { key: slowKey })}
-                          style={({ pressed }) => [
+                          style={[
                             styles.playBtnSlow,
                             isSlowPlaying && styles.playBtnSlowActive,
-                            pressed && styles.buttonPressed,
                           ]}
                           accessibilityRole="button"
                           accessibilityLabel={`${ex.word} 천천히 듣기`}
@@ -242,7 +221,7 @@ export function SymbolDetailSheet({
                           >
                             {isSlowPlaying ? '재생 중' : '천천히'}
                           </Text>
-                        </Pressable>
+                        </Tap>
                       </View>
                     </View>
                   );
@@ -253,12 +232,11 @@ export function SymbolDetailSheet({
 
           {/* 하단 익혔어요 버튼 */}
           <View style={styles.footer}>
-            <Pressable
+            <Tap
               onPress={() => toggleSymbolLearned(activeSymbol.id)}
-              style={({ pressed }) => [
+              style={[
                 styles.learnedButton,
                 isLearned ? styles.learnedButtonDone : styles.learnedButtonTodo,
-                pressed && styles.buttonPressed,
               ]}
               accessibilityRole="button"
               accessibilityState={{ checked: isLearned }}
@@ -278,7 +256,7 @@ export function SymbolDetailSheet({
               >
                 {isLearned ? '익힘 완료' : '익혔어요'}
               </Text>
-            </Pressable>
+            </Tap>
           </View>
         </View>
       </View>
@@ -534,8 +512,5 @@ const styles = StyleSheet.create({
   },
   learnedButtonTextDone: {
     color: COLORS.primaryDark,
-  },
-  buttonPressed: {
-    opacity: 0.82,
   },
 });
