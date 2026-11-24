@@ -33,6 +33,19 @@
     font-display: swap;
 }
 
+/* ============================================================
+ * BaroEnglish Web App — 쫀득하고 부드러운 반응형 UX 글로벌 설정
+ * ============================================================ */
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+  scroll-behavior: smooth;
+}
+
 html,
 body,
 input,
@@ -40,4 +53,62 @@ textarea,
 button,
 select {
   font-family: 'SpokaHanSansNeo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* 모바일 웹 더블탭 300ms 지연 제거 & 하이라이트 번쩍임 방지 */
+a,
+button,
+[role='button'],
+[role='tab'],
+[role='switch'] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+/* 키보드 포커스 시 깔끔한 링 표시 (마우스 클릭에는 불필요한 외곽선 생략) */
+[role='button']:focus-visible,
+[role='tab']:focus-visible,
+[role='switch']:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid #F56823;
+  outline-offset: 2px;
+}
+
+/* 데스크톱 웹 얇고 은은한 스크롤바 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(45, 41, 36, 0.16) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(45, 41, 36, 0.16);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(45, 41, 36, 0.28);
+}
+
+/* OS 동작 줄이기 설정 존중 */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }

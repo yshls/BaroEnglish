@@ -882,7 +882,7 @@ export const SHADOW = {
 
 export const MOTION = {
   duration: {
-    instant: 80,
+    instant: 75,
     fast: 150,
     normal: 240,
     slow: 360,
@@ -890,43 +890,62 @@ export const MOTION = {
   },
 
   spring: {
+    // 손가락/마우스가 닿는 순간 지연 없이 바로 쫀득하게 눌리는 진입 커브
+    pressIn: {
+      damping: 26,
+      stiffness: 480,
+      mass: 0.65,
+    },
+
+    // 큰 카드 · 영역 확장 등 부드럽고 안정감 있는 복원 커브
     gentle: {
       damping: 20,
-      stiffness: 160,
-      mass: 1,
+      stiffness: 185,
+      mass: 0.9,
     },
 
+    // 칩 · 북마크 · 토글 등 살짝 튕겨 오르는 쫀득한 복원 커브
     playful: {
-      damping: 14,
-      stiffness: 220,
-      mass: 0.8,
+      damping: 13,
+      stiffness: 260,
+      mass: 0.78,
     },
 
+    // 핵심 버튼 · 오디오 CTA 등 경쾌하고 탄력 있는 복원 커브
     snappy: {
-      damping: 22,
-      stiffness: 300,
-      mass: 0.8,
+      damping: 19,
+      stiffness: 340,
+      mass: 0.75,
+    },
+
+    // 바텀시트 · 모달 등 미끄러지듯 부드러운 시트 커브
+    sheet: {
+      damping: 25,
+      stiffness: 270,
+      mass: 0.85,
     },
   },
 
   scale: {
     pressed: 0.97,
+    cardPress: 0.965, // 넓은 카드용 은은하고 안정적인 눌림
     deepPress: 0.93, // 쫀득한 깊은 눌림 (버튼·칩 기본)
     normal: 1,
+    hover: 1.015, // 데스크톱 웹 호버 미세 리프트
     emphasis: 1.05,
   },
 
   opacity: {
     hidden: 0,
-    pressed: 0.85,
+    pressed: 0.88,
     visible: 1,
   },
 
   translate: {
     subtle: 4,
-    small: 8,
-    medium: 16,
-    large: 24,
+    small: 10,
+    medium: 18,
+    large: 28,
   },
 } as const;
 

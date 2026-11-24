@@ -305,9 +305,11 @@ export function BookmarkFlipDeck({
           {knownCount}/{words.length} 완료
         </Text>
       </View>
-      <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
-      </View>
+      {progressPct > 0 && (
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
+        </View>
+      )}
 
       {/* 3D 플립 카드 영역 (좌우 드래그로 넘기기) */}
       <Animated.View
@@ -678,7 +680,7 @@ const styles = StyleSheet.create({
   progressTrack: {
     height: 7,
     borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.surface,
     overflow: 'hidden',
   },
   progressFill: {
