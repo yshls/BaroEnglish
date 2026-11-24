@@ -19,6 +19,9 @@ export default function IpaSymbolsScreen() {
   const { stop } = useSpeechAudio();
 
   const learnedSymbolIds = useLearningStore((state) => state.learnedSymbolIds);
+  const bookmarkedSymbolIds = useLearningStore(
+    (state) => state.bookmarkedSymbolIds
+  );
   const hasHydrated = useLearningStore((state) => state.hasHydrated);
   const hasDismissedWelcomeBanner = useLearningStore(
     (state) => state.hasDismissedWelcomeBanner
@@ -80,6 +83,8 @@ export default function IpaSymbolsScreen() {
                   닫기
                 </Text>
               </Tap>
+ 
+              </Pressable>
             </View>
             <Text style={styles.welcomeBody} maxFontSizeMultiplier={1.5}>
               꼭 필요한 발음기호 18개만 모아 두었어요. 아래 카드를 눌러 입 모양을 보고
@@ -93,7 +98,7 @@ export default function IpaSymbolsScreen() {
           <View style={styles.summaryRow}>
             <View style={styles.summaryTitleCol}>
               <Text style={styles.summaryLabel} maxFontSizeMultiplier={1.4}>
-                나의 발음기호 진도
+                학습 진도
               </Text>
               <Text style={styles.summaryCount} maxFontSizeMultiplier={1.4}>
                 {totalLearnedCount} / {totalCount}개 익힘
@@ -137,7 +142,7 @@ export default function IpaSymbolsScreen() {
                     style={styles.categoryProgressText}
                     maxFontSizeMultiplier={1.35}
                   >
-                    {learnedInCategory} / {symbols.length} 익힘
+                    {learnedInCategory} / {symbols.length}
                   </Text>
                 </View>
               </View>
@@ -145,6 +150,7 @@ export default function IpaSymbolsScreen() {
               <View style={styles.grid}>
                 {symbols.map((symbol) => {
                   const isLearned = learnedSymbolIds.includes(symbol.id);
+                  const isBookmarked = bookmarkedSymbolIds.includes(symbol.id);
 
                   return (
                     <Tap
@@ -163,21 +169,22 @@ export default function IpaSymbolsScreen() {
                         <Text style={styles.symbolIpa} maxFontSizeMultiplier={1.35}>
                           {symbol.ipa}
                         </Text>
-                        {isLearned ? (
-                          <View style={styles.doneTag}>
+                        <View style={styles.symbolCardIcons}>
+                          {isBookmarked ? (
+                            <Ionicons
+                              name="bookmark"
+                              size={20}
+                              color={COLORS.accent}
+                            />
+                          ) : null}
+                          {isLearned ? (
                             <Ionicons
                               name="checkmark-circle"
-                              size={18}
+                              size={24}
                               color={COLORS.primary}
                             />
-                            <Text
-                              style={styles.doneTagText}
-                              maxFontSizeMultiplier={1.25}
-                            >
-                              익힘
-                            </Text>
-                          </View>
-                        ) : null}
+                          ) : null}
+                        </View>
                       </View>
 
                       <Text
@@ -251,20 +258,11 @@ const styles = StyleSheet.create({
     color: COLORS.primaryDark,
   },
   dismissBtn: {
-    minHeight: TOUCH.minTarget,
-    paddingHorizontal: 14,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.card,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    flexDirection: 'row',
+    width: TOUCH.minTarget,
+    height: TOUCH.minTarget,
+    borderRadius: RADIUS.pill,
     alignItems: 'center',
-    gap: 4,
-  },
-  dismissBtnText: {
-    fontSize: TYPOGRAPHY.body,
-    fontWeight: '700',
-    color: COLORS.primaryDark,
+    justifyContent: 'center',
   },
   welcomeBody: {
     fontSize: TYPOGRAPHY.body,
@@ -397,19 +395,10 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.primaryDark,
   },
-  doneTag: {
+  symbolCardIcons: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-    backgroundColor: COLORS.card,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: RADIUS.pill,
-  },
-  doneTagText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.primaryDark,
+    gap: 4,
   },
   symbolKoHint: {
     fontSize: TYPOGRAPHY.body,

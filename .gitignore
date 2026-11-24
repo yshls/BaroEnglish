@@ -1,41 +1,188 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# dependencies
+# ==================================================
+# 1. Dependencies & Package Managers
+# ==================================================
 node_modules/
+.npm/
+.pnpm-store/
+.pnp
+.pnp.*
 
-# Expo
-.expo/
-dist/
-web-build/
-expo-env.d.ts
+# ==================================================
+# 2. Environment Variables (예시 파일 제외 전체 차단)
+# ==================================================
+.env
+.env.*
+*.env
+!.env.example
+!.env.sample
+!.env.template
 
-# Native
-.kotlin/
-*.orig.*
+# ==================================================
+# 3. Secrets, Signing Keys & Store Credentials (절대 커밋 금지)
+# ==================================================
+# Certificates & Private Keys
 *.jks
+*.keystore
 *.p8
 *.p12
+*.pfx
+*.pem
 *.key
+*.pub
+*.cer
+*.crt
+*.der
+*.certSigningRequest
 *.mobileprovision
+*.gpg
+*.asc
 
-# Metro
+# App Store / Google Play / Firebase / EAS Credentials
+credentials.json
+*credentials*.json
+*service-account*.json
+*serviceAccount*.json
+*secret*.json
+*secrets*.json
+secrets/
+*.secret
+*.secrets
+google-services.json
+GoogleService-Info.plist
+AuthKey_*.p8
+key.properties
+keystore.properties
+signing.properties
+play-store-*.json
+app-store-*.json
+api-key*.json
+.npmrc
+.netrc
+
+# ==================================================
+# 4. Expo, EAS & Web Deploy Outputs
+# ==================================================
+.expo/
+.expo-shared/
+.eas/
+dist/
+web-build/
+build/
+out/
+expo-env.d.ts
+build-*.tar.gz
+*.tar.gz
+.vercel/
+.netlify/
+.wrangler/
+.cloudflare/
+
+# ==================================================
+# 5. Generated Native Folders (CNG) & Native Build Artifacts
+# ==================================================
+/ios
+/android
+.kotlin/
+.gradle/
+local.properties
+Pods/
+DerivedData/
+xcuserdata/
+*.xcworkspace/xcuserdata/
+*.orig.*
+*.ipa
+*.apk
+*.aab
+*.app
+*.dSYM
+*.dSYM.zip
+*.hprof
+
+# ==================================================
+# 6. Metro, Linters, Test & Build Caches
+# ==================================================
 .metro-health-check*
+.eslintcache
+.stylelintcache
+.prettiercache
+.cache/
+.parcel-cache/
+.turbo/
+*.tsbuildinfo
+coverage/
+.nyc_output/
+junit.xml
+playwright-report/
+test-results/
+.maestro/
 
-# debug
+# ==================================================
+# 7. Debug Logs, Temp & Local DB Dumps
+# ==================================================
+*.log
+logs/
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+pnpm-debug.*
+lerna-debug.log*
+firebase-debug.log*
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.dump
 
-# macOS
+# ==================================================
+# 8. OS Files (macOS / Windows / Linux)
+# ==================================================
 .DS_Store
-*.pem
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+desktop.ini
+$RECYCLE.BIN/
+*.lnk
+*.swp
+*.swo
+*.swn
+*~
 
-# local env files
-.env*.local
+# ==================================================
+# 9. IDE, Editor & Local AI Agent State
+# ==================================================
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/*
+!.vscode/extensions.json
+*.code-workspace
+.cursor/
+.windsurf/
+.antigravity/
+.orca/
+.claude/
+CLAUDE.local.md
+AGENTS.local.md
 
-# typescript
-*.tsbuildinfo
-
-# generated native folders
-/ios
-/android
+# ==================================================
+# 10. Internal Spec & Loop Workflow Docs (로컬 전용 — GitHub 미공개)
+# ==================================================
+LOOP.md
+SPEC.md
+AGENTS.md
+progress.md
+tasks.json
+scripts/loop-status.mjs
+docs/QA_CHECKLIST.md

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { AppState, Platform, type AppStateStatus } from 'react-native';
 import {
   createAudioPlayer,
@@ -41,13 +41,25 @@ let sharedLoadFallbackTimer: ReturnType<typeof setTimeout> | null = null;
 let sharedSafetyTimer: ReturnType<typeof setTimeout> | null = null;
 let sharedSessionId = 0;
 let sharedActiveKey: string | null = null;
-const listeners = new Set<(key: string | null) => void>();
+const listeners = new Set<() => void>();
 
 function notifyActiveKey(nextKey: string | null) {
+  if (sharedActiveKey === nextKey) return;
   sharedActiveKey = nextKey;
   for (const listener of listeners) {
-    listener(nextKey);
+    listener();
   }
+}
+
+function subscribeActiveKey(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function getActiveKeySnapshot() {
+  return sharedActiveKey;
 }
 
 function clearTimers() {
@@ -225,18 +237,16 @@ async function speakWithTts(
 }
 
 export function useSpeechAudio() {
-  const [activeKey, setActiveKey] = useState<string | null>(sharedActiveKey);
+  const activeKey = useSyncExternalStore(
+    subscribeActiveKey,
+    getActiveKeySnapshot,
+    getActiveKeySnapshot
+  );
 
   useEffect(() => {
     ensureAppStateListener();
     // Android TTS 콜드 스타트 워밍업 및 영어 보이스 사전 조회
     void ensureEnglishVoice();
-
-    listeners.add(setActiveKey);
-    setActiveKey(sharedActiveKey);
-    return () => {
-      listeners.delete(setActiveKey);
-    };
   }, []);
 
   const stop = useCallback(() => {

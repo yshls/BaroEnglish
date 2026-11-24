@@ -13,7 +13,7 @@ export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
       {/* 상단 강약 박자 리듬 요약 (● ⬤ ●) */}
       <View style={styles.rhythmBar}>
         <Text style={styles.rhythmBarLabel} maxFontSizeMultiplier={1.4}>
-          강약 리듬 박자
+          리듬
         </Text>
         <View style={styles.dotsRow}>
           {syllables.map((syl, idx) => {
@@ -62,13 +62,13 @@ export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
               {isPrimary ? (
                 <View style={styles.primaryTag}>
                   <Text style={styles.primaryTagText} maxFontSizeMultiplier={1.3}>
-                    ⬤ 강하게
+                    강세
                   </Text>
                 </View>
               ) : isSecondary ? (
                 <View style={styles.secondaryTag}>
                   <Text style={styles.secondaryTagText} maxFontSizeMultiplier={1.3}>
-                    ● 살짝 강하게
+                    보조
                   </Text>
                 </View>
               ) : (

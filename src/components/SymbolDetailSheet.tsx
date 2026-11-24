@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -33,13 +33,19 @@ export function SymbolDetailSheet({
   const { playNormal, playSlow, stop, activeKey } = useSpeechAudio();
   const learnedSymbolIds = useLearningStore((state) => state.learnedSymbolIds);
   const toggleSymbolLearned = useLearningStore((state) => state.toggleSymbolLearned);
+  const bookmarkedSymbolIds = useLearningStore(
+    (state) => state.bookmarkedSymbolIds
+  );
+  const toggleSymbolBookmark = useLearningStore(
+    (state) => state.toggleSymbolBookmark
+  );
 
   // 닫기 슬라이드 애니메이션 중 내용이 즉시 사라지지 않도록 직전 기호 유지
-  const lastSymbolRef = useRef<IpaSymbol | null>(symbol);
-  if (symbol) {
-    lastSymbolRef.current = symbol;
+  const [cachedSymbol, setCachedSymbol] = useState<IpaSymbol | null>(symbol);
+  if (symbol && symbol !== cachedSymbol) {
+    setCachedSymbol(symbol);
   }
-  const activeSymbol = symbol ?? lastSymbolRef.current;
+  const activeSymbol = symbol ?? cachedSymbol;
 
   // 바텀시트가 열릴 때 이전 화면의 오디오 즉시 중단
   useEffect(() => {
@@ -51,6 +57,7 @@ export function SymbolDetailSheet({
   if (!activeSymbol) return null;
 
   const isLearned = learnedSymbolIds.includes(activeSymbol.id);
+  const isBookmarked = bookmarkedSymbolIds.includes(activeSymbol.id);
 
   const handleClose = () => {
     stop();
@@ -120,7 +127,7 @@ export function SymbolDetailSheet({
               <View style={styles.guideHeaderRow}>
                 <Ionicons name="happy-outline" size={24} color={COLORS.primary} />
                 <Text style={styles.guideLabel} maxFontSizeMultiplier={1.4}>
-                  입 모양 · 혀 위치 안내
+                  입 모양 · 혀 위치
                 </Text>
               </View>
               <Text style={styles.guideBody} maxFontSizeMultiplier={1.5}>
@@ -140,7 +147,7 @@ export function SymbolDetailSheet({
             {/* 대표 기초 단어 3개 */}
             <View style={styles.examplesSection}>
               <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
-                대표 기초 단어 3개 (눌러서 듣기)
+                대표 단어
               </Text>
               <View style={styles.exampleList}>
                 {activeSymbol.examples.map((ex) => {
@@ -212,7 +219,7 @@ export function SymbolDetailSheet({
                             style={styles.playBtnSlowText}
                             maxFontSizeMultiplier={1.3}
                           >
-                            {isSlowPlaying ? '천천히 중' : '천천히'}
+                            {isSlowPlaying ? '재생 중' : '천천히'}
                           </Text>
                         </Tap>
                       </View>
@@ -247,7 +254,7 @@ export function SymbolDetailSheet({
                 ]}
                 maxFontSizeMultiplier={1.35}
               >
-                {isLearned ? '익힘 완료 (눌러서 해제)' : '익혔어요 (완료 체크)'}
+                {isLearned ? '익힘 완료' : '익혔어요'}
               </Text>
             </Tap>
           </View>
@@ -318,23 +325,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.text,
   },
-  closeButton: {
-    minHeight: TOUCH.minTarget,
-    minWidth: TOUCH.minTarget,
-    paddingHorizontal: 14,
-    borderRadius: RADIUS.md,
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  iconActionButton: {
+    width: TOUCH.minTarget,
+    height: TOUCH.minTarget,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.card,
     borderWidth: 1,
     borderColor: COLORS.border,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
   },
-  closeButtonText: {
-    fontSize: TYPOGRAPHY.body,
-    fontWeight: '700',
-    color: COLORS.text,
+  bookmarkButtonActive: {
+    backgroundColor: COLORS.accentSoft,
+    borderColor: COLORS.accent,
   },
   scrollBody: {
     flexGrow: 0,
