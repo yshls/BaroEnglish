@@ -1679,14 +1679,10 @@ const styles = StyleSheet.create({
   bookmarkToggleBtn: {
     width: TOUCH.minTarget,
     height: TOUCH.minTarget,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bookmarkToggleBtnActive: {
-    backgroundColor: COLORS.tint,
-  },
+  bookmarkToggleBtnActive: {},
   wordHeaderRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

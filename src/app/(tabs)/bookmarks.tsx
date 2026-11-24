@@ -1430,8 +1430,6 @@ const styles = StyleSheet.create({
   removeBookmarkBtn: {
     width: TOUCH.minTarget,
     height: TOUCH.minTarget,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.tint,
     alignItems: 'center',
     justifyContent: 'center',
   },

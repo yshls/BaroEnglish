@@ -660,23 +660,15 @@ const styles = StyleSheet.create({
   bookmarkIconBtn: {
     width: TOUCH.minTarget,
     height: TOUCH.minTarget,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOW.card,
   },
-  bookmarkIconBtnActive: {
-    backgroundColor: COLORS.tint,
-  },
+  bookmarkIconBtnActive: {},
   closeButton: {
     width: TOUCH.minTarget,
     height: TOUCH.minTarget,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOW.card,
   },
   scrollBody: {
     flexGrow: 0,

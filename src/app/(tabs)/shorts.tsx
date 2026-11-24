@@ -1669,14 +1669,10 @@ const styles = StyleSheet.create({
   bookmarkBtn: {
     width: 44,
     height: 44,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bookmarkBtnActive: {
-    backgroundColor: COLORS.tint,
-  },
+  bookmarkBtnActive: {},
   sentenceHeroCenter: {
     flex: 1,
     justifyContent: 'center',

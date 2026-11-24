@@ -10,7 +10,6 @@ import { useLearningStore } from '../store/useLearningStore';
 import {
   COLORS,
   FONTS,
-  RADIUS,
   SHADOW,
   SPACING,
 } from '../theme/tokens';
@@ -131,16 +130,12 @@ const styles = StyleSheet.create({
   iconActionBtn: {
     width: 38,
     height: 38,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   streakBadge: {
     height: 36,
-    paddingHorizontal: 11,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.surface,
+    paddingHorizontal: 4,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
