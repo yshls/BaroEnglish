@@ -22,6 +22,8 @@ export const SPEECH_RATES = {
   normal: 0.95,
   // Android TTS에서 0.6x 기계음/끊김 완화를 위해 0.65로 플랫폼 보정 (SPEC.md 5.2)
   slow: Platform.OS === 'android' ? 0.65 : 0.6,
+  // 실전 회화 리듬 연습용 빠르게 재생 속도
+  fast: 1.25,
 } as const;
 
 const REMOTE_LOAD_FALLBACK_MS = 2500;
@@ -41,25 +43,13 @@ let sharedLoadFallbackTimer: ReturnType<typeof setTimeout> | null = null;
 let sharedSafetyTimer: ReturnType<typeof setTimeout> | null = null;
 let sharedSessionId = 0;
 let sharedActiveKey: string | null = null;
-const listeners = new Set<() => void>();
+const listeners = new Set<(key: string | null) => void>();
 
 function notifyActiveKey(nextKey: string | null) {
-  if (sharedActiveKey === nextKey) return;
   sharedActiveKey = nextKey;
   for (const listener of listeners) {
-    listener();
+    listener(nextKey);
   }
-}
-
-function subscribeActiveKey(listener: () => void) {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-}
-
-function getActiveKeySnapshot() {
-  return sharedActiveKey;
 }
 
 function clearTimers() {
@@ -236,6 +226,18 @@ async function speakWithTts(
   }
 }
 
+function subscribeActiveKey(onStoreChange: () => void): () => void {
+  const listener = () => onStoreChange();
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function getActiveKeySnapshot(): string | null {
+  return sharedActiveKey;
+}
+
 export function useSpeechAudio() {
   const activeKey = useSyncExternalStore(
     subscribeActiveKey,
@@ -359,9 +361,31 @@ export function useSpeechAudio() {
     []
   );
 
+  /**
+   * 빠르게 듣기 (1.25x):
+   * 실전 회화 리듬에 익숙해지도록 expo-speech로 빠르게 재생.
+   */
+  const playFast = useCallback(
+    async (text: string, options?: Omit<PlayOptions, 'audioAsset' | 'audioUrl'>) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+
+      const sessionId = await stopGlobalAudio();
+      if (sharedSessionId !== sessionId) return;
+
+      const key = options?.key ?? `fast:${trimmed.toLowerCase()}`;
+      await ensureAudioMode();
+      if (sharedSessionId !== sessionId) return;
+
+      await speakWithTts(trimmed, SPEECH_RATES.fast, key, sessionId);
+    },
+    []
+  );
+
   return {
     playNormal,
     playSlow,
+    playFast,
     stop,
     activeKey,
     isPlaying: activeKey !== null,

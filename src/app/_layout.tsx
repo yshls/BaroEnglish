@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Platform, UIManager } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { WebAnalytics } from '../components/WebAnalytics';
 import { COLORS } from '../theme/tokens';
 import { useAppFonts } from '../theme/useAppFonts';
 
@@ -30,6 +31,7 @@ export default function RootLayout() {
       >
         <Stack.Screen name="(tabs)" />
       </Stack>
+      <WebAnalytics />
     </SafeAreaProvider>
   );
 }

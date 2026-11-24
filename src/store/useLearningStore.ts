@@ -34,7 +34,9 @@ export const useLearningStore = create<LearningState>()(
 
       toggleSymbolLearned: (symbolId: string) => {
         if (!get().hasHydrated) return;
-        const current = get().learnedSymbolIds;
+        const current = Array.isArray(get().learnedSymbolIds)
+          ? get().learnedSymbolIds
+          : [];
         const exists = current.includes(symbolId);
         const next = exists
           ? current.filter((id) => id !== symbolId)
@@ -43,12 +45,15 @@ export const useLearningStore = create<LearningState>()(
       },
 
       isSymbolLearned: (symbolId: string) => {
-        return get().learnedSymbolIds.includes(symbolId);
+        const list = get().learnedSymbolIds;
+        return Array.isArray(list) ? list.includes(symbolId) : false;
       },
 
       toggleSymbolBookmark: (symbolId: string) => {
         if (!get().hasHydrated) return;
-        const current = get().bookmarkedSymbolIds;
+        const current = Array.isArray(get().bookmarkedSymbolIds)
+          ? get().bookmarkedSymbolIds
+          : [];
         const exists = current.includes(symbolId);
         const next = exists
           ? current.filter((id) => id !== symbolId)
@@ -57,7 +62,8 @@ export const useLearningStore = create<LearningState>()(
       },
 
       isSymbolBookmarked: (symbolId: string) => {
-        return get().bookmarkedSymbolIds.includes(symbolId);
+        const list = get().bookmarkedSymbolIds;
+        return Array.isArray(list) ? list.includes(symbolId) : false;
       },
 
       setShowKoPronunciation: (show: boolean) => {

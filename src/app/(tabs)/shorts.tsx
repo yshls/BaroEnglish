@@ -1,0 +1,1362 @@
+import { IconBolt, IconBookmark, IconBookmarkFilled, IconCloudOff, IconGauge, IconLanguage, IconMicrophone, IconSparkles, IconVolume, IconVolume2 } from '@tabler/icons-react-native';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  type ViewStyle,
+} from 'react-native';
+import { PronunciationPracticeSheet } from '../../components/PronunciationPracticeCard';
+import { TappableExampleSentence } from '../../components/TappableExampleSentence';
+import { WordMeaningSheet } from '../../components/WordMeaningSheet';
+import { useSpeechAudio } from '../../hooks/useSpeechAudio';
+import {
+  fetchDailyFeedCandidates,
+  lookupWordFromApis,
+  translateEnglishSentenceToKorean,
+} from '../../services/wordApi';
+import { useWordCacheStore } from '../../store/useWordCacheStore';
+import { COLORS, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
+import type { CoreWord } from '../../types/learning';
+
+const INITIAL_BATCH_SIZE = 4;
+const PREFETCH_BATCH_SIZE = 4;
+const PREFETCH_AHEAD_THRESHOLD = 4;
+
+const WEB_LIST_SNAP_STYLE: ViewStyle | undefined =
+  Platform.OS === 'web'
+    ? ({ scrollSnapType: 'y mandatory' } as unknown as ViewStyle)
+    : undefined;
+
+const WEB_PAGE_SNAP_STYLE: ViewStyle | undefined =
+  Platform.OS === 'web'
+    ? ({
+        scrollSnapAlign: 'start',
+        scrollSnapStop: 'always',
+      } as unknown as ViewStyle)
+    : undefined;
+
+export default function PronunciationShortsScreen() {
+  const [feedWords, setFeedWords] = useState<CoreWord[]>([]);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [studiedIds, setStudiedIds] = useState<Record<string, boolean>>({});
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [feedError, setFeedError] = useState(false);
+  const [tappedExampleWord, setTappedExampleWord] = useState<string | null>(null);
+  const [practiceWord, setPracticeWord] = useState<CoreWord | null>(null);
+  const [exampleKoMap, setExampleKoMap] = useState<Record<string, string>>({});
+  const [translatingExamples, setTranslatingExamples] = useState<Record<string, boolean>>({});
+
+  const flatListRef = useRef<FlatList<CoreWord>>(null);
+  const seenWordsRef = useRef<Set<string>>(new Set());
+  const attemptedExampleRef = useRef<Set<string>>(new Set());
+  const candidateQueueRef = useRef<string[]>([]);
+  const discoveryCursorRef = useRef<number | null>(null);
+  const lastSeedWordRef = useRef<string | undefined>(undefined);
+  const isFetchingRef = useRef(false);
+  const didInitRef = useRef(false);
+  const mountedRef = useRef(true);
+  const lastActiveIndexRef = useRef(0);
+
+  const cachedWords = useWordCacheStore((state) => state.cachedWords);
+  const bookmarkedWordKeys = useWordCacheStore((state) => state.bookmarkedWordKeys);
+  const cacheHasHydrated = useWordCacheStore((state) => state.hasHydrated);
+  const saveWord = useWordCacheStore((state) => state.saveWord);
+  const toggleBookmark = useWordCacheStore((state) => state.toggleBookmark);
+
+  const { playNormal, playSlow, playFast, stop, activeKey } = useSpeechAudio();
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // 탭 이탈 시 재생 중인 음성 즉시 중단
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        stop();
+      };
+    }, [stop])
+  );
+
+  const markStudied = useCallback((wordId: string) => {
+    setStudiedIds((prev) => (prev[wordId] ? prev : { ...prev, [wordId]: true }));
+  }, []);
+
+  const loadNextBatch = useCallback(
+    async (count: number) => {
+      if (isFetchingRef.current) return;
+      isFetchingRef.current = true;
+      if (discoveryCursorRef.current === null) {
+        discoveryCursorRef.current = Math.floor(Math.random() * 130);
+      }
+      if (mountedRef.current) {
+        setIsFetchingMore(true);
+        setFeedError(false);
+      }
+
+      try {
+        // 하드코딩 단어 목록 없이 Datamuse 알파벳 와일드카드 + 연상어 그래프 탐색으로 무한 수급
+        let attempts = 0;
+        while (candidateQueueRef.current.length < count && attempts < 5) {
+          const candidates = await fetchDailyFeedCandidates(
+            discoveryCursorRef.current,
+            seenWordsRef.current,
+            lastSeedWordRef.current
+          );
+          discoveryCursorRef.current += 1;
+          attempts += 1;
+
+          for (const w of candidates) {
+            if (
+              !seenWordsRef.current.has(w) &&
+              !candidateQueueRef.current.includes(w)
+            ) {
+              candidateQueueRef.current.push(w);
+            }
+          }
+        }
+
+        const nextBatchKeys = candidateQueueRef.current.splice(0, count);
+        if (nextBatchKeys.length === 0) {
+          if (mountedRef.current) {
+            setFeedError(true);
+          }
+          return;
+        }
+
+        for (const k of nextBatchKeys) {
+          seenWordsRef.current.add(k);
+        }
+
+        let addedCount = 0;
+
+        // 전체 배치를 기다리지 않고 각 단어가 완료되는 즉시 피드에 스트리밍 추가 (~0.5초)
+        await Promise.allSettled(
+          nextBatchKeys.map(async (w) => {
+            const res = await lookupWordFromApis(w, { fastFeedMode: true });
+            if (!res.word || !mountedRef.current) return;
+            const resolvedWord = res.word;
+            addedCount += 1;
+            lastSeedWordRef.current = resolvedWord.word;
+            saveWord(resolvedWord);
+            setFeedWords((prev) => {
+              if (prev.some((item) => item.id === resolvedWord.id)) {
+                return prev;
+              }
+              return [...prev, resolvedWord];
+            });
+          })
+        );
+
+        if (mountedRef.current && addedCount === 0) {
+          setFeedError(true);
+        }
+      } catch {
+        if (mountedRef.current) {
+          setFeedError(true);
+        }
+      } finally {
+        isFetchingRef.current = false;
+        if (mountedRef.current) {
+          setIsFetchingMore(false);
+        }
+      }
+    },
+    [saveWord]
+  );
+
+  // 캐시 하이드레이션 완료 후 초기 피드 구성 (캐시 단어 즉시 표시 + 실시간 무한 API 선로딩)
+  useEffect(() => {
+    if (!cacheHasHydrated || didInitRef.current) return;
+    didInitRef.current = true;
+
+    let cancelled = false;
+    const cachedList = Object.values(cachedWords).filter(
+      (item) => item && item.word && item.syllables?.length > 0
+    );
+
+    void Promise.resolve().then(() => {
+      if (cancelled) return;
+      if (cachedList.length > 0) {
+        const initialSlice = cachedList.slice(0, 4);
+        for (const item of initialSlice) {
+          seenWordsRef.current.add(item.word.toLowerCase());
+        }
+        lastSeedWordRef.current = initialSlice[initialSlice.length - 1]?.word;
+        setFeedWords(initialSlice);
+        // 처음부터 바로 뒤쪽 릴스 카드를 백그라운드에서 채워 끊김 방지
+        void loadNextBatch(INITIAL_BATCH_SIZE);
+      } else {
+        void loadNextBatch(INITIAL_BATCH_SIZE);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cacheHasHydrated, cachedWords, loadNextBatch]);
+
+  // 현재 카드 기준 남은 카드가 4장 이하이고 로딩 중이 아니면 다음 배치를 자동으로 미리 불러옴
+  useEffect(() => {
+    if (!didInitRef.current || feedWords.length === 0 || isFetchingMore || feedError) {
+      return;
+    }
+    if (feedWords.length - 1 - activeIndex > PREFETCH_AHEAD_THRESHOLD) return;
+
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) {
+        void loadNextBatch(PREFETCH_BATCH_SIZE);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeIndex, feedError, feedWords.length, isFetchingMore, loadNextBatch]);
+
+  const handleViewportLayout = useCallback((event: LayoutChangeEvent) => {
+    const nextHeight = Math.round(event.nativeEvent.layout.height);
+    if (nextHeight > 0) {
+      setViewportHeight((prev) => (Math.abs(prev - nextHeight) > 2 ? nextHeight : prev));
+    }
+  }, []);
+
+  // 모바일 스와이프 + 웹 마우스 휠/트랙패드 스크롤 모두에서 현재 카드 인덱스를 실시간 추적
+  const syncIndexFromOffset = useCallback(
+    (offsetY: number) => {
+      if (viewportHeight <= 0 || feedWords.length === 0) return;
+      const rawIndex = Math.round(offsetY / viewportHeight);
+      const nextIndex = Math.max(0, Math.min(feedWords.length - 1, rawIndex));
+      if (nextIndex !== lastActiveIndexRef.current) {
+        lastActiveIndexRef.current = nextIndex;
+        setActiveIndex(nextIndex);
+        stop();
+      }
+      // 끝부분이나 하단 로딩 카드로 스크롤했을 때 대기 중이 아니라면 즉시 추가 로드
+      if (
+        rawIndex >= feedWords.length - PREFETCH_AHEAD_THRESHOLD &&
+        !isFetchingRef.current
+      ) {
+        void loadNextBatch(PREFETCH_BATCH_SIZE);
+      }
+    },
+    [feedWords.length, loadNextBatch, stop, viewportHeight]
+  );
+
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      syncIndexFromOffset(event.nativeEvent.contentOffset.y);
+    },
+    [syncIndexFromOffset]
+  );
+
+  const scrollToCard = useCallback(
+    (targetIndex: number) => {
+      if (targetIndex < 0 || targetIndex >= feedWords.length) return;
+      stop();
+      lastActiveIndexRef.current = targetIndex;
+      setActiveIndex(targetIndex);
+      flatListRef.current?.scrollToIndex({
+        index: targetIndex,
+        animated: true,
+      });
+    },
+    [feedWords.length, stop]
+  );
+
+  // 웹에서 키보드 ↑ / ↓ 방향키로도 릴스처럼 한 장씩 넘기기 지원
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (tappedExampleWord !== null || practiceWord !== null) return;
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        if (lastActiveIndexRef.current < feedWords.length - 1) {
+          scrollToCard(lastActiveIndexRef.current + 1);
+        } else {
+          void loadNextBatch(PREFETCH_BATCH_SIZE);
+        }
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        if (lastActiveIndexRef.current > 0) {
+          scrollToCard(lastActiveIndexRef.current - 1);
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [feedWords.length, loadNextBatch, practiceWord, scrollToCard, tappedExampleWord]);
+
+  const ensureExampleTranslation = useCallback(
+    async (wordItem: CoreWord, sentence: string) => {
+      setTranslatingExamples((prev) => ({ ...prev, [sentence]: true }));
+      try {
+        const ko = await translateEnglishSentenceToKorean(sentence);
+        if (ko && mountedRef.current) {
+          setExampleKoMap((prev) => ({ ...prev, [sentence]: ko }));
+          const baseExamples =
+            wordItem.examples && wordItem.examples.length > 0
+              ? wordItem.examples
+              : wordItem.exampleEn
+                ? [{ en: wordItem.exampleEn }]
+                : [];
+          const updatedExamples = baseExamples.map((ex) =>
+            ex.en === sentence ? { ...ex, ko } : ex
+          );
+          const enriched: CoreWord = {
+            ...wordItem,
+            examples: updatedExamples,
+          };
+          saveWord(enriched);
+          setFeedWords((prev) =>
+            prev.map((w) => (w.id === wordItem.id ? enriched : w))
+          );
+        }
+      } finally {
+        if (mountedRef.current) {
+          setTranslatingExamples((prev) => {
+            const next = { ...prev };
+            delete next[sentence];
+            return next;
+          });
+        }
+      }
+    },
+    [saveWord]
+  );
+
+  // 현재 보고 있는 쇼츠 카드의 예문에 한글 뜻이 없으면 자동으로 보강
+  useEffect(() => {
+    const activeItem = feedWords[activeIndex];
+    if (!activeItem) return;
+    const firstEx =
+      activeItem.examples && activeItem.examples.length > 0
+        ? activeItem.examples[0]
+        : activeItem.exampleEn
+          ? { en: activeItem.exampleEn, ko: undefined }
+          : null;
+    if (!firstEx || firstEx.ko || attemptedExampleRef.current.has(firstEx.en)) {
+      return;
+    }
+    attemptedExampleRef.current.add(firstEx.en);
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (cancelled) return;
+      void ensureExampleTranslation(activeItem, firstEx.en);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeIndex, ensureExampleTranslation, feedWords]);
+
+  const studiedCount = Object.keys(studiedIds).length;
+  const safeBookmarkKeys = useMemo(
+    () => (Array.isArray(bookmarkedWordKeys) ? bookmarkedWordKeys : []),
+    [bookmarkedWordKeys]
+  );
+
+  const renderCard = useCallback(
+    ({ item, index }: { item: CoreWord; index: number }) => {
+      const isBookmarked = safeBookmarkKeys.includes(item.word.toLowerCase());
+      const firstExample =
+        item.examples && item.examples.length > 0
+          ? item.examples[0]
+          : item.exampleEn
+            ? { en: item.exampleEn, ko: undefined }
+            : null;
+
+      const slowKey = `shorts:${item.id}:slow`;
+      const normalKey = `shorts:${item.id}:normal`;
+      const fastKey = `shorts:${item.id}:fast`;
+      const exSlowKey = `shorts:${item.id}:ex:slow`;
+      const exNormalKey = `shorts:${item.id}:ex:normal`;
+
+      const isSlowPlaying = activeKey === slowKey;
+      const isNormalPlaying = activeKey === normalKey;
+      const isFastPlaying = activeKey === fastKey;
+      const isExSlowPlaying = activeKey === exSlowKey;
+      const isExNormalPlaying = activeKey === exNormalKey;
+
+      const showStressChips = item.syllables.length > 1;
+
+      const resolvedExKo = firstExample
+        ? firstExample.ko || exampleKoMap[firstExample.en]
+        : undefined;
+      const isExTranslating = Boolean(
+        firstExample && translatingExamples[firstExample.en]
+      );
+
+      return (
+        <View
+          style={[
+            styles.pageSlot,
+            viewportHeight > 0 ? { height: viewportHeight } : styles.pageSlotFallback,
+            WEB_PAGE_SNAP_STYLE,
+          ]}
+        >
+          <View style={styles.shortsCard}>
+            {/* 심플 상단 바: 품사·순번 + 북마크 */}
+            <View style={styles.topBar}>
+              <View style={styles.topMetaRow}>
+                {item.partOfSpeech ? (
+                  <View style={styles.posBadge}>
+                    <Text style={styles.posBadgeText} maxFontSizeMultiplier={1.25}>
+                      {item.partOfSpeech}
+                    </Text>
+                  </View>
+                ) : null}
+                <Text style={styles.indexCaption} maxFontSizeMultiplier={1.25}>
+                  #{index + 1}
+                  {studiedCount > 0 ? ` · 오늘 ${studiedCount}` : ''}
+                </Text>
+              </View>
+
+              <Pressable
+                onPress={() => toggleBookmark(item)}
+                style={({ pressed }) => [
+                  styles.bookmarkBtn,
+                  isBookmarked && styles.bookmarkBtnActive,
+                  pressed && styles.pressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isBookmarked }}
+                accessibilityLabel={
+                  isBookmarked ? `${item.word} 북마크 해제` : `${item.word} 북마크 저장`
+                }
+              >
+                {isBookmarked ? (
+                  <IconBookmarkFilled size={20} color={COLORS.goldText} />
+                ) : (
+                  <IconBookmark size={20} color={COLORS.textMuted} />
+                )}
+                <Text
+                  style={[
+                    styles.bookmarkBtnText,
+                    isBookmarked && styles.bookmarkBtnTextActive,
+                  ]}
+                  maxFontSizeMultiplier={1.25}
+                >
+                  {isBookmarked ? '저장됨' : '북마크'}
+                </Text>
+              </Pressable>
+            </View>
+
+            {/* 중앙 핵심 영역: 영단어 + 뜻 바로 표시 + 발음 + 1줄 액션 */}
+            <View style={styles.heroCenter}>
+              <Text
+                style={styles.heroWord}
+                adjustsFontSizeToFit
+                numberOfLines={1}
+                maxFontSizeMultiplier={1.3}
+              >
+                {item.word}
+              </Text>
+
+              <Text style={styles.heroMeaning} maxFontSizeMultiplier={1.35}>
+                {item.meaningKo}
+              </Text>
+
+              <View style={styles.pronRow}>
+                <View style={styles.ipaPill}>
+                  <Text style={styles.ipaText} maxFontSizeMultiplier={1.3}>
+                    {item.ipa}
+                  </Text>
+                </View>
+                {item.koPronunciation ? (
+                  <Text style={styles.koPronText} maxFontSizeMultiplier={1.3}>
+                    {item.koPronunciation}
+                  </Text>
+                ) : null}
+              </View>
+
+              {/* 2음절 이상일 때만 강세 리듬 칩 표시 (터치하면 개별 음절 소리 재생) */}
+              {showStressChips ? (
+                <View style={styles.syllablesRow}>
+                  {item.syllables.map((syl, sIdx) => {
+                    const isPrimary = syl.stress === 'primary';
+                    const isSecondary = syl.stress === 'secondary';
+                    const sylKey = `shorts:${item.id}:syl:${sIdx}`;
+                    const isSylPlaying = activeKey === sylKey;
+                    return (
+                      <Pressable
+                        key={`${item.id}-syl-${sIdx}`}
+                        onPress={() => {
+                          markStudied(item.id);
+                          void playSlow(syl.text, { key: sylKey });
+                        }}
+                        style={({ pressed }) => [
+                          styles.sylChip,
+                          isPrimary && styles.sylChipPrimary,
+                          !isPrimary && isSecondary && styles.sylChipSecondary,
+                          isSylPlaying && styles.sylChipActive,
+                          pressed && styles.pressed,
+                        ]}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${syl.text} 음절 듣기`}
+                      >
+                        <Text
+                          style={[
+                            styles.sylDot,
+                            isPrimary && styles.sylDotPrimary,
+                          ]}
+                          maxFontSizeMultiplier={1.2}
+                        >
+                          {isPrimary ? '⬤' : '●'}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.sylText,
+                            isPrimary && styles.sylTextPrimary,
+                            isSylPlaying && styles.sylTextActive,
+                          ]}
+                          maxFontSizeMultiplier={1.3}
+                        >
+                          {syl.text}
+                        </Text>
+                        {isSylPlaying ? (
+                          <IconVolume size={14} color={COLORS.primary} />
+                        ) : (
+                          <IconVolume2 size={14} color={COLORS.textMuted} />
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : null}
+
+              {/* 핵심 듣기·말하기 1줄 통합 버튼 */}
+              <View style={styles.speedRow}>
+                <Pressable
+                  onPress={() => {
+                    markStudied(item.id);
+                    void playSlow(item.word, { key: slowKey });
+                  }}
+                  style={({ pressed }) => [
+                    styles.speedSlowBtn,
+                    isSlowPlaying && styles.speedSlowBtnActive,
+                    pressed && styles.pressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.word} 천천히 듣기`}
+                >
+                  <IconGauge
+                    size={19}
+                    color={isSlowPlaying ? COLORS.white : COLORS.tealText}
+                  />
+                  <Text
+                    style={[
+                      styles.speedSlowText,
+                      isSlowPlaying && styles.speedTextActive,
+                    ]}
+                    maxFontSizeMultiplier={1.25}
+                  >
+                    {isSlowPlaying ? '중' : '천천히'}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    markStudied(item.id);
+                    void playNormal(item.word, {
+                      audioUrl: item.audioUrl,
+                      audioAsset: item.audioAsset,
+                      key: normalKey,
+                    });
+                  }}
+                  style={({ pressed }) => [
+                    styles.speedNormalBtn,
+                    isNormalPlaying && styles.speedNormalBtnActive,
+                    pressed && styles.pressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.word} 보통 속도 듣기`}
+                >
+                  <IconVolume size={20} color={COLORS.white} />
+                  <Text style={styles.speedNormalText} maxFontSizeMultiplier={1.25}>
+                    {isNormalPlaying ? '재생 중' : '듣기'}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    markStudied(item.id);
+                    void playFast(item.word, { key: fastKey });
+                  }}
+                  style={({ pressed }) => [
+                    styles.speedFastBtn,
+                    isFastPlaying && styles.speedFastBtnActive,
+                    pressed && styles.pressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.word} 빠르게 듣기`}
+                >
+                  <IconBolt
+                    size={19}
+                    color={isFastPlaying ? COLORS.white : COLORS.purpleText}
+                  />
+                  <Text
+                    style={[
+                      styles.speedFastText,
+                      isFastPlaying && styles.speedTextActive,
+                    ]}
+                    maxFontSizeMultiplier={1.25}
+                  >
+                    {isFastPlaying ? '중' : '빠르게'}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    stop();
+                    markStudied(item.id);
+                    setPracticeWord(item);
+                  }}
+                  style={({ pressed }) => [
+                    styles.speakCompactBtn,
+                    pressed && styles.pressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.word} 따라 말하고 내 발음 비교하기`}
+                >
+                  <IconMicrophone size={19} color={COLORS.roseText} />
+                  <Text style={styles.speakCompactText} maxFontSizeMultiplier={1.25}>
+                    말하기
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* 예문 + 한글 뜻 (바로 표시) */}
+            {firstExample ? (
+              <View style={styles.exampleBox}>
+                <View style={styles.exampleTopRow}>
+                  <Text style={styles.exampleLabel} maxFontSizeMultiplier={1.25}>
+                    예문 · 단어 누르면 뜻 보기
+                  </Text>
+                  <View style={styles.exampleMiniAudioRow}>
+                    <Pressable
+                      onPress={() =>
+                        void playSlow(firstExample.en, { key: exSlowKey })
+                      }
+                      style={({ pressed }) => [
+                        styles.exMiniSlowBtn,
+                        isExSlowPlaying && styles.speedSlowBtnActive,
+                        pressed && styles.pressed,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel="예문 천천히 듣기"
+                    >
+                      <Text
+                        style={[
+                          styles.exMiniSlowText,
+                          isExSlowPlaying && styles.speedTextActive,
+                        ]}
+                        maxFontSizeMultiplier={1.2}
+                      >
+                        0.6x
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() =>
+                        void playNormal(firstExample.en, { key: exNormalKey })
+                      }
+                      style={({ pressed }) => [
+                        styles.exMiniPlayBtn,
+                        isExNormalPlaying && styles.speedNormalBtnActive,
+                        pressed && styles.pressed,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel="예문 듣기"
+                    >
+                      <IconVolume2
+                        size={16}
+                        color={isExNormalPlaying ? COLORS.white : COLORS.primaryDark}
+                      />
+                      <Text
+                        style={[
+                          styles.exMiniPlayText,
+                          isExNormalPlaying && styles.speedTextActive,
+                        ]}
+                        maxFontSizeMultiplier={1.2}
+                      >
+                        듣기
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+
+                <TappableExampleSentence
+                  sentence={firstExample.en}
+                  targetWord={item.word}
+                  selectedWord={tappedExampleWord}
+                  onWordPress={(w) => setTappedExampleWord(w)}
+                  compact
+                />
+
+                {resolvedExKo ? (
+                  <Text
+                    style={styles.exampleKo}
+                    numberOfLines={2}
+                    maxFontSizeMultiplier={1.35}
+                  >
+                    {resolvedExKo}
+                  </Text>
+                ) : isExTranslating ? (
+                  <View style={styles.exampleKoLoadingRow}>
+                    <ActivityIndicator size="small" color={COLORS.indigo} />
+                    <Text
+                      style={styles.exampleKoLoadingText}
+                      maxFontSizeMultiplier={1.25}
+                    >
+                      예문 뜻 불러오는 중...
+                    </Text>
+                  </View>
+                ) : (
+                  <Pressable
+                    onPress={() =>
+                      void ensureExampleTranslation(item, firstExample.en)
+                    }
+                    style={({ pressed }) => [
+                      styles.exampleKoRetryBtn,
+                      pressed && styles.pressed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel="예문 한글 뜻 보기"
+                  >
+                    <IconLanguage
+                      size={16}
+                      color={COLORS.indigoText}
+                    />
+                    <Text
+                      style={styles.exampleKoRetryText}
+                      maxFontSizeMultiplier={1.25}
+                    >
+                      예문 뜻 보기
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            ) : null}
+
+            {/* 스와이프 안내 (위·아래 버튼 없이 직접 넘기기) */}
+            <View style={styles.reelCueRow}>
+              <Text style={styles.reelSwipeText} maxFontSizeMultiplier={1.2}>
+                {isFetchingMore && index === feedWords.length - 1
+                  ? '새 단어 불러오는 중...'
+                  : '스와이프해서 다음 단어 보기'}
+              </Text>
+            </View>
+          </View>
+        </View>
+      );
+    },
+    [
+      activeKey,
+      ensureExampleTranslation,
+      exampleKoMap,
+      feedWords.length,
+      isFetchingMore,
+      markStudied,
+      playFast,
+      playNormal,
+      playSlow,
+      safeBookmarkKeys,
+      stop,
+      studiedCount,
+      tappedExampleWord,
+      toggleBookmark,
+      translatingExamples,
+      viewportHeight,
+    ]
+  );
+
+  const renderFooter = useCallback(() => {
+    return (
+      <View
+        style={[
+          styles.pageSlot,
+          viewportHeight > 0 ? { height: viewportHeight } : styles.pageSlotFallback,
+          WEB_PAGE_SNAP_STYLE,
+        ]}
+      >
+        <View style={styles.footerLoadingCard}>
+          {feedError ? (
+            <>
+              <IconCloudOff size={34} color={COLORS.roseText} />
+              <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
+                다음 단어를 잠시 불러오지 못했어요
+              </Text>
+              <Text style={styles.emptySub} maxFontSizeMultiplier={1.45}>
+                네트워크 연결을 확인한 뒤 다시 눌러 주세요.
+              </Text>
+              <Pressable
+                onPress={() => void loadNextBatch(PREFETCH_BATCH_SIZE)}
+                style={({ pressed }) => [
+                  styles.retryBtn,
+                  pressed && styles.pressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="새 단어 계속 불러오기"
+              >
+                <Text style={styles.retryBtnText} maxFontSizeMultiplier={1.3}>
+                  계속 불러오기
+                </Text>
+              </Pressable>
+            </>
+          ) : isFetchingMore ? (
+            <>
+              <ActivityIndicator size="large" color={COLORS.rose} />
+              <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
+                다음 발음 쇼츠를 불러오는 중...
+              </Text>
+              <Text style={styles.emptySub} maxFontSizeMultiplier={1.45}>
+                새로운 실생활 영단어와 원어민 발음을 실시간으로 가져오고 있어요.
+              </Text>
+            </>
+          ) : (
+            <>
+              <IconSparkles size={34} color={COLORS.rose} />
+              <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
+                새로운 발음 쇼츠가 준비돼 있어요
+              </Text>
+              <Text style={styles.emptySub} maxFontSizeMultiplier={1.45}>
+                아래 버튼을 누르면 새 실생활 영단어를 바로 이어서 볼 수 있어요.
+              </Text>
+              <Pressable
+                onPress={() => void loadNextBatch(PREFETCH_BATCH_SIZE)}
+                style={({ pressed }) => [
+                  styles.retryBtn,
+                  pressed && styles.pressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="새 발음 쇼츠 바로 불러오기"
+              >
+                <Text style={styles.retryBtnText} maxFontSizeMultiplier={1.3}>
+                  새 단어 바로 불러오기
+                </Text>
+              </Pressable>
+            </>
+          )}
+        </View>
+      </View>
+    );
+  }, [feedError, isFetchingMore, loadNextBatch, viewportHeight]);
+
+  if (feedWords.length === 0) {
+    return (
+      <View style={styles.centerState}>
+        {feedError ? (
+          <View style={styles.emptyCard}>
+            <IconCloudOff size={36} color={COLORS.roseText} />
+            <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
+              단어 피드를 불러오지 못했어요
+            </Text>
+            <Text style={styles.emptySub} maxFontSizeMultiplier={1.45}>
+              인터넷 연결을 확인한 뒤 다시 시도해 주세요.
+            </Text>
+            <Pressable
+              onPress={() => void loadNextBatch(INITIAL_BATCH_SIZE)}
+              style={({ pressed }) => [
+                styles.retryBtn,
+                pressed && styles.pressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="다시 불러오기"
+            >
+              <Text style={styles.retryBtnText} maxFontSizeMultiplier={1.3}>
+                다시 불러오기
+              </Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.emptyCard}>
+            <ActivityIndicator size="large" color={COLORS.rose} />
+            <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
+              발음 쇼츠 카드를 준비하고 있어요
+            </Text>
+            <Text style={styles.emptySub} maxFontSizeMultiplier={1.45}>
+              원어민 음성과 생활 예문을 실시간으로 모으는 중입니다...
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.screen} onLayout={handleViewportLayout}>
+      <FlatList
+        ref={flatListRef}
+        style={WEB_LIST_SNAP_STYLE}
+        data={feedWords}
+        keyExtractor={(item) => item.id}
+        renderItem={renderCard}
+        ListFooterComponent={renderFooter}
+        pagingEnabled={viewportHeight > 0}
+        snapToInterval={viewportHeight > 0 ? viewportHeight : undefined}
+        snapToAlignment="start"
+        decelerationRate="fast"
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        onMomentumScrollEnd={handleScroll}
+        onScrollEndDrag={handleScroll}
+        onEndReached={() => void loadNextBatch(PREFETCH_BATCH_SIZE)}
+        onEndReachedThreshold={1.5}
+        getItemLayout={
+          viewportHeight > 0
+            ? (_, idx) => ({
+                length: viewportHeight,
+                offset: viewportHeight * idx,
+                index: idx,
+              })
+            : undefined
+        }
+        windowSize={5}
+        initialNumToRender={2}
+        maxToRenderPerBatch={3}
+        removeClippedSubviews={false}
+      />
+
+      <WordMeaningSheet
+        word={tappedExampleWord}
+        visible={tappedExampleWord !== null}
+        onClose={() => setTappedExampleWord(null)}
+      />
+
+      <PronunciationPracticeSheet
+        visible={practiceWord !== null}
+        word={practiceWord?.word ?? null}
+        ipa={practiceWord?.ipa}
+        syllableCount={Math.max(1, practiceWord?.syllables.length ?? 1)}
+        onPlayNative={() => {
+          if (!practiceWord) return;
+          return playNormal(practiceWord.word, {
+            audioUrl: practiceWord.audioUrl,
+            audioAsset: practiceWord.audioAsset,
+            key: `shorts:practice:${practiceWord.id}`,
+          });
+        }}
+        onStopNative={stop}
+        onClose={() => setPracticeWord(null)}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  centerState: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+    justifyContent: 'center',
+    padding: SPACING.lg,
+  },
+  emptyCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.card,
+    padding: SPACING.xl,
+    alignItems: 'center',
+    gap: SPACING.sm,
+    ...SHADOW.card,
+  },
+  emptyTitle: {
+    fontSize: TYPOGRAPHY.sectionTitle,
+    fontWeight: '700',
+    color: COLORS.text,
+    textAlign: 'center',
+  },
+  emptySub: {
+    fontSize: TYPOGRAPHY.body,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    lineHeight: 26,
+  },
+  retryBtn: {
+    marginTop: SPACING.sm,
+    minHeight: TOUCH.recommendedHeight,
+    paddingHorizontal: SPACING.xl,
+    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryBtnText: {
+    fontSize: TYPOGRAPHY.bodyLarge,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  pageSlot: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pageSlotFallback: {
+    minHeight: 560,
+  },
+  shortsCard: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 560,
+    backgroundColor: COLORS.card,
+    borderRadius: 26,
+    padding: SPACING.lg,
+    justifyContent: 'space-between',
+    gap: SPACING.md,
+    ...SHADOW.card,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  topMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  posBadge: {
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 11,
+    paddingVertical: 4,
+  },
+  posBadgeText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: COLORS.textMuted,
+  },
+  indexCaption: {
+    fontSize: 15,
+    fontWeight: '400',
+    color: COLORS.textMuted,
+  },
+  bookmarkBtn: {
+    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.background,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  bookmarkBtnActive: {
+    backgroundColor: COLORS.goldSoft,
+  },
+  bookmarkBtnText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: COLORS.textMuted,
+  },
+  bookmarkBtnTextActive: {
+    fontWeight: '700',
+    color: COLORS.goldText,
+  },
+  heroCenter: {
+    alignItems: 'center',
+    gap: 10,
+  },
+  heroWord: {
+    fontSize: 44,
+    fontWeight: '700',
+    color: COLORS.text,
+    textAlign: 'center',
+  },
+  heroMeaning: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: COLORS.primaryDark,
+    textAlign: 'center',
+  },
+  pronRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  ipaPill: {
+    backgroundColor: COLORS.purpleSoft,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+  },
+  ipaText: {
+    fontSize: 20,
+    fontWeight: '500',
+    color: COLORS.purpleText,
+  },
+  koPronText: {
+    fontSize: TYPOGRAPHY.body,
+    fontWeight: '400',
+    color: COLORS.textMuted,
+  },
+  syllablesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  sylChip: {
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  sylChipPrimary: {
+    backgroundColor: COLORS.accentSoft,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  sylChipSecondary: {
+    backgroundColor: COLORS.tint,
+  },
+  sylDot: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+  },
+  sylDotPrimary: {
+    fontSize: 14,
+    color: COLORS.accentText,
+  },
+  sylText: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: COLORS.text,
+  },
+  sylTextPrimary: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: COLORS.accentText,
+  },
+  sylChipActive: {
+    backgroundColor: COLORS.tint,
+  },
+  sylTextActive: {
+    color: COLORS.primaryDark,
+  },
+  speedRow: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  speedSlowBtn: {
+    flex: 1,
+    minWidth: 80,
+    minHeight: TOUCH.minTarget,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.tealSoft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+  },
+  speedSlowBtnActive: {
+    backgroundColor: COLORS.teal,
+  },
+  speedSlowText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: COLORS.tealText,
+  },
+  speedNormalBtn: {
+    flex: 1.2,
+    minWidth: 86,
+    minHeight: TOUCH.minTarget,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+  },
+  speedNormalBtnActive: {
+    backgroundColor: COLORS.primaryDark,
+  },
+  speedNormalText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  speedFastBtn: {
+    flex: 1,
+    minWidth: 80,
+    minHeight: TOUCH.minTarget,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.purpleSoft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+  },
+  speedFastBtnActive: {
+    backgroundColor: COLORS.purple,
+  },
+  speedFastText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: COLORS.purpleText,
+  },
+  speakCompactBtn: {
+    flex: 1,
+    minWidth: 80,
+    minHeight: TOUCH.minTarget,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.roseSoft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+  },
+  speakCompactText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: COLORS.roseText,
+  },
+  speedTextActive: {
+    color: COLORS.white,
+  },
+  exampleBox: {
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    gap: 8,
+  },
+  exampleTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  exampleLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.indigoText,
+  },
+  exampleMiniAudioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  exMiniSlowBtn: {
+    minHeight: 34,
+    paddingHorizontal: 10,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.tealSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exMiniSlowText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: COLORS.tealText,
+  },
+  exMiniPlayBtn: {
+    minHeight: 34,
+    paddingHorizontal: 10,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.tint,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  exMiniPlayText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: COLORS.primaryDark,
+  },
+  exampleKo: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: COLORS.textMuted,
+    lineHeight: 23,
+  },
+  exampleKoLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  exampleKoLoadingText: {
+    fontSize: 15,
+    fontWeight: '400',
+    color: COLORS.textMuted,
+  },
+  exampleKoRetryBtn: {
+    alignSelf: 'flex-start',
+    minHeight: 38,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.indigoSoft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  exampleKoRetryText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.indigoText,
+  },
+  reelCueRow: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+  },
+  reelSwipeText: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: COLORS.textMuted,
+  },
+  footerLoadingCard: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 560,
+    backgroundColor: COLORS.card,
+    borderRadius: 26,
+    padding: SPACING.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.md,
+    ...SHADOW.card,
+  },
+  pressed: {
+    opacity: 0.82,
+  },
+});

@@ -1,7 +1,8 @@
-import { type ReactNode, useRef } from 'react';
+import { type ReactNode, useState } from 'react';
 import {
   Animated,
   Pressable,
+  type GestureResponderEvent,
   type PressableProps,
   type StyleProp,
   type ViewStyle,
@@ -22,11 +23,11 @@ export function Tap({
   disabled,
   ...rest
 }: TapProps) {
-  const scale = useRef(new Animated.Value(1)).current;
+  const [scale] = useState(() => new Animated.Value(1));
   return (
     <AP
       disabled={disabled}
-      onPressIn={(e: any) => {
+      onPressIn={(e: GestureResponderEvent) => {
         if (!disabled)
           Animated.spring(scale, {
             toValue: 0.97,
@@ -36,7 +37,7 @@ export function Tap({
           }).start();
         onPressIn?.(e);
       }}
-      onPressOut={(e: any) => {
+      onPressOut={(e: GestureResponderEvent) => {
         Animated.spring(scale, {
           toValue: 1,
           useNativeDriver: true,
@@ -45,7 +46,7 @@ export function Tap({
         }).start();
         onPressOut?.(e);
       }}
-      style={[style as any, { transform: [{ scale }] }]}
+      style={[style, { transform: [{ scale }] }]}
       {...rest}
     >
       {children}

@@ -1,6 +1,10 @@
-import { StyleSheet, Text, View } from 'react-native';
-import { COLORS, FONTS, RADIUS, SPACING, TYPOGRAPHY } from '../theme/tokens';
+import { IconMusic, IconPlayerPlay, IconVolume, IconVolume2 } from '@tabler/icons-react-native';
+import { useCallback, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSpeechAudio } from '../hooks/useSpeechAudio';
+import { COLORS, RADIUS, SPACING, TOUCH, TYPOGRAPHY } from '../theme/tokens';
 import type { SyllableItem } from '../types/learning';
+import { Tap } from './Tap';
 
 interface RhythmBlocksProps {
   syllables: SyllableItem[];
@@ -8,67 +12,164 @@ interface RhythmBlocksProps {
 }
 
 export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
+  const { playSlow, stop, activeKey } = useSpeechAudio();
+  const [rhythmIndex, setRhythmIndex] = useState<number | null>(null);
+  const rhythmSessionRef = useRef(0);
+
+  const handleSyllableTap = useCallback(
+    (syl: SyllableItem, idx: number) => {
+      rhythmSessionRef.current += 1;
+      setRhythmIndex(null);
+      void playSlow(syl.text, { key: `rhythm:syl:${idx}:${syl.text}` });
+    },
+    [playSlow]
+  );
+
+  const handleRhythmPlay = useCallback(() => {
+    rhythmSessionRef.current += 1;
+    const session = rhythmSessionRef.current;
+    stop();
+
+    let cumulativeDelay = 100;
+
+    syllables.forEach((syl, idx) => {
+      const delay = cumulativeDelay;
+
+      setTimeout(() => {
+        if (rhythmSessionRef.current !== session) return;
+        setRhythmIndex(idx);
+        void playSlow(syl.text, { key: `rhythm:seq:${idx}:${syl.text}` });
+      }, delay);
+
+      const duration =
+        syl.stress === 'primary'
+          ? 750
+          : syl.stress === 'secondary'
+            ? 600
+            : syl.isSchwa
+              ? 450
+              : 500;
+      cumulativeDelay += duration;
+    });
+
+    setTimeout(() => {
+      if (rhythmSessionRef.current !== session) return;
+      setRhythmIndex(null);
+    }, cumulativeDelay + 400);
+  }, [syllables, playSlow, stop]);
+
+  const isRhythmPlaying = rhythmIndex !== null;
+
   return (
     <View style={styles.container}>
-      {/* 상단 강약 박자 리듬 요약 (● ⬤ ●) */}
+      {/* 상단 강약 박자 리듬 요약 (● ⬤ ●) + 리듬 연속 듣기 버튼 */}
       <View style={styles.rhythmBar}>
-        <Text style={styles.rhythmBarLabel} maxFontSizeMultiplier={1.4}>
-          리듬
-        </Text>
-        <View style={styles.dotsRow}>
-          {syllables.map((syl, idx) => {
-            const isPrimary = syl.stress === 'primary';
-            const isSecondary = syl.stress === 'secondary';
-            return (
-              <Text
-                key={`dot-${idx}-${syl.text}`}
-                style={
-                  isPrimary
-                    ? styles.dotPrimary
-                    : isSecondary
-                      ? styles.dotSecondary
-                      : styles.dotNormal
-                }
-                maxFontSizeMultiplier={1.25}
-                accessibilityLabel={
-                  isPrimary ? '강세 박자' : isSecondary ? '보조 강세 박자' : '약한 박자'
-                }
-              >
-                {isPrimary ? '⬤' : '●'}
-              </Text>
-            );
-          })}
+        <View style={styles.rhythmBarLeft}>
+          <Text style={styles.rhythmBarLabel} maxFontSizeMultiplier={1.4}>
+            강약 리듬 박자
+          </Text>
+          <View style={styles.dotsRow}>
+            {syllables.map((syl, idx) => {
+              const isPrimary = syl.stress === 'primary';
+              const isSecondary = syl.stress === 'secondary';
+              const isActive = rhythmIndex === idx;
+              return (
+                <Text
+                  key={`dot-${idx}-${syl.text}`}
+                  style={[
+                    isPrimary
+                      ? styles.dotPrimary
+                      : isSecondary
+                        ? styles.dotSecondary
+                        : styles.dotNormal,
+                    isActive && styles.dotActive,
+                  ]}
+                  maxFontSizeMultiplier={1.25}
+                  accessibilityLabel={
+                    isPrimary
+                      ? '강세 박자'
+                      : isSecondary
+                        ? '보조 강세 박자'
+                        : '약한 박자'
+                  }
+                >
+                  {isPrimary ? '⬤' : '●'}
+                </Text>
+              );
+            })}
+          </View>
         </View>
+
+        <Pressable
+          onPress={handleRhythmPlay}
+          style={({ pressed }) => [
+            styles.rhythmPlayBtn,
+            isRhythmPlaying && styles.rhythmPlayBtnActive,
+            pressed && styles.pressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="음절별 리듬으로 연속 듣기"
+        >
+          {isRhythmPlaying ? (
+            <IconMusic size={18} color={COLORS.white} />
+          ) : (
+            <IconPlayerPlay size={18} color={COLORS.accentText} />
+          )}
+          <Text
+            style={[
+              styles.rhythmPlayBtnText,
+              isRhythmPlaying && styles.rhythmPlayBtnTextActive,
+            ]}
+            maxFontSizeMultiplier={1.25}
+          >
+            {isRhythmPlaying ? '재생 중...' : '리듬 듣기'}
+          </Text>
+        </Pressable>
       </View>
 
-      {/* 음절별 리듬 블록 카드 */}
+      {/* 탭 안내 */}
+      <Text style={styles.tapHint} maxFontSizeMultiplier={1.4}>
+        각 음절을 눌러 소리를 들어 보세요
+      </Text>
+
+      {/* 음절별 리듬 블록 카드 (터치 인터랙티브) */}
       <View style={styles.blocksRow}>
         {syllables.map((syl, idx) => {
           const isPrimary = syl.stress === 'primary';
           const isSecondary = syl.stress === 'secondary';
           const isSchwa = Boolean(syl.isSchwa);
+          const isSylActive =
+            activeKey === `rhythm:syl:${idx}:${syl.text}` ||
+            activeKey === `rhythm:seq:${idx}:${syl.text}`;
 
           return (
-            <View
+            <Tap
               key={`syl-${idx}-${syl.text}`}
+              onPress={() => handleSyllableTap(syl, idx)}
               style={[
                 styles.block,
                 isPrimary && styles.blockPrimary,
                 !isPrimary && isSecondary && styles.blockSecondary,
                 !isPrimary && !isSecondary && isSchwa && styles.blockSchwa,
+                isSylActive && styles.blockActive,
               ]}
+              accessibilityRole="button"
+              accessibilityLabel={`${syl.text} 음절 듣기, ${isPrimary ? '강세' : isSecondary ? '보조 강세' : '약한'} 음절`}
             >
               {/* 음절 상단 박자 배지 */}
               {isPrimary ? (
                 <View style={styles.primaryTag}>
                   <Text style={styles.primaryTagText} maxFontSizeMultiplier={1.3}>
-                    강세
+                    ⬤ 강하게
                   </Text>
                 </View>
               ) : isSecondary ? (
                 <View style={styles.secondaryTag}>
-                  <Text style={styles.secondaryTagText} maxFontSizeMultiplier={1.3}>
-                    보조
+                  <Text
+                    style={styles.secondaryTagText}
+                    maxFontSizeMultiplier={1.3}
+                  >
+                    ● 살짝 강하게
                   </Text>
                 </View>
               ) : (
@@ -81,6 +182,7 @@ export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
                   styles.syllableText,
                   isPrimary && styles.syllableTextPrimary,
                   !isPrimary && isSchwa && styles.syllableTextSchwa,
+                  isSylActive && styles.syllableTextActive,
                 ]}
                 maxFontSizeMultiplier={1.4}
               >
@@ -119,7 +221,22 @@ export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
                   </Text>
                 </View>
               ) : null}
-            </View>
+
+              {/* 소리 아이콘 */}
+              {isSylActive ? (
+                <IconVolume
+                  size={18}
+                  color={COLORS.primary}
+                  style={styles.speakerIcon}
+                />
+              ) : (
+                <IconVolume2
+                  size={18}
+                  color={isPrimary ? COLORS.accentText : COLORS.textMuted}
+                  style={styles.speakerIcon}
+                />
+              )}
+            </Tap>
           );
         })}
       </View>
@@ -129,12 +246,10 @@ export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
 
 const styles = StyleSheet.create({
   container: {
-    gap: SPACING.md,
+    gap: SPACING.sm,
   },
   rhythmBar: {
     backgroundColor: COLORS.background,
-    borderColor: COLORS.border,
-    borderWidth: 1,
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.md,
     paddingVertical: 10,
@@ -144,10 +259,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: SPACING.xs,
   },
+  rhythmBarLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
   rhythmBarLabel: {
-    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
-    fontWeight: '700',
+    fontWeight: '500',
     color: COLORS.text,
   },
   dotsRow: {
@@ -156,19 +277,46 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   dotPrimary: {
-    fontFamily: FONTS.family,
     fontSize: 26,
-    color: COLORS.accentText, // #B45309 — #F7F5F0 배경 대비 4.5:1+ 고대비
+    color: COLORS.accentText,
   },
   dotSecondary: {
-    fontFamily: FONTS.family,
     fontSize: 20,
-    color: COLORS.primary,
+    color: COLORS.teal,
   },
   dotNormal: {
-    fontFamily: FONTS.family,
     fontSize: 16,
     color: COLORS.textMuted,
+  },
+  dotActive: {
+    color: COLORS.primary,
+  },
+  rhythmPlayBtn: {
+    minHeight: TOUCH.minTarget,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.accentSoft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  rhythmPlayBtnActive: {
+    backgroundColor: COLORS.accent,
+  },
+  rhythmPlayBtnText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: COLORS.accentText,
+  },
+  rhythmPlayBtnTextActive: {
+    color: COLORS.white,
+  },
+  tapHint: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: COLORS.textMuted,
+    textAlign: 'center',
   },
   blocksRow: {
     flexDirection: 'row',
@@ -180,9 +328,7 @@ const styles = StyleSheet.create({
   block: {
     minWidth: 92,
     flexGrow: 1,
-    backgroundColor: COLORS.card,
-    borderColor: COLORS.border,
-    borderWidth: 1.5,
+    backgroundColor: COLORS.background,
     borderRadius: RADIUS.lg,
     paddingVertical: 14,
     paddingHorizontal: 12,
@@ -192,108 +338,106 @@ const styles = StyleSheet.create({
   blockPrimary: {
     minWidth: 112,
     backgroundColor: COLORS.accentSoft,
-    borderColor: COLORS.accent,
-    borderWidth: 2.5,
     paddingVertical: 18,
     paddingHorizontal: 16,
   },
   blockSecondary: {
     minWidth: 98,
-    backgroundColor: COLORS.tint,
-    borderColor: COLORS.primary,
-    borderWidth: 1.5,
+    backgroundColor: COLORS.tealSoft,
   },
   blockSchwa: {
     minWidth: 84,
     backgroundColor: COLORS.background,
-    borderColor: COLORS.border,
     paddingVertical: 10,
   },
+  blockActive: {
+    backgroundColor: COLORS.tint,
+  },
   primaryTag: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.accent,
     borderRadius: RADIUS.pill,
     paddingHorizontal: 10,
     paddingVertical: 3,
     marginBottom: 4,
   },
   primaryTagText: {
-    fontFamily: FONTS.family,
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
     color: COLORS.white,
   },
   secondaryTag: {
     backgroundColor: COLORS.card,
-    borderColor: COLORS.primary,
-    borderWidth: 1,
     borderRadius: RADIUS.pill,
     paddingHorizontal: 8,
     paddingVertical: 2,
     marginBottom: 4,
   },
   secondaryTagText: {
-    fontFamily: FONTS.family,
     fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.primaryDark,
+    fontWeight: '500',
+    color: COLORS.tealText,
   },
   normalDotSmall: {
-    fontFamily: FONTS.family,
     fontSize: 15,
     color: COLORS.textMuted,
     marginBottom: 2,
   },
   syllableText: {
-    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.syllableNormal,
-    fontWeight: '800',
+    fontWeight: '500',
     color: COLORS.text,
   },
   syllableTextPrimary: {
     fontSize: TYPOGRAPHY.syllablePrimary,
-    color: COLORS.primaryDark,
+    fontWeight: '700',
+    color: COLORS.accentText,
   },
   syllableTextSchwa: {
     fontSize: TYPOGRAPHY.syllableSchwa,
+    fontWeight: '400',
     color: COLORS.textMuted,
   },
+  syllableTextActive: {
+    color: COLORS.primary,
+  },
   syllableIpa: {
-    fontFamily: FONTS.family,
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '400',
     color: COLORS.textMuted,
   },
   syllableIpaPrimary: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: '500',
     color: COLORS.accentText,
   },
   syllableKoHint: {
-    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
-    fontWeight: '700',
+    fontWeight: '500',
     color: COLORS.text,
     marginTop: 2,
   },
   syllableKoHintPrimary: {
     fontSize: TYPOGRAPHY.bodyLarge,
-    fontWeight: '800',
+    fontWeight: '700',
     color: COLORS.accentText,
   },
   schwaBadge: {
     marginTop: 4,
     backgroundColor: COLORS.card,
-    borderColor: COLORS.border,
-    borderWidth: 1,
     borderRadius: RADIUS.sm,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
   schwaBadgeText: {
-    fontFamily: FONTS.family,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '400',
     color: COLORS.textMuted,
     textAlign: 'center',
+  },
+  speakerIcon: {
+    marginTop: 4,
+  },
+  pressed: {
+    opacity: 0.82,
   },
 });

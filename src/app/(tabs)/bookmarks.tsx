@@ -1,11 +1,12 @@
-import { Ionicons } from '@expo/vector-icons';
+import { IconBook2, IconBookmark, IconBookmarkFilled, IconChevronRight, IconCircleCheck, IconCircleX, IconGauge, IconPlayerPlay, IconSearch, IconVolume, IconVolume2 } from '@tabler/icons-react-native';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SymbolDetailSheet } from '../../components/SymbolDetailSheet';
@@ -13,35 +14,29 @@ import { IPA_SYMBOL_BY_ID } from '../../data/categories';
 import { useSpeechAudio } from '../../hooks/useSpeechAudio';
 import { useLearningStore } from '../../store/useLearningStore';
 import { useWordCacheStore } from '../../store/useWordCacheStore';
-import { COLORS, FONTS, RADIUS, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
+import { COLORS, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
 import type { CoreWord, IpaSymbol } from '../../types/learning';
 
 type BookmarkFilter = 'all' | 'words' | 'symbols';
 
 export default function BookmarksScreen() {
   const [filter, setFilter] = useState<BookmarkFilter>('all');
+  const [filterText, setFilterText] = useState('');
   const [activeSymbol, setActiveSymbol] = useState<IpaSymbol | null>(null);
-
-  const { playNormal, playSlow, stop, activeKey } = useSpeechAudio();
-
-  const learnedSymbolIds = useLearningStore((state) => state.learnedSymbolIds);
-  const bookmarkedSymbolIds = useLearningStore(
-    (state) => state.bookmarkedSymbolIds
-  );
-  const showKoPronunciation = useLearningStore(
-    (state) => state.showKoPronunciation
-  );
-  const learningHasHydrated = useLearningStore((state) => state.hasHydrated);
+  const navSeqRef = useRef(0);
 
   const cachedWords = useWordCacheStore((state) => state.cachedWords);
-  const bookmarkedWordKeys = useWordCacheStore(
-    (state) => state.bookmarkedWordKeys
-  );
+  const bookmarkedWordKeys = useWordCacheStore((state) => state.bookmarkedWordKeys);
   const cacheHasHydrated = useWordCacheStore((state) => state.hasHydrated);
-  const toggleWordBookmark = useWordCacheStore(
-    (state) => state.toggleWordBookmark
-  );
-  const setActiveWord = useWordCacheStore((state) => state.setActiveWord);
+  const toggleBookmark = useWordCacheStore((state) => state.toggleBookmark);
+
+  const learnedSymbolIds = useLearningStore((state) => state.learnedSymbolIds);
+  const bookmarkedSymbolIds = useLearningStore((state) => state.bookmarkedSymbolIds);
+  const toggleSymbolBookmark = useLearningStore((state) => state.toggleSymbolBookmark);
+  const showKoPronunciation = useLearningStore((state) => state.showKoPronunciation);
+  const learningHasHydrated = useLearningStore((state) => state.hasHydrated);
+
+  const { playNormal, playSlow, stop, activeKey } = useSpeechAudio();
 
   useFocusEffect(
     useCallback(() => {
@@ -51,349 +46,445 @@ export default function BookmarksScreen() {
     }, [stop])
   );
 
-  const isHydrated = learningHasHydrated && cacheHasHydrated;
+  const bookmarkedWords = useMemo(() => {
+    const keys = Array.isArray(bookmarkedWordKeys) ? bookmarkedWordKeys : [];
+    return keys
+      .map((k) => cachedWords[k])
+      .filter((w): w is CoreWord => Boolean(w));
+  }, [bookmarkedWordKeys, cachedWords]);
 
-  const bookmarkedWords: CoreWord[] = bookmarkedWordKeys
-    .map((key) => cachedWords[key])
-    .filter((item): item is CoreWord => Boolean(item));
+  const bookmarkedSymbols = useMemo(() => {
+    const ids = Array.isArray(bookmarkedSymbolIds) ? bookmarkedSymbolIds : [];
+    return ids
+      .map((id) => IPA_SYMBOL_BY_ID[id])
+      .filter((s): s is IpaSymbol => Boolean(s));
+  }, [bookmarkedSymbolIds]);
 
-  const bookmarkedSymbols: IpaSymbol[] = bookmarkedSymbolIds
-    .map((id) => IPA_SYMBOL_BY_ID[id])
-    .filter((item): item is IpaSymbol => Boolean(item));
+  const filteredWords = useMemo(() => {
+    const q = filterText.trim().toLowerCase();
+    if (!q) return bookmarkedWords;
+    return bookmarkedWords.filter(
+      (item) =>
+        item.word.toLowerCase().includes(q) ||
+        item.meaningKo.toLowerCase().includes(q) ||
+        item.koPronunciation.toLowerCase().includes(q)
+    );
+  }, [bookmarkedWords, filterText]);
 
-  const totalCount = bookmarkedWords.length + bookmarkedSymbols.length;
+  const filteredSymbols = useMemo(() => {
+    const q = filterText.trim().toLowerCase();
+    if (!q) return bookmarkedSymbols;
+    return bookmarkedSymbols.filter(
+      (sym) =>
+        sym.ipa.toLowerCase().includes(q) ||
+        sym.titleKo.toLowerCase().includes(q) ||
+        sym.koHint.toLowerCase().includes(q)
+    );
+  }, [bookmarkedSymbols, filterText]);
 
-  const showWords =
-    (filter === 'all' || filter === 'words') && bookmarkedWords.length > 0;
-  const showSymbols =
-    (filter === 'all' || filter === 'symbols') && bookmarkedSymbols.length > 0;
-
-  const isEmptyForCurrentFilter =
-    isHydrated &&
-    ((filter === 'all' && totalCount === 0) ||
-      (filter === 'words' && bookmarkedWords.length === 0) ||
-      (filter === 'symbols' && bookmarkedSymbols.length === 0));
-
-  const handleOpenWordDetail = (word: CoreWord) => {
+  const handleOpenInReader = (word: string) => {
     stop();
-    setActiveWord(word);
-    router.navigate('/words');
+    navSeqRef.current += 1;
+    router.push({
+      pathname: '/(tabs)',
+      params: { word, ts: String(navSeqRef.current) },
+    });
   };
+
+  const isHydrated = cacheHasHydrated && learningHasHydrated;
+  const totalCount = bookmarkedWords.length + bookmarkedSymbols.length;
+  const shouldShowKoHint = learningHasHydrated ? showKoPronunciation : true;
+
+  const showWordsSection =
+    (filter === 'all' || filter === 'words') && filteredWords.length > 0;
+  const showSymbolsSection =
+    (filter === 'all' || filter === 'symbols') && filteredSymbols.length > 0;
+  const hasVisibleResults = showWordsSection || showSymbolsSection;
 
   return (
     <View style={styles.screen}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* 필터 탭 바 */}
-        <View style={styles.filterRow}>
-          {(
-            [
-              { id: 'all', label: `전체 ${totalCount}` },
-              { id: 'words', label: `단어 ${bookmarkedWords.length}` },
-              { id: 'symbols', label: `발음기호 ${bookmarkedSymbols.length}` },
-            ] as const
-          ).map((tab) => {
-            const isActive = filter === tab.id;
-            return (
-              <Pressable
-                key={tab.id}
-                onPress={() => setFilter(tab.id)}
-                style={({ pressed }) => [
-                  styles.filterPill,
-                  isActive && styles.filterPillActive,
-                  pressed && styles.pressed,
-                ]}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: isActive }}
-              >
-                <Text
-                  style={[
-                    styles.filterPillText,
-                    isActive && styles.filterPillTextActive,
+        {/* 상단 요약 + 전체/단어/발음기호 필터 탭 */}
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryHeaderRow}>
+            <View style={styles.summaryTitleCol}>
+              <Text style={styles.summaryTitle} maxFontSizeMultiplier={1.4}>
+                내가 저장한 북마크
+              </Text>
+              <Text style={styles.summarySub} maxFontSizeMultiplier={1.4}>
+                저장한 영단어와 발음기호를 언제든 꺼내 복습하세요.
+              </Text>
+            </View>
+            <View style={styles.countBadge}>
+              <IconBookmarkFilled size={18} color={COLORS.goldText} />
+              <Text style={styles.countBadgeText} maxFontSizeMultiplier={1.3}>
+                {totalCount}개
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.filterTabsRow}>
+            {(
+              [
+                { id: 'all', label: `전체 ${totalCount}`, activeBg: COLORS.gold },
+                { id: 'words', label: `단어 ${bookmarkedWords.length}`, activeBg: COLORS.primary },
+                { id: 'symbols', label: `발음기호 ${bookmarkedSymbols.length}`, activeBg: COLORS.purple },
+              ] as const
+            ).map((tab) => {
+              const isActive = filter === tab.id;
+              return (
+                <Pressable
+                  key={tab.id}
+                  onPress={() => setFilter(tab.id)}
+                  style={({ pressed }) => [
+                    styles.filterTabBtn,
+                    isActive && { backgroundColor: tab.activeBg },
+                    pressed && styles.pressed,
                   ]}
-                  maxFontSizeMultiplier={1.3}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: isActive }}
                 >
-                  {tab.label}
-                </Text>
-              </Pressable>
-            );
-          })}
+                  <Text
+                    style={[
+                      styles.filterTabText,
+                      isActive && styles.filterTabTextActive,
+                    ]}
+                    maxFontSizeMultiplier={1.3}
+                  >
+                    {tab.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {totalCount >= 4 ? (
+            <View style={styles.filterInputRow}>
+              <IconSearch size={20} color={COLORS.textMuted} />
+              <TextInput
+                value={filterText}
+                onChangeText={setFilterText}
+                placeholder="저장한 단어·발음기호 찾기"
+                placeholderTextColor={COLORS.textMuted}
+                style={styles.filterInput}
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={40}
+                accessibilityLabel="저장한 항목 검색"
+              />
+              {filterText.length > 0 ? (
+                <Pressable
+                  onPress={() => setFilterText('')}
+                  style={({ pressed }) => [
+                    styles.clearFilterBtn,
+                    pressed && styles.pressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="검색어 지우기"
+                >
+                  <IconCircleX size={22} color={COLORS.textMuted} />
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
         </View>
 
-        {/* 빈 상태 카드 */}
-        {isEmptyForCurrentFilter ? (
+        {/* 저장 목록 또는 빈 상태 */}
+        {!isHydrated ? null : totalCount === 0 ? (
           <View style={styles.emptyCard}>
-            <View style={styles.emptyIconWrap}>
-              <Ionicons
-                name="bookmark-outline"
-                size={36}
-                color={COLORS.accent}
-              />
+            <View style={styles.emptyIconCircle}>
+              <IconBookmark size={38} color={COLORS.goldText} />
             </View>
             <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
-              {filter === 'words'
-                ? '저장한 단어가 없어요'
-                : filter === 'symbols'
-                  ? '저장한 발음기호가 없어요'
-                  : '저장한 북마크가 없어요'}
+              아직 저장한 북마크가 없어요
             </Text>
             <Text style={styles.emptyBody} maxFontSizeMultiplier={1.45}>
-              자주 헷갈리는 단어와 발음기호에서 북마크 아이콘을 눌러 모아 보세요.
+              공부하다가 다시 보고 싶은 단어 또는 발음기호에서 북마크 아이콘을 눌러
+              저장해 두세요. 오프라인에서도 바로 꺼내 들을 수 있어요!
             </Text>
+            <View style={styles.emptyCtaRow}>
+              <Pressable
+                onPress={() => router.push('/(tabs)')}
+                style={({ pressed }) => [
+                  styles.emptyPrimaryBtn,
+                  pressed && styles.pressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="단어 바로 읽기 화면으로 이동"
+              >
+                <IconBook2 size={20} color={COLORS.white} />
+                <Text style={styles.emptyPrimaryBtnText} maxFontSizeMultiplier={1.3}>
+                  단어 읽기 가기
+                </Text>
+              </Pressable>
 
-            <View style={styles.emptyActions}>
-              {filter !== 'symbols' ? (
-                <Pressable
-                  onPress={() => router.navigate('/words')}
-                  style={({ pressed }) => [
-                    styles.primaryBtn,
-                    styles.actionBtnFlex,
-                    pressed && styles.pressed,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel="단어 바로 읽기로 이동"
-                >
-                  <Ionicons name="book-outline" size={22} color={COLORS.white} />
-                  <Text style={styles.primaryBtnText} maxFontSizeMultiplier={1.3}>
-                    단어 읽기
-                  </Text>
-                </Pressable>
-              ) : null}
-
-              {filter !== 'words' ? (
-                <Pressable
-                  onPress={() => router.navigate('/')}
-                  style={({ pressed }) => [
-                    styles.slowBtn,
-                    styles.actionBtnFlex,
-                    pressed && styles.pressed,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel="발음기호 기초로 이동"
-                >
-                  <Ionicons
-                    name="volume-high-outline"
-                    size={22}
-                    color={COLORS.primaryDark}
-                  />
-                  <Text style={styles.slowBtnText} maxFontSizeMultiplier={1.3}>
-                    발음기호
-                  </Text>
-                </Pressable>
-              ) : null}
+              <Pressable
+                onPress={() => router.push('/(tabs)/shorts')}
+                style={({ pressed }) => [
+                  styles.emptySecondaryBtn,
+                  pressed && styles.pressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="발음 쇼츠 화면으로 이동"
+              >
+                <IconPlayerPlay size={20} color={COLORS.roseText} />
+                <Text style={styles.emptySecondaryBtnText} maxFontSizeMultiplier={1.3}>
+                  발음 쇼츠 보기
+                </Text>
+              </Pressable>
             </View>
           </View>
-        ) : null}
-
-        {/* 북마크한 단어 목록 */}
-        {showWords ? (
-          <View style={styles.section}>
-            {filter === 'all' ? (
-              <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
-                단어 ({bookmarkedWords.length})
+        ) : !hasVisibleResults ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
+              {filterText.trim()
+                ? `'${filterText.trim()}'와 일치하는 항목이 없어요`
+                : '이 탭에 저장된 항목이 아직 없어요'}
+            </Text>
+            <Pressable
+              onPress={() => {
+                setFilter('all');
+                setFilterText('');
+              }}
+              style={({ pressed }) => [
+                styles.emptyResetBtn,
+                pressed && styles.pressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="전체 북마크 보기"
+            >
+              <Text style={styles.emptyResetBtnText} maxFontSizeMultiplier={1.3}>
+                전체 북마크 보기
               </Text>
-            ) : null}
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.sectionsStack}>
+            {/* 저장한 단어 섹션 */}
+            {showWordsSection ? (
+              <View style={styles.listStack}>
+                {filter === 'all' ? (
+                  <Text style={styles.sectionHeading} maxFontSizeMultiplier={1.35}>
+                    저장한 영단어 ({filteredWords.length})
+                  </Text>
+                ) : null}
 
-            <View style={styles.wordList}>
-              {bookmarkedWords.map((item) => {
-                const normalKey = `bm:word:${item.id}:normal`;
-                const slowKey = `bm:word:${item.id}:slow`;
-                const isNormalPlaying = activeKey === normalKey;
-                const isSlowPlaying = activeKey === slowKey;
+                {filteredWords.map((item) => {
+                  const normalKey = `bm:${item.id}:normal`;
+                  const slowKey = `bm:${item.id}:slow`;
+                  const isNormalPlaying = activeKey === normalKey;
+                  const isSlowPlaying = activeKey === slowKey;
 
-                return (
-                  <View key={item.id} style={styles.wordCard}>
-                    <View style={styles.wordCardTop}>
-                      <Pressable
-                        onPress={() => handleOpenWordDetail(item)}
-                        style={({ pressed }) => [
-                          styles.wordInfoPress,
-                          pressed && styles.pressed,
-                        ]}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${item.word} ${item.meaningKo} 자세히 보기`}
-                      >
-                        <View style={styles.wordTitleRow}>
-                          <Text style={styles.wordText} maxFontSizeMultiplier={1.35}>
-                            {item.word}
-                          </Text>
-                          <Ionicons
-                            name="chevron-forward"
-                            size={20}
-                            color={COLORS.textMuted}
-                          />
-                        </View>
-                        <Text style={styles.meaningText} maxFontSizeMultiplier={1.4}>
-                          {item.meaningKo}
-                        </Text>
-                        <View style={styles.metaRow}>
-                          <Text style={styles.ipaText} maxFontSizeMultiplier={1.35}>
-                            {item.ipa}
-                          </Text>
-                          {showKoPronunciation && item.koPronunciation ? (
-                            <Text
-                              style={styles.koPronText}
-                              maxFontSizeMultiplier={1.4}
-                            >
-                              · {item.koPronunciation}
+                  return (
+                    <View
+                      key={item.id}
+                      style={[
+                        styles.wordCard,
+                        (isNormalPlaying || isSlowPlaying) && styles.wordCardActive,
+                      ]}
+                    >
+                      <View style={styles.cardTopRow}>
+                        <Pressable
+                          style={styles.wordMainPressable}
+                          onPress={() => handleOpenInReader(item.word)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${item.word} ${item.meaningKo} 자세히 보기`}
+                        >
+                          <View style={styles.wordHeadingRow}>
+                            <Text style={styles.wordText} maxFontSizeMultiplier={1.35}>
+                              {item.word}
                             </Text>
-                          ) : null}
-                        </View>
-                      </Pressable>
+                            {item.partOfSpeech ? (
+                              <View style={styles.posBadge}>
+                                <Text style={styles.posBadgeText} maxFontSizeMultiplier={1.25}>
+                                  {item.partOfSpeech}
+                                </Text>
+                              </View>
+                            ) : null}
+                          </View>
+                          <Text style={styles.meaningText} maxFontSizeMultiplier={1.4}>
+                            {item.meaningKo}
+                          </Text>
+                          <Text style={styles.phoneticText} maxFontSizeMultiplier={1.4}>
+                            {item.ipa}
+                            {shouldShowKoHint && item.koPronunciation
+                              ? `  ·  ${item.koPronunciation}`
+                              : ''}
+                          </Text>
+                        </Pressable>
 
-                      <Pressable
-                        onPress={() => toggleWordBookmark(item)}
-                        style={({ pressed }) => [
-                          styles.bookmarkBtn,
-                          pressed && styles.pressed,
-                        ]}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: true }}
-                        accessibilityLabel={`${item.word} 북마크 해제`}
-                      >
-                        <Ionicons
-                          name="bookmark"
-                          size={24}
-                          color={COLORS.accent}
-                        />
-                      </Pressable>
-                    </View>
-
-                    <View style={styles.audioRow}>
-                      <Pressable
-                        onPress={() =>
-                          playNormal(item.word, {
-                            audioAsset: item.audioAsset,
-                            audioUrl: item.audioUrl,
-                            key: normalKey,
-                          })
-                        }
-                        style={({ pressed }) => [
-                          styles.primaryBtn,
-                          styles.actionBtnFlex,
-                          isNormalPlaying && styles.primaryBtnActive,
-                          pressed && styles.pressed,
-                        ]}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${item.word} 보통 속도 듣기`}
-                      >
-                        <Ionicons
-                          name="volume-high"
-                          size={22}
-                          color={COLORS.white}
-                        />
-                        <Text
-                          style={styles.primaryBtnText}
-                          maxFontSizeMultiplier={1.3}
+                        <Pressable
+                          onPress={() => {
+                            stop();
+                            toggleBookmark(item);
+                          }}
+                          style={({ pressed }) => [
+                            styles.removeBookmarkBtn,
+                            pressed && styles.pressed,
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${item.word} 북마크 해제`}
                         >
-                          {isNormalPlaying ? '재생 중...' : '보통 속도'}
-                        </Text>
-                      </Pressable>
+                          <IconBookmarkFilled size={22} color={COLORS.goldText} />
+                        </Pressable>
+                      </View>
 
-                      <Pressable
-                        onPress={() => playSlow(item.word, { key: slowKey })}
-                        style={({ pressed }) => [
-                          styles.slowBtn,
-                          styles.actionBtnFlex,
-                          isSlowPlaying && styles.slowBtnActive,
-                          pressed && styles.pressed,
-                        ]}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${item.word} 천천히 듣기`}
-                      >
-                        <Ionicons
-                          name="speedometer-outline"
-                          size={22}
-                          color={COLORS.primaryDark}
-                        />
-                        <Text
-                          style={styles.slowBtnText}
-                          maxFontSizeMultiplier={1.3}
+                      <View style={styles.cardActionsRow}>
+                        <Pressable
+                          onPress={() =>
+                            void playNormal(item.word, {
+                              audioAsset: item.audioAsset,
+                              audioUrl: item.audioUrl,
+                              key: normalKey,
+                            })
+                          }
+                          style={({ pressed }) => [
+                            styles.playNormalBtn,
+                            isNormalPlaying && styles.playNormalBtnActive,
+                            pressed && styles.pressed,
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${item.word} 보통 속도 듣기`}
                         >
-                          {isSlowPlaying ? '재생 중...' : '천천히'}
-                        </Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-        ) : null}
+                          {isNormalPlaying ? (
+                            <IconVolume size={20} color={COLORS.white} />
+                          ) : (
+                            <IconVolume2 size={20} color={COLORS.white} />
+                          )}
+                          <Text style={styles.playNormalBtnText} maxFontSizeMultiplier={1.3}>
+                            {isNormalPlaying ? '재생 중' : '듣기'}
+                          </Text>
+                        </Pressable>
 
-        {/* 북마크한 발음기호 목록 */}
-        {showSymbols ? (
-          <View style={styles.section}>
-            {filter === 'all' ? (
-              <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
-                발음기호 ({bookmarkedSymbols.length})
-              </Text>
-            ) : null}
-
-            <View style={styles.symbolGrid}>
-              {bookmarkedSymbols.map((symbol) => {
-                const isLearned = learnedSymbolIds.includes(symbol.id);
-
-                return (
-                  <Pressable
-                    key={symbol.id}
-                    onPress={() => setActiveSymbol(symbol)}
-                    style={({ pressed }) => [
-                      styles.symbolCard,
-                      isLearned && styles.symbolCardLearned,
-                      pressed && styles.pressed,
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${symbol.ipa} ${symbol.titleKo} 자세히 보기`}
-                  >
-                    <View style={styles.symbolCardTop}>
-                      <Text style={styles.symbolIpa} maxFontSizeMultiplier={1.35}>
-                        {symbol.ipa}
-                      </Text>
-                      <View style={styles.symbolCardIcons}>
-                        <Ionicons
-                          name="bookmark"
-                          size={20}
-                          color={COLORS.accent}
-                        />
-                        {isLearned ? (
-                          <Ionicons
-                            name="checkmark-circle"
-                            size={24}
-                            color={COLORS.primary}
+                        <Pressable
+                          onPress={() => void playSlow(item.word, { key: slowKey })}
+                          style={({ pressed }) => [
+                            styles.playSlowBtn,
+                            isSlowPlaying && styles.playSlowBtnActive,
+                            pressed && styles.pressed,
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${item.word} 천천히 듣기`}
+                        >
+                          <IconGauge
+                            size={20}
+                            color={isSlowPlaying ? COLORS.white : COLORS.tealText}
                           />
-                        ) : null}
+                          <Text
+                            style={[
+                              styles.playSlowBtnText,
+                              isSlowPlaying && styles.playNormalBtnText,
+                            ]}
+                            maxFontSizeMultiplier={1.3}
+                          >
+                            {isSlowPlaying ? '천천히 중' : '천천히'}
+                          </Text>
+                        </Pressable>
+
+                        <Pressable
+                          onPress={() => handleOpenInReader(item.word)}
+                          style={({ pressed }) => [
+                            styles.detailBtn,
+                            pressed && styles.pressed,
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${item.word} 강세 리듬과 예문 자세히 보기`}
+                        >
+                          <Text style={styles.detailBtnText} maxFontSizeMultiplier={1.3}>
+                            자세히
+                          </Text>
+                          <IconChevronRight
+                            size={18}
+                            color={COLORS.indigoText}
+                          />
+                        </Pressable>
                       </View>
                     </View>
+                  );
+                })}
+              </View>
+            ) : null}
 
-                    <Text
-                      style={styles.symbolKoHint}
-                      numberOfLines={2}
-                      maxFontSizeMultiplier={1.4}
+            {/* 저장한 발음기호 섹션 */}
+            {showSymbolsSection ? (
+              <View style={styles.listStack}>
+                {filter === 'all' ? (
+                  <Text style={styles.sectionHeading} maxFontSizeMultiplier={1.35}>
+                    저장한 발음기호 ({filteredSymbols.length})
+                  </Text>
+                ) : null}
+
+                {filteredSymbols.map((sym) => {
+                  const isLearned = learnedSymbolIds.includes(sym.id);
+                  return (
+                    <View
+                      key={sym.id}
+                      style={[
+                        styles.symbolCard,
+                        isLearned && styles.symbolCardLearned,
+                      ]}
                     >
-                      {symbol.koHint}
-                    </Text>
-                    <Text
-                      style={styles.symbolExample}
-                      numberOfLines={1}
-                      maxFontSizeMultiplier={1.4}
-                    >
-                      예: {symbol.examples[0]?.word} ({symbol.examples[0]?.meaningKo})
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+                      <Pressable
+                        style={styles.symbolMainPressable}
+                        onPress={() => setActiveSymbol(sym)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${sym.ipa} ${sym.titleKo} 자세히 보기`}
+                      >
+                        <View style={styles.symbolHeadingRow}>
+                          <Text style={styles.symbolIpaText} maxFontSizeMultiplier={1.35}>
+                            {sym.ipa}
+                          </Text>
+                          <View style={styles.symbolHintBadge}>
+                            <Text style={styles.symbolHintBadgeText} maxFontSizeMultiplier={1.3}>
+                              {sym.koHint}
+                            </Text>
+                          </View>
+                          {isLearned ? (
+                            <View style={styles.learnedTag}>
+                              <IconCircleCheck
+                                size={16}
+                                color={COLORS.success}
+                              />
+                              <Text style={styles.learnedTagText} maxFontSizeMultiplier={1.25}>
+                                익힘
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+                        <Text style={styles.symbolTitleText} maxFontSizeMultiplier={1.4}>
+                          {sym.titleKo}
+                        </Text>
+                      </Pressable>
+
+                      <Pressable
+                        onPress={() => toggleSymbolBookmark(sym.id)}
+                        style={({ pressed }) => [
+                          styles.removeBookmarkBtn,
+                          pressed && styles.pressed,
+                        ]}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${sym.ipa} 북마크 해제`}
+                      >
+                        <IconBookmarkFilled size={22} color={COLORS.goldText} />
+                      </Pressable>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : null}
           </View>
-        ) : null}
+        )}
       </ScrollView>
 
       <SymbolDetailSheet
         symbol={activeSymbol}
         visible={activeSymbol !== null}
         onClose={() => setActiveSymbol(null)}
+        contextLabel="북마크한 발음기호"
       />
     </View>
   );
@@ -407,254 +498,369 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: SPACING.md,
     paddingBottom: SPACING.xl * 2,
-    gap: SPACING.lg,
+    gap: SPACING.md,
   },
-  filterRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.xs,
-  },
-  filterPill: {
-    minHeight: TOUCH.minTarget,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: RADIUS.pill,
+  summaryCard: {
     backgroundColor: COLORS.card,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderRadius: RADIUS.card,
+    padding: SPACING.lg,
+    gap: SPACING.md,
+    ...SHADOW.card,
   },
-  filterPillActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+  summaryHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: SPACING.sm,
   },
-  filterPillText: {
-    fontFamily: FONTS.family,
-    fontSize: TYPOGRAPHY.body,
+  summaryTitleCol: {
+    flex: 1,
+    gap: 4,
+  },
+  summaryTitle: {
+    fontSize: TYPOGRAPHY.sectionTitle,
     fontWeight: '700',
     color: COLORS.text,
   },
-  filterPillTextActive: {
+  summarySub: {
+    fontSize: TYPOGRAPHY.body,
+    lineHeight: 26,
+    color: COLORS.textMuted,
+  },
+  countBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORS.goldSoft,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: RADIUS.pill,
+  },
+  countBadgeText: {
+    fontSize: TYPOGRAPHY.body,
+    fontWeight: '500',
+    color: COLORS.goldText,
+  },
+  filterTabsRow: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.lg,
+    padding: 4,
+    gap: 4,
+  },
+  filterTabBtn: {
+    flex: 1,
+    minHeight: TOUCH.minTarget,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  filterTabText: {
+    fontSize: TYPOGRAPHY.body,
+    fontWeight: '500',
+    color: COLORS.textMuted,
+  },
+  filterTabTextActive: {
     color: COLORS.white,
+    fontWeight: '700',
+  },
+  filterInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 14,
+    minHeight: TOUCH.minTarget,
+  },
+  filterInput: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.body,
+    color: COLORS.text,
+    paddingVertical: 10,
+  },
+  clearFilterBtn: {
+    minWidth: 36,
+    minHeight: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyCard: {
     backgroundColor: COLORS.card,
-    borderColor: COLORS.border,
-    borderWidth: 1,
     borderRadius: RADIUS.card,
     padding: SPACING.xl,
     alignItems: 'center',
     gap: SPACING.md,
+    ...SHADOW.card,
   },
-  emptyIconWrap: {
-    width: 68,
-    height: 68,
+  emptyIconCircle: {
+    width: 72,
+    height: 72,
     borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.accentSoft,
+    backgroundColor: COLORS.goldSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyTitle: {
-    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.sectionTitle,
-    fontWeight: '800',
+    fontWeight: '700',
     color: COLORS.text,
     textAlign: 'center',
   },
   emptyBody: {
-    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     lineHeight: 28,
     color: COLORS.textMuted,
     textAlign: 'center',
   },
-  emptyActions: {
+  emptyCtaRow: {
     width: '100%',
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: SPACING.sm,
     marginTop: 4,
   },
-  section: {
-    gap: SPACING.sm,
-  },
-  sectionTitle: {
-    fontFamily: FONTS.family,
-    fontSize: TYPOGRAPHY.sectionTitle,
-    fontWeight: '800',
-    color: COLORS.text,
-  },
-  wordList: {
-    gap: SPACING.sm,
-  },
-  wordCard: {
-    backgroundColor: COLORS.card,
-    borderColor: COLORS.border,
-    borderWidth: 1,
-    borderRadius: RADIUS.card,
-    padding: SPACING.lg,
-    gap: SPACING.md,
-  },
-  wordCardTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: SPACING.sm,
-  },
-  wordInfoPress: {
-    flex: 1,
-    gap: 4,
-  },
-  wordTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  wordText: {
-    fontFamily: FONTS.family,
-    fontSize: TYPOGRAPHY.word,
-    fontWeight: '800',
-    color: COLORS.text,
-  },
-  meaningText: {
-    fontFamily: FONTS.family,
-    fontSize: TYPOGRAPHY.bodyLarge,
-    fontWeight: '700',
-    color: COLORS.primaryDark,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 2,
-  },
-  ipaText: {
-    fontFamily: FONTS.family,
-    fontSize: TYPOGRAPHY.body,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  koPronText: {
-    fontFamily: FONTS.family,
-    fontSize: TYPOGRAPHY.body,
-    fontWeight: '600',
-    color: COLORS.textMuted,
-  },
-  bookmarkBtn: {
-    width: TOUCH.minTarget,
-    height: TOUCH.minTarget,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.accentSoft,
-    borderWidth: 1,
-    borderColor: COLORS.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  audioRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.sm,
-  },
-  actionBtnFlex: {
+  emptyPrimaryBtn: {
     flexGrow: 1,
-    minWidth: 136,
-  },
-  primaryBtn: {
+    minWidth: 140,
     minHeight: TOUCH.recommendedHeight,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: SPACING.md,
   },
-  primaryBtnActive: {
-    backgroundColor: COLORS.primaryDark,
-  },
-  primaryBtnText: {
-    fontFamily: FONTS.family,
+  emptyPrimaryBtnText: {
     fontSize: TYPOGRAPHY.body,
-    fontWeight: '800',
+    fontWeight: '700',
     color: COLORS.white,
   },
-  slowBtn: {
+  emptySecondaryBtn: {
+    flexGrow: 1,
+    minWidth: 140,
     minHeight: TOUCH.recommendedHeight,
-    borderRadius: RADIUS.lg,
-    backgroundColor: COLORS.tint,
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.roseSoft,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: SPACING.md,
   },
-  slowBtnActive: {
-    backgroundColor: COLORS.accentSoft,
-    borderColor: COLORS.accent,
-  },
-  slowBtnText: {
-    fontFamily: FONTS.family,
+  emptySecondaryBtnText: {
     fontSize: TYPOGRAPHY.body,
-    fontWeight: '800',
-    color: COLORS.primaryDark,
+    fontWeight: '500',
+    color: COLORS.roseText,
   },
-  symbolGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.sm,
-  },
-  symbolCard: {
-    flexBasis: '46%',
-    flexGrow: 1,
-    minWidth: 148,
-    minHeight: 128,
-    backgroundColor: COLORS.card,
-    borderColor: COLORS.border,
-    borderWidth: 1,
-    borderRadius: RADIUS.card,
-    padding: SPACING.md,
-    justifyContent: 'space-between',
-    gap: 6,
-  },
-  symbolCardLearned: {
-    backgroundColor: COLORS.tint,
-    borderColor: COLORS.primary,
-    borderWidth: 1.5,
-  },
-  symbolCardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 4,
-  },
-  symbolIpa: {
-    fontFamily: FONTS.family,
-    fontSize: TYPOGRAPHY.word,
-    fontWeight: '800',
-    color: COLORS.primaryDark,
-  },
-  symbolCardIcons: {
+  emptyResetBtn: {
+    minWidth: 160,
+    minHeight: TOUCH.recommendedHeight,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.goldSoft,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.lg,
   },
-  symbolKoHint: {
-    fontFamily: FONTS.family,
+  emptyResetBtnText: {
     fontSize: TYPOGRAPHY.body,
+    fontWeight: '500',
+    color: COLORS.goldText,
+  },
+  sectionsStack: {
+    gap: SPACING.lg,
+  },
+  sectionHeading: {
+    fontSize: TYPOGRAPHY.bodyLarge,
     fontWeight: '700',
     color: COLORS.text,
+    paddingHorizontal: 4,
   },
-  symbolExample: {
-    fontFamily: FONTS.family,
-    fontSize: TYPOGRAPHY.body,
-    color: COLORS.textMuted,
+  listStack: {
+    gap: SPACING.sm,
+  },
+  wordCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.card,
+    padding: SPACING.lg,
+    gap: SPACING.md,
+    ...SHADOW.card,
+  },
+  wordCardActive: {
+    backgroundColor: COLORS.tint,
+  },
+  cardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: SPACING.sm,
+  },
+  wordMainPressable: {
+    flex: 1,
+    gap: 4,
+  },
+  wordHeadingRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+  },
+  wordText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: COLORS.text,
+    letterSpacing: 0.2,
+  },
+  posBadge: {
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  posBadgeText: {
+    fontSize: 15,
     fontWeight: '500',
+    color: COLORS.textMuted,
+  },
+  meaningText: {
+    fontSize: TYPOGRAPHY.bodyLarge,
+    fontWeight: '500',
+    color: COLORS.primaryDark,
+  },
+  phoneticText: {
+    fontSize: TYPOGRAPHY.body,
+    fontWeight: '400',
+    color: COLORS.textMuted,
+  },
+  removeBookmarkBtn: {
+    minWidth: TOUCH.minTarget,
+    minHeight: TOUCH.minTarget,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.goldSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardActionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.xs,
+  },
+  playNormalBtn: {
+    flexGrow: 1,
+    minWidth: 96,
+    minHeight: TOUCH.minTarget,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+  },
+  playNormalBtnActive: {
+    backgroundColor: COLORS.primaryDark,
+  },
+  playNormalBtnText: {
+    fontSize: TYPOGRAPHY.body,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  playSlowBtn: {
+    flexGrow: 1,
+    minWidth: 96,
+    minHeight: TOUCH.minTarget,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.tealSoft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+  },
+  playSlowBtnActive: {
+    backgroundColor: COLORS.teal,
+  },
+  playSlowBtnText: {
+    fontSize: TYPOGRAPHY.body,
+    fontWeight: '500',
+    color: COLORS.tealText,
+  },
+  detailBtn: {
+    minWidth: 90,
+    minHeight: TOUCH.minTarget,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.indigoSoft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+  },
+  detailBtnText: {
+    fontSize: TYPOGRAPHY.body,
+    fontWeight: '500',
+    color: COLORS.indigoText,
+  },
+  symbolCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.card,
+    padding: SPACING.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
+    ...SHADOW.card,
+  },
+  symbolCardLearned: {
+    backgroundColor: COLORS.successSoft,
+  },
+  symbolMainPressable: {
+    flex: 1,
+    gap: 6,
+  },
+  symbolHeadingRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+  },
+  symbolIpaText: {
+    fontSize: TYPOGRAPHY.word,
+    fontWeight: '700',
+    color: COLORS.purpleText,
+  },
+  symbolHintBadge: {
+    backgroundColor: COLORS.purpleSoft,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  symbolHintBadgeText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: COLORS.purpleText,
+  },
+  learnedTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  learnedTagText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: COLORS.successText,
+  },
+  symbolTitleText: {
+    fontSize: TYPOGRAPHY.body,
+    fontWeight: '400',
+    color: COLORS.text,
   },
   pressed: {
     opacity: 0.82,

@@ -76,154 +76,116 @@ if (fs.existsSync(path.join(root, 'tsconfig.json')) && fs.existsSync(path.join(r
   pass('TypeScript (tsc --noEmit)', 'skipped (project not yet installed)');
 }
 
-// Gate 3: Design Tokens check
+// Gate 3: Design Tokens check (#FF4C4B brand main palette + Spoqa Han Sans Neo font)
 const tokensPath = path.join(root, 'src', 'theme', 'tokens.ts');
 if (fs.existsSync(tokensPath)) {
   const tokensText = fs.readFileSync(tokensPath, 'utf8');
-  const requiredHexes = [
-    '#F7F5F0',
+  const requiredTokens = [
+    '#F8F9FA',
     '#FFFFFF',
-    '#E5E0D8',
-    '#15803D',
-    '#1B4332',
-    '#DCFCE7',
-    '#D97706',
-    '#B45309',
-    '#1E293B',
+    '#E9ECEF',
+    '#FF4C4B',
+    '#C92423',
+    '#FFF0F0',
+    '#E85C00',
+    '#B54400',
+    '#191F28',
+    'SPOKAHANSANSNEO',
   ];
-  const missingHexes = requiredHexes.filter(
-    (hex) => !tokensText.toUpperCase().includes(hex)
+  const missingTokens = requiredTokens.filter(
+    (token) => !tokensText.toUpperCase().includes(token)
   );
-  if (missingHexes.length > 0) {
-    fail('Design Tokens', `Missing required colors: ${missingHexes.join(', ')}`);
+  if (missingTokens.length > 0) {
+    fail('Design Tokens', `Missing required tokens: ${missingTokens.join(', ')}`);
   } else {
-    pass('Design Tokens', 'all 9 SPEC.md color hex tokens verified');
+    pass('Design Tokens', '#FF4C4B brand main palette & SpokaHanSansNeo font tokens verified');
   }
 }
 
-// Gate 4: Local JSON Data Integrity Check
-const symbolsPath = path.join(root, 'src', 'data', 'ipaSymbols.json');
-const wordsPath = path.join(root, 'src', 'data', 'coreWords.json');
+// Gate 4: Zero Hardcoded JSON Guardrail & Pure TS IPA Catalog Check
+const jsonFilesInSrc = walkFiles(path.join(root, 'src'), ['.json']);
+if (jsonFilesInSrc.length > 0) {
+  fail(
+    'Guardrail (no JSON in src/)',
+    `Hardcoded JSON files are strictly forbidden under src/: ${jsonFilesInSrc
+      .map((f) => path.relative(root, f))
+      .join(', ')}`
+  );
+} else {
+  pass('Guardrail (no JSON in src/)', '0 hardcoded .json data files under src/');
+}
 
-let symbolIdSet = null;
-if (fs.existsSync(symbolsPath)) {
+const catalogPath = path.join(root, 'src', 'data', 'ipaCatalog.ts');
+if (!fs.existsSync(catalogPath)) {
+  fail('Data (ipaCatalog.ts)', 'Missing src/data/ipaCatalog.ts');
+} else {
   try {
-    const symbols = JSON.parse(fs.readFileSync(symbolsPath, 'utf8'));
-    if (!Array.isArray(symbols)) {
-      fail('Data (ipaSymbols.json)', 'Root must be an array');
+    const catalogSrc = fs.readFileSync(catalogPath, 'utf8');
+    if (/\bexamples\s*:/.test(catalogSrc)) {
+      fail(
+        'Data (ipaCatalog.ts)',
+        'Hardcoded examples array is forbidden in ipaCatalog.ts; example words must be fetched dynamically'
+      );
     } else {
-      const counts = { basic_vowels: 0, diphthongs: 0, key_consonants: 0 };
+      const symbolRegex =
+        /id:\s*'([^']+)'[\s\S]*?categoryId:\s*'([^']+)'[\s\S]*?isCore:\s*(true|false)[\s\S]*?ipa:\s*'([^']+)'[\s\S]*?arpaTargets:\s*\[([^\]]+)\][\s\S]*?spellingPatterns:\s*\[([^\]]+)\]/g;
+      const matches = [...catalogSrc.matchAll(symbolRegex)];
+      const counts = {
+        basic_vowels: 0,
+        diphthongs: 0,
+        key_consonants: 0,
+        basic_consonants: 0,
+      };
+      const coreCounts = { basic_vowels: 0, diphthongs: 0, key_consonants: 0 };
       const ids = new Set();
-      let symbolErr = null;
+      let catalogErr = null;
 
-      for (const s of symbols) {
-        if (!s.id || !s.categoryId || !s.ipa || !s.titleKo || !s.mouthGuideKo || !s.koHint) {
-          symbolErr = `Symbol missing required fields: ${JSON.stringify(s)}`;
+      for (const m of matches) {
+        const [, id, categoryId, isCoreStr, ipa, arpaRaw, patternsRaw] = m;
+        if (ids.has(id)) {
+          catalogErr = `Duplicate symbol id: ${id}`;
           break;
         }
-        if (ids.has(s.id)) {
-          symbolErr = `Duplicate symbol id: ${s.id}`;
+        ids.add(id);
+        if (!(categoryId in counts)) {
+          catalogErr = `Invalid categoryId "${categoryId}" on ${id}`;
           break;
         }
-        ids.add(s.id);
-        if (!(s.categoryId in counts)) {
-          symbolErr = `Invalid categoryId "${s.categoryId}" on ${s.id}`;
+        counts[categoryId]++;
+        if (isCoreStr === 'true' && categoryId in coreCounts) {
+          coreCounts[categoryId]++;
+        }
+        if (!ipa || !arpaRaw.includes("'") || !patternsRaw.includes("'")) {
+          catalogErr = `Symbol ${id} missing ipa, arpaTargets, or spellingPatterns`;
           break;
         }
-        counts[s.categoryId]++;
-        if (!Array.isArray(s.examples) || s.examples.length !== 3) {
-          symbolErr = `Symbol ${s.id} must have exactly 3 example words`;
-          break;
-        }
-        for (const ex of s.examples) {
-          if (!ex.word || !ex.meaningKo || !ex.ipa) {
-            symbolErr = `Symbol ${s.id} has incomplete example word`;
-            break;
-          }
-        }
-        if (symbolErr) break;
       }
 
-      if (symbolErr) {
-        fail('Data (ipaSymbols.json)', symbolErr);
+      if (catalogErr) {
+        fail('Data (ipaCatalog.ts)', catalogErr);
       } else if (
-        symbols.length !== 18 ||
-        counts.basic_vowels !== 7 ||
+        matches.length !== 40 ||
+        counts.basic_vowels !== 11 ||
         counts.diphthongs !== 5 ||
-        counts.key_consonants !== 6
+        counts.key_consonants !== 14 ||
+        counts.basic_consonants !== 10 ||
+        coreCounts.basic_vowels !== 7 ||
+        coreCounts.diphthongs !== 5 ||
+        coreCounts.key_consonants !== 6
       ) {
         fail(
-          'Data (ipaSymbols.json)',
-          `Expected 18 symbols (7/5/6), got ${symbols.length} (${counts.basic_vowels}/${counts.diphthongs}/${counts.key_consonants})`
+          'Data (ipaCatalog.ts)',
+          `Expected 40 symbols (11/5/14/10, core 7/5/6), got ${matches.length} (${counts.basic_vowels}/${counts.diphthongs}/${counts.key_consonants}/${counts.basic_consonants}, core ${coreCounts.basic_vowels}/${coreCounts.diphthongs}/${coreCounts.key_consonants})`
         );
       } else {
-        symbolIdSet = ids;
-        pass('Data (ipaSymbols.json)', '18 symbols (7 basic_vowels, 5 diphthongs, 6 key_consonants), 3 examples each');
+        pass(
+          'Data (ipaCatalog.ts)',
+          '40 pure IPA metadata entries (11/5/14/10; 18 core) with dynamic ARPAbet discovery and 0 hardcoded example words'
+        );
       }
     }
   } catch (err) {
-    fail('Data (ipaSymbols.json)', err.message);
-  }
-}
-
-if (fs.existsSync(wordsPath)) {
-  try {
-    const words = JSON.parse(fs.readFileSync(wordsPath, 'utf8'));
-    if (!Array.isArray(words)) {
-      fail('Data (coreWords.json)', 'Root must be an array');
-    } else {
-      const validStress = new Set(['primary', 'secondary', 'none']);
-      const ids = new Set();
-      let wordErr = null;
-
-      for (const w of words) {
-        if (!w.id || !w.word || !w.meaningKo || !w.ipa || !w.koPronunciation) {
-          wordErr = `Word missing required fields: ${w?.id || w?.word}`;
-          break;
-        }
-        if (ids.has(w.id)) {
-          wordErr = `Duplicate word id: ${w.id}`;
-          break;
-        }
-        ids.add(w.id);
-
-        if (!Array.isArray(w.syllables) || w.syllables.length === 0) {
-          wordErr = `Word ${w.id} must have non-empty syllables array`;
-          break;
-        }
-        for (const syl of w.syllables) {
-          if (!syl.text || !syl.ipa || !syl.koHint || !validStress.has(syl.stress)) {
-            wordErr = `Word ${w.id} has invalid syllable: ${JSON.stringify(syl)}`;
-            break;
-          }
-        }
-        if (wordErr) break;
-
-        if (!Array.isArray(w.symbolIds) || w.symbolIds.length === 0) {
-          wordErr = `Word ${w.id} must have at least one symbolId`;
-          break;
-        }
-        if (symbolIdSet) {
-          for (const sid of w.symbolIds) {
-            if (!symbolIdSet.has(sid)) {
-              wordErr = `Word ${w.id} references unknown symbolId "${sid}"`;
-              break;
-            }
-          }
-        }
-        if (wordErr) break;
-      }
-
-      if (wordErr) {
-        fail('Data (coreWords.json)', wordErr);
-      } else if (words.length < 30) {
-        fail('Data (coreWords.json)', `Expected at least 30 core words for MVP validation, got ${words.length}`);
-      } else {
-        pass('Data (coreWords.json)', `${words.length} core words validated with 100% symbolId referential integrity`);
-      }
-    }
-  } catch (err) {
-    fail('Data (coreWords.json)', err.message);
+    fail('Data (ipaCatalog.ts)', err.message);
   }
 }
 

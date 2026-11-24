@@ -6,31 +6,15 @@ import { safeAsyncStorage } from './safeAsyncStorage';
 const MAX_CACHED_WORDS = 300;
 const MAX_RECENT_WORDS = 12;
 
-/**
- * 첫 화면 추천 검색어 키워드 (하드코딩된 단어 DB가 아니라, 터치 시 상업용 무료 API로 실시간 조회 후 캐싱)
- */
-export const STARTER_SEARCH_CHIPS = [
-  { word: 'banana', labelKo: '바나나' },
-  { word: 'family', labelKo: '가족' },
-  { word: 'coffee', labelKo: '커피' },
-  { word: 'hospital', labelKo: '병원' },
-  { word: 'tomorrow', labelKo: '내일' },
-  { word: 'water', labelKo: '물' },
-  { word: 'together', labelKo: '함께' },
-  { word: 'delicious', labelKo: '맛있는' },
-] as const;
-
 export interface WordCacheState {
   cachedWords: Record<string, CoreWord>;
   recentWords: string[];
   bookmarkedWordKeys: string[];
-  activeWord: CoreWord | null;
   hasHydrated: boolean;
   setHasHydrated: (hydrated: boolean) => void;
-  setActiveWord: (word: CoreWord | null) => void;
   saveWord: (word: CoreWord) => void;
-  toggleWordBookmark: (word: CoreWord) => void;
-  isWordBookmarked: (englishWord: string) => boolean;
+  toggleBookmark: (word: CoreWord) => void;
+  isBookmarked: (englishWord: string) => boolean;
   getCachedWord: (englishWord: string) => CoreWord | undefined;
   findCachedByQuery: (query: string) => CoreWord | undefined;
   clearCache: () => void;
@@ -42,15 +26,10 @@ export const useWordCacheStore = create<WordCacheState>()(
       cachedWords: {},
       recentWords: [],
       bookmarkedWordKeys: [],
-      activeWord: null,
       hasHydrated: false,
 
       setHasHydrated: (hydrated: boolean) => {
         set({ hasHydrated: hydrated });
-      },
-
-      setActiveWord: (word: CoreWord | null) => {
-        set({ activeWord: word });
       },
 
       saveWord: (word: CoreWord) => {
@@ -58,19 +37,17 @@ export const useWordCacheStore = create<WordCacheState>()(
         const prevMap = get().cachedWords;
         const prevRecent = get().recentWords.filter((k) => k !== key);
         const nextRecent = [key, ...prevRecent].slice(0, MAX_RECENT_WORDS);
+        const bookmarked = get().bookmarkedWordKeys ?? [];
 
         const nextMap: Record<string, CoreWord> = {
           ...prevMap,
           [key]: word,
         };
 
-        // LRU 캐시 상한 유지 (최근 검색어 + 북마크 단어는 절대 삭제하지 않음)
+        // LRU 캐시 상한 유지 (최근 단어 및 북마크된 단어는 절대 자동 삭제하지 않음)
         const keys = Object.keys(nextMap);
         if (keys.length > MAX_CACHED_WORDS) {
-          const keepSet = new Set([
-            ...nextRecent,
-            ...get().bookmarkedWordKeys,
-          ]);
+          const keepSet = new Set([...nextRecent, ...bookmarked]);
           for (const candidate of keys) {
             if (Object.keys(nextMap).length <= MAX_CACHED_WORDS) break;
             if (!keepSet.has(candidate) && candidate !== key) {
@@ -85,29 +62,31 @@ export const useWordCacheStore = create<WordCacheState>()(
         });
       },
 
-      toggleWordBookmark: (word: CoreWord) => {
+      toggleBookmark: (word: CoreWord) => {
         if (!get().hasHydrated) return;
         const key = word.word.toLowerCase();
-        const current = get().bookmarkedWordKeys;
-        const exists = current.includes(key);
-        const nextBookmarks = exists
-          ? current.filter((k) => k !== key)
-          : [key, ...current];
+        const prevBookmarks = Array.isArray(get().bookmarkedWordKeys)
+          ? get().bookmarkedWordKeys
+          : [];
+        const exists = prevBookmarks.includes(key);
 
-        const prevMap = get().cachedWords;
-        const nextMap =
-          exists || prevMap[key]
-            ? prevMap
-            : { ...prevMap, [key]: word };
+        const nextBookmarks = exists
+          ? prevBookmarks.filter((k) => k !== key)
+          : [key, ...prevBookmarks];
 
         set({
           bookmarkedWordKeys: nextBookmarks,
-          cachedWords: nextMap,
+          cachedWords: {
+            ...get().cachedWords,
+            [key]: word,
+          },
         });
       },
 
-      isWordBookmarked: (englishWord: string) => {
-        return get().bookmarkedWordKeys.includes(englishWord.trim().toLowerCase());
+      isBookmarked: (englishWord: string) => {
+        const key = englishWord.trim().toLowerCase();
+        const list = get().bookmarkedWordKeys;
+        return Array.isArray(list) ? list.includes(key) : false;
       },
 
       getCachedWord: (englishWord: string) => {
@@ -125,21 +104,59 @@ export const useWordCacheStore = create<WordCacheState>()(
       },
 
       clearCache: () => {
-        const bookmarkedKeys = get().bookmarkedWordKeys;
-        const prevMap = get().cachedWords;
-        const preservedMap: Record<string, CoreWord> = {};
-        for (const key of bookmarkedKeys) {
-          if (prevMap[key]) {
-            preservedMap[key] = prevMap[key];
-          }
-        }
-        set({ cachedWords: preservedMap, recentWords: [] });
+        set({ cachedWords: {}, recentWords: [], bookmarkedWordKeys: [] });
       },
     }),
     {
-      name: 'baro-english-word-cache-v1',
-      version: 1,
+      name: 'baro-english-word-cache-v3',
+      version: 4,
       storage: createJSONStorage(() => safeAsyncStorage),
+      migrate: (persistedState, version) => {
+        const state = (persistedState ?? {}) as Partial<WordCacheState>;
+        if (version >= 4 || !state.cachedWords) {
+          return state as WordCacheState;
+        }
+
+        // v3 -> v4: CMUdict 약모음 합류로 캐시된 re-/be-/de-/pre- 등의 /ə/ 표기를 보존 북마크 유지한 채 자동 보정
+        const prefixPatch: Record<string, { ipa: string; koHint: string }> = {
+          re: { ipa: 'rɪ', koHint: '리' },
+          be: { ipa: 'bɪ', koHint: '비' },
+          de: { ipa: 'dɪ', koHint: '디' },
+          pre: { ipa: 'prɪ', koHint: '프리' },
+        };
+
+        const nextCached: Record<string, CoreWord> = {};
+        for (const [key, item] of Object.entries(state.cachedWords)) {
+          if (!item || !Array.isArray(item.syllables)) continue;
+          let changed = false;
+          const nextSyllables = item.syllables.map((syl, idx) => {
+            const part = syl.text.toLowerCase().replace(/[^a-z]/g, '');
+            if (idx === 0 && syl.isSchwa && prefixPatch[part]) {
+              changed = true;
+              const patch = prefixPatch[part];
+              return {
+                ...syl,
+                ipa: patch.ipa,
+                koHint: patch.koHint,
+                isSchwa: false,
+              };
+            }
+            return syl;
+          });
+          nextCached[key] = changed
+            ? {
+                ...item,
+                syllables: nextSyllables,
+                koPronunciation: nextSyllables.map((s) => s.koHint).join('-'),
+              }
+            : item;
+        }
+
+        return {
+          ...state,
+          cachedWords: nextCached,
+        } as WordCacheState;
+      },
       partialize: (state) => ({
         cachedWords: state.cachedWords,
         recentWords: state.recentWords,
@@ -147,7 +164,7 @@ export const useWordCacheStore = create<WordCacheState>()(
       }),
       onRehydrateStorage: () => (_state, error) => {
         if (error) {
-          void safeAsyncStorage.removeItem('baro-english-word-cache-v1');
+          void safeAsyncStorage.removeItem('baro-english-word-cache-v3');
         }
         useWordCacheStore.getState().setHasHydrated(true);
       },

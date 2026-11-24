@@ -1,6 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
+import { IconBookmark, IconBookmarkFilled, IconCircleCheck, IconCircleCheckFilled, IconGauge, IconMoodSmile, IconRefresh, IconSparkles, IconVolume, IconVolume2, IconX } from '@tabler/icons-react-native';
 import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   Pressable,
   ScrollView,
@@ -8,12 +9,27 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Tap } from './Tap';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSpeechAudio } from '../hooks/useSpeechAudio';
+import { fetchSymbolExamplesByLevel } from '../services/wordApi';
 import { useLearningStore } from '../store/useLearningStore';
-import { COLORS, FONTS, RADIUS, SPACING, TOUCH, TYPOGRAPHY } from '../theme/tokens';
-import type { IpaSymbol } from '../types/learning';
+import { COLORS, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../theme/tokens';
+import type {
+  ExampleDifficultyLevel,
+  IpaSymbol,
+  SymbolExampleWord,
+} from '../types/learning';
+
+const DIFFICULTY_TABS: {
+  id: ExampleDifficultyLevel;
+  label: string;
+  titleLabel: string;
+  activeBg: string;
+}[] = [
+  { id: 'beginner', label: '초급 (기초)', titleLabel: '초급(기초)', activeBg: COLORS.success },
+  { id: 'intermediate', label: '중급', titleLabel: '중급', activeBg: COLORS.accent },
+  { id: 'advanced', label: '고급', titleLabel: '고급', activeBg: COLORS.purple },
+];
 
 interface SymbolDetailSheetProps {
   symbol: IpaSymbol | null;
@@ -21,6 +37,92 @@ interface SymbolDetailSheetProps {
   onClose: () => void;
   /** Tab 2 기호 역추적에서 열렸을 때 상단에 맥락 배지 표시 */
   contextLabel?: string;
+}
+
+function renderEmphasizedExampleWord(ex: SymbolExampleWord) {
+  if (!ex.segments || ex.segments.length === 0) {
+    return (
+      <Text style={styles.exampleWord} maxFontSizeMultiplier={1.4}>
+        {ex.word}
+      </Text>
+    );
+  }
+
+  if (ex.isSyllableSplit) {
+    return (
+      <View style={styles.splitWordBlock}>
+        {/* 전체 영단어 원형 (철자 한눈에 확인 + 강세 구간 은은한 강조) */}
+        <Text style={styles.exampleWord} maxFontSizeMultiplier={1.4}>
+          {ex.segments.map((seg, idx) => (
+            <Text
+              key={`${ex.word}-full-${idx}`}
+              style={
+                seg.role === 'stress'
+                  ? styles.fullWordStressSpan
+                  : undefined
+              }
+            >
+              {seg.text}
+            </Text>
+          ))}
+        </Text>
+
+        {/* 음절별 발음 강약 가이드 */}
+        <View style={styles.syllableWordRow}>
+          {ex.segments.map((seg, idx) => (
+            <View key={`${ex.word}-seg-${idx}`} style={styles.syllableUnit}>
+              {idx > 0 ? (
+                <Text style={styles.syllableDot} maxFontSizeMultiplier={1.3}>
+                  ·
+                </Text>
+              ) : null}
+              {seg.role === 'stress' ? (
+                <View style={styles.stressChip}>
+                  <Text style={styles.stressChipDot} maxFontSizeMultiplier={1.2}>
+                    ⬤
+                  </Text>
+                  <Text style={styles.stressChipText} maxFontSizeMultiplier={1.35}>
+                    {seg.text}
+                  </Text>
+                </View>
+              ) : seg.role === 'weak' ? (
+                <View style={styles.weakChip}>
+                  <Text style={styles.weakChipText} maxFontSizeMultiplier={1.35}>
+                    {seg.text}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.normalSyllableText} maxFontSizeMultiplier={1.35}>
+                  {seg.text}
+                </Text>
+              )}
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.inlineWordRow}>
+      <Text style={styles.exampleWord} maxFontSizeMultiplier={1.4}>
+        {ex.segments.map((seg, idx) => (
+          <Text
+            key={`${ex.word}-inline-${idx}`}
+            style={
+              seg.role === 'stress'
+                ? styles.inlineStressSpan
+                : seg.role === 'weak'
+                  ? styles.inlineWeakSpan
+                  : undefined
+            }
+          >
+            {seg.text}
+          </Text>
+        ))}
+      </Text>
+    </View>
+  );
 }
 
 export function SymbolDetailSheet({
@@ -32,20 +134,36 @@ export function SymbolDetailSheet({
   const insets = useSafeAreaInsets();
   const { playNormal, playSlow, stop, activeKey } = useSpeechAudio();
   const learnedSymbolIds = useLearningStore((state) => state.learnedSymbolIds);
-  const toggleSymbolLearned = useLearningStore((state) => state.toggleSymbolLearned);
   const bookmarkedSymbolIds = useLearningStore(
     (state) => state.bookmarkedSymbolIds
+  );
+  const toggleSymbolLearned = useLearningStore(
+    (state) => state.toggleSymbolLearned
   );
   const toggleSymbolBookmark = useLearningStore(
     (state) => state.toggleSymbolBookmark
   );
 
+  const [difficulty, setDifficulty] = useState<ExampleDifficultyLevel>('beginner');
+  const [refreshSeed, setRefreshSeed] = useState(0);
+  const [loadedState, setLoadedState] = useState<{
+    key: string;
+    items: SymbolExampleWord[];
+    failed: boolean;
+  }>({ key: '', items: [], failed: false });
+
   // 닫기 슬라이드 애니메이션 중 내용이 즉시 사라지지 않도록 직전 기호 유지
   const [cachedSymbol, setCachedSymbol] = useState<IpaSymbol | null>(symbol);
   if (symbol && symbol !== cachedSymbol) {
     setCachedSymbol(symbol);
+    if (refreshSeed !== 0) {
+      setRefreshSeed(0);
+    }
   }
   const activeSymbol = symbol ?? cachedSymbol;
+  const requestKey = activeSymbol
+    ? `${activeSymbol.id}:${difficulty}:${refreshSeed}`
+    : '';
 
   // 바텀시트가 열릴 때 이전 화면의 오디오 즉시 중단
   useEffect(() => {
@@ -54,10 +172,59 @@ export function SymbolDetailSheet({
     }
   }, [visible, stop]);
 
+  // 현재 기호·난이도의 대표 단어 3개를 실시간 API로 동적 로드
+  useEffect(() => {
+    if (!visible || !activeSymbol) return;
+    let cancelled = false;
+    const currentKey = `${activeSymbol.id}:${difficulty}:${refreshSeed}`;
+
+    fetchSymbolExamplesByLevel(activeSymbol, difficulty, refreshSeed)
+      .then((items) => {
+        if (cancelled) return;
+        setLoadedState({
+          key: currentKey,
+          items,
+          failed: items.length === 0,
+        });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLoadedState({
+          key: currentKey,
+          items: [],
+          failed: true,
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, activeSymbol, difficulty, refreshSeed]);
+
   if (!activeSymbol) return null;
 
   const isLearned = learnedSymbolIds.includes(activeSymbol.id);
-  const isBookmarked = bookmarkedSymbolIds.includes(activeSymbol.id);
+  const isBookmarked = Array.isArray(bookmarkedSymbolIds)
+    ? bookmarkedSymbolIds.includes(activeSymbol.id)
+    : false;
+  const currentTabMeta =
+    DIFFICULTY_TABS.find((t) => t.id === difficulty) ?? DIFFICULTY_TABS[0];
+  const isExamplesLoading = visible && loadedState.key !== requestKey;
+  const levelExamples =
+    loadedState.key === requestKey ? loadedState.items : [];
+  const hasLoadError = loadedState.key === requestKey && loadedState.failed;
+
+  const handleSelectDifficulty = (nextLevel: ExampleDifficultyLevel) => {
+    if (nextLevel === difficulty) return;
+    stop();
+    setDifficulty(nextLevel);
+    setRefreshSeed(0);
+  };
+
+  const handleRefreshExamples = () => {
+    stop();
+    setRefreshSeed((prev) => prev + 1);
+  };
 
   const handleClose = () => {
     stop();
@@ -104,17 +271,41 @@ export function SymbolDetailSheet({
               </Text>
             </View>
 
-            <Tap
-              onPress={handleClose}
-              style={styles.closeButton}
-              accessibilityRole="button"
-              accessibilityLabel="닫기"
-            >
-              <Ionicons name="close" size={24} color={COLORS.text} />
-              <Text style={styles.closeButtonText} maxFontSizeMultiplier={1.3}>
-                닫기
-              </Text>
-            </Tap>
+            <View style={styles.headerActions}>
+              <Pressable
+                onPress={() => toggleSymbolBookmark(activeSymbol.id)}
+                style={({ pressed }) => [
+                  styles.bookmarkIconBtn,
+                  isBookmarked && styles.bookmarkIconBtnActive,
+                  pressed && styles.buttonPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isBookmarked }}
+                accessibilityLabel={
+                  isBookmarked
+                    ? `${activeSymbol.ipa} 북마크 해제`
+                    : `${activeSymbol.ipa} 북마크 저장`
+                }
+              >
+                {isBookmarked ? (
+                  <IconBookmarkFilled size={24} color={COLORS.goldText} />
+                ) : (
+                  <IconBookmark size={24} color={COLORS.text} />
+                )}
+              </Pressable>
+
+              <Pressable
+                onPress={handleClose}
+                style={({ pressed }) => [
+                  styles.closeButton,
+                  pressed && styles.buttonPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="닫기"
+              >
+                <IconX size={24} color={COLORS.text} />
+              </Pressable>
+            </View>
           </View>
 
           <ScrollView
@@ -125,9 +316,9 @@ export function SymbolDetailSheet({
             {/* 입 모양·혀 위치 안내 카드 */}
             <View style={styles.guideCard}>
               <View style={styles.guideHeaderRow}>
-                <Ionicons name="happy-outline" size={24} color={COLORS.primary} />
+                <IconMoodSmile size={24} color={COLORS.teal} />
                 <Text style={styles.guideLabel} maxFontSizeMultiplier={1.4}>
-                  입 모양 · 혀 위치
+                  입 모양 · 혀 위치 안내
                 </Text>
               </View>
               <Text style={styles.guideBody} maxFontSizeMultiplier={1.5}>
@@ -144,109 +335,208 @@ export function SymbolDetailSheet({
               </View>
             </View>
 
-            {/* 대표 기초 단어 3개 */}
+            {/* 대표 단어 3개 (초급 / 중급 / 고급 실시간 동적 로드) */}
             <View style={styles.examplesSection}>
-              <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
-                대표 단어
-              </Text>
+              <View style={styles.sectionHeaderBlock}>
+                <View style={styles.sectionTitleRow}>
+                  <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
+                    대표 단어 3개 · {currentTabMeta.titleLabel}
+                  </Text>
+                  <Pressable
+                    onPress={handleRefreshExamples}
+                    disabled={isExamplesLoading}
+                    style={({ pressed }) => [
+                      styles.refreshExamplesBtn,
+                      pressed && styles.buttonPressed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel="다른 대표 단어 3개 불러오기"
+                  >
+                    <IconRefresh size={18} color={COLORS.indigoText} />
+                    <Text style={styles.refreshExamplesText} maxFontSizeMultiplier={1.3}>
+                      다른 단어
+                    </Text>
+                  </Pressable>
+                </View>
+                <Text style={styles.sectionLegend} maxFontSizeMultiplier={1.4}>
+                  {activeSymbol.id === 'sym_schwa'
+                    ? '노란 표시(⬤)를 세게, 회색 표시는 힘 빼고 약하게!'
+                    : '노란 표시(⬤) 부분을 세게·또렷하게 발음해 보세요'}
+                </Text>
+              </View>
+
+              {/* 초급 / 중급 / 고급 난이도 선택 탭 (보더 없는 UI) */}
+              <View style={styles.levelSwitchRow}>
+                {DIFFICULTY_TABS.map((tab) => {
+                  const isActive = difficulty === tab.id;
+                  return (
+                    <Pressable
+                      key={tab.id}
+                      onPress={() => handleSelectDifficulty(tab.id)}
+                      style={({ pressed }) => [
+                        styles.levelSwitchBtn,
+                        isActive && { backgroundColor: tab.activeBg },
+                        pressed && styles.buttonPressed,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isActive }}
+                      accessibilityLabel={`${tab.label} 단어 3개 보기`}
+                    >
+                      <Text
+                        style={[
+                          styles.levelSwitchText,
+                          isActive && styles.levelSwitchTextActive,
+                        ]}
+                        maxFontSizeMultiplier={1.3}
+                      >
+                        {tab.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
               <View style={styles.exampleList}>
-                {activeSymbol.examples.map((ex) => {
-                  const normalKey = `sym:${activeSymbol.id}:${ex.word}:normal`;
-                  const slowKey = `sym:${activeSymbol.id}:${ex.word}:slow`;
+                {isExamplesLoading ? (
+                  <View style={styles.examplesLoadingCard}>
+                    <ActivityIndicator size="small" color={currentTabMeta.activeBg} />
+                    <Text style={styles.examplesLoadingText} maxFontSizeMultiplier={1.4}>
+                      {activeSymbol.ipa} 소리가 들어간 {currentTabMeta.titleLabel} 단어를 찾고 있어요...
+                    </Text>
+                  </View>
+                ) : hasLoadError || levelExamples.length === 0 ? (
+                  <View style={styles.examplesLoadingCard}>
+                    <Text style={styles.examplesLoadingText} maxFontSizeMultiplier={1.4}>
+                      단어를 불러오지 못했어요. 인터넷 연결을 확인한 뒤 다시 눌러 주세요.
+                    </Text>
+                    <Pressable
+                      onPress={handleRefreshExamples}
+                      style={({ pressed }) => [
+                        styles.retryBtn,
+                        pressed && styles.buttonPressed,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel="다시 불러오기"
+                    >
+                      <Text style={styles.retryBtnText} maxFontSizeMultiplier={1.3}>
+                        다시 불러오기
+                      </Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  levelExamples.map((ex) => {
+                  const normalKey = `sym:${activeSymbol.id}:${difficulty}:${ex.word}:normal`;
+                  const slowKey = `sym:${activeSymbol.id}:${difficulty}:${ex.word}:slow`;
                   const isNormalPlaying = activeKey === normalKey;
                   const isSlowPlaying = activeKey === slowKey;
 
                   return (
                     <View
-                      key={`${activeSymbol.id}-${ex.word}`}
+                      key={`${activeSymbol.id}-${difficulty}-${ex.word}`}
                       style={[
                         styles.exampleCard,
                         (isNormalPlaying || isSlowPlaying) && styles.exampleCardActive,
                       ]}
                     >
-                      <Tap
+                      <Pressable
                         style={styles.exampleInfoArea}
                         onPress={() => playNormal(ex.word, { key: normalKey })}
                         accessibilityRole="button"
                         accessibilityLabel={`${ex.word} ${ex.meaningKo} 소리 듣기`}
                       >
-                        <Text style={styles.exampleWord} maxFontSizeMultiplier={1.4}>
-                          {ex.word}
-                        </Text>
+                        {renderEmphasizedExampleWord(ex)}
                         <Text style={styles.exampleMeta} maxFontSizeMultiplier={1.45}>
                           {ex.ipa} · {ex.meaningKo}
                         </Text>
-                      </Tap>
+                        {ex.emphasisTipKo ? (
+                          <View style={styles.emphasisTipBox}>
+                            <IconSparkles
+                              size={18}
+                              color={COLORS.gold}
+                              style={styles.emphasisTipIcon}
+                            />
+                            <Text style={styles.emphasisTipText} maxFontSizeMultiplier={1.45}>
+                              {ex.emphasisTipKo}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </Pressable>
 
                       <View style={styles.exampleButtons}>
-                        <Tap
+                        <Pressable
                           onPress={() => playNormal(ex.word, { key: normalKey })}
-                          style={[
+                          style={({ pressed }) => [
                             styles.playBtnPrimary,
                             isNormalPlaying && styles.playBtnPrimaryActive,
+                            pressed && styles.buttonPressed,
                           ]}
                           accessibilityRole="button"
                           accessibilityLabel={`${ex.word} 소리 듣기`}
                         >
-                          <Ionicons
-                            name={isNormalPlaying ? 'volume-high' : 'volume-medium'}
-                            size={20}
-                            color={COLORS.white}
-                          />
+                          {isNormalPlaying ? (
+                            <IconVolume size={20} color={COLORS.white} />
+                          ) : (
+                            <IconVolume2 size={20} color={COLORS.white} />
+                          )}
                           <Text
                             style={styles.playBtnPrimaryText}
                             maxFontSizeMultiplier={1.3}
                           >
                             {isNormalPlaying ? '재생 중' : '듣기'}
                           </Text>
-                        </Tap>
+                        </Pressable>
 
-                        <Tap
+                        <Pressable
                           onPress={() => playSlow(ex.word, { key: slowKey })}
-                          style={[
+                          style={({ pressed }) => [
                             styles.playBtnSlow,
                             isSlowPlaying && styles.playBtnSlowActive,
+                            pressed && styles.buttonPressed,
                           ]}
                           accessibilityRole="button"
                           accessibilityLabel={`${ex.word} 천천히 듣기`}
                         >
-                          <Ionicons
-                            name="speedometer-outline"
+                          <IconGauge
                             size={20}
-                            color={COLORS.primaryDark}
+                            color={isSlowPlaying ? COLORS.white : COLORS.tealText}
                           />
                           <Text
-                            style={styles.playBtnSlowText}
+                            style={[
+                              styles.playBtnSlowText,
+                              isSlowPlaying && styles.playBtnPrimaryText,
+                            ]}
                             maxFontSizeMultiplier={1.3}
                           >
-                            {isSlowPlaying ? '재생 중' : '천천히'}
+                            {isSlowPlaying ? '천천히 중' : '천천히'}
                           </Text>
-                        </Tap>
+                        </Pressable>
                       </View>
                     </View>
                   );
-                })}
+                })
+                )}
               </View>
             </View>
           </ScrollView>
 
           {/* 하단 익혔어요 버튼 */}
           <View style={styles.footer}>
-            <Tap
+            <Pressable
               onPress={() => toggleSymbolLearned(activeSymbol.id)}
-              style={[
+              style={({ pressed }) => [
                 styles.learnedButton,
                 isLearned ? styles.learnedButtonDone : styles.learnedButtonTodo,
+                pressed && styles.buttonPressed,
               ]}
               accessibilityRole="button"
               accessibilityState={{ checked: isLearned }}
               accessibilityLabel={isLearned ? '익힘 완료 해제하기' : '익혔어요 완료 체크'}
             >
-              <Ionicons
-                name={isLearned ? 'checkmark-circle' : 'checkmark-circle-outline'}
-                size={26}
-                color={isLearned ? COLORS.primaryDark : COLORS.white}
-              />
+              {isLearned ? (
+                <IconCircleCheckFilled size={26} color={COLORS.successText} />
+              ) : (
+                <IconCircleCheck size={26} color={COLORS.white} />
+              )}
               <Text
                 style={[
                   styles.learnedButtonText,
@@ -254,9 +544,9 @@ export function SymbolDetailSheet({
                 ]}
                 maxFontSizeMultiplier={1.35}
               >
-                {isLearned ? '익힘 완료' : '익혔어요'}
+                {isLearned ? '익힘 완료 (눌러서 해제)' : '익혔어요 (완료 체크)'}
               </Text>
-            </Tap>
+            </Pressable>
           </View>
         </View>
       </View>
@@ -280,8 +570,6 @@ const styles = StyleSheet.create({
     maxHeight: '88%',
     paddingHorizontal: SPACING.md,
     paddingTop: SPACING.sm,
-    borderTopWidth: 1,
-    borderColor: COLORS.border,
   },
   handleBar: {
     alignSelf: 'center',
@@ -304,28 +592,25 @@ const styles = StyleSheet.create({
   },
   contextBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: COLORS.tint,
+    backgroundColor: COLORS.purpleSoft,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: RADIUS.pill,
     marginBottom: 4,
   },
   contextBadgeText: {
-    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
-    fontWeight: '700',
-    color: COLORS.primaryDark,
+    fontWeight: '500',
+    color: COLORS.purpleText,
   },
   ipaHero: {
-    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.wordHero,
-    fontWeight: '800',
-    color: COLORS.primaryDark,
+    fontWeight: '700',
+    color: COLORS.purpleText,
   },
   titleKo: {
-    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.sectionTitle,
-    fontWeight: '700',
+    fontWeight: '500',
     color: COLORS.text,
   },
   headerActions: {
@@ -333,19 +618,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  iconActionButton: {
-    width: TOUCH.minTarget,
-    height: TOUCH.minTarget,
-    borderRadius: RADIUS.pill,
+  bookmarkIconBtn: {
+    minHeight: TOUCH.minTarget,
+    minWidth: TOUCH.minTarget,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.card,
-    borderWidth: 1,
-    borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
+    ...SHADOW.card,
   },
-  bookmarkButtonActive: {
-    backgroundColor: COLORS.accentSoft,
-    borderColor: COLORS.accent,
+  bookmarkIconBtnActive: {
+    backgroundColor: COLORS.goldSoft,
+  },
+  closeButton: {
+    minHeight: TOUCH.minTarget,
+    minWidth: TOUCH.minTarget,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOW.card,
   },
   scrollBody: {
     flexGrow: 0,
@@ -356,11 +648,10 @@ const styles = StyleSheet.create({
   },
   guideCard: {
     backgroundColor: COLORS.card,
-    borderColor: COLORS.border,
-    borderWidth: 1,
     borderRadius: RADIUS.card,
     padding: SPACING.lg,
     gap: SPACING.sm,
+    ...SHADOW.card,
   },
   guideHeaderRow: {
     flexDirection: 'row',
@@ -368,20 +659,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   guideLabel: {
-    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.bodyLarge,
-    fontWeight: '700',
-    color: COLORS.primaryDark,
+    fontWeight: '500',
+    color: COLORS.tealText,
   },
   guideBody: {
-    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.bodyLarge,
     lineHeight: 30,
     color: COLORS.text,
   },
   hintPill: {
     marginTop: 4,
-    backgroundColor: COLORS.tint,
+    backgroundColor: COLORS.tealSoft,
     borderRadius: RADIUS.md,
     paddingVertical: 12,
     paddingHorizontal: SPACING.md,
@@ -392,55 +681,228 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
   },
   hintPillLabel: {
-    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
-    fontWeight: '600',
-    color: COLORS.primaryDark,
+    fontWeight: '400',
+    color: COLORS.tealText,
   },
   hintPillValue: {
-    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.bodyLarge,
-    fontWeight: '800',
-    color: COLORS.primaryDark,
+    fontWeight: '500',
+    color: COLORS.tealText,
   },
   examplesSection: {
     gap: SPACING.sm,
   },
+  sectionHeaderBlock: {
+    gap: 6,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
+    flexWrap: 'wrap',
+  },
   sectionTitle: {
-    fontFamily: FONTS.family,
+    flex: 1,
+    minWidth: 180,
     fontSize: TYPOGRAPHY.bodyLarge,
     fontWeight: '700',
     color: COLORS.text,
+  },
+  refreshExamplesBtn: {
+    minHeight: TOUCH.minTarget,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.indigoSoft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  refreshExamplesText: {
+    fontSize: TYPOGRAPHY.body,
+    fontWeight: '500',
+    color: COLORS.indigoText,
+  },
+  examplesLoadingCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    ...SHADOW.card,
+  },
+  examplesLoadingText: {
+    fontSize: TYPOGRAPHY.body,
+    color: COLORS.textMuted,
+    fontWeight: '400',
+    textAlign: 'center',
+    lineHeight: 26,
+  },
+  retryBtn: {
+    minHeight: TOUCH.minTarget,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.indigo,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryBtnText: {
+    fontSize: TYPOGRAPHY.body,
+    fontWeight: '500',
+    color: COLORS.white,
+  },
+  sectionLegend: {
+    fontSize: TYPOGRAPHY.body,
+    fontWeight: '400',
+    color: COLORS.accentText,
+  },
+  levelSwitchRow: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    padding: 5,
+    gap: 6,
+    ...SHADOW.card,
+  },
+  levelSwitchBtn: {
+    flex: 1,
+    minHeight: TOUCH.minTarget,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    backgroundColor: 'transparent',
+  },
+  levelSwitchText: {
+    fontSize: TYPOGRAPHY.body,
+    fontWeight: '500',
+    color: COLORS.textMuted,
+  },
+  levelSwitchTextActive: {
+    color: COLORS.white,
+    fontWeight: '700',
   },
   exampleList: {
     gap: SPACING.sm,
   },
   exampleCard: {
     backgroundColor: COLORS.card,
-    borderColor: COLORS.border,
-    borderWidth: 1,
     borderRadius: RADIUS.lg,
     padding: SPACING.md,
     gap: SPACING.sm,
+    ...SHADOW.card,
   },
   exampleCardActive: {
     backgroundColor: COLORS.tint,
-    borderColor: COLORS.primary,
   },
   exampleInfoArea: {
-    gap: 2,
+    gap: 6,
   },
-  exampleWord: {
-    fontFamily: FONTS.family,
-    fontSize: TYPOGRAPHY.ipa,
-    fontWeight: '800',
+  splitWordBlock: {
+    gap: 6,
+  },
+  fullWordStressSpan: {
+    color: COLORS.accentText,
+    fontWeight: '700',
+  },
+  syllableWordRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 5,
+  },
+  syllableUnit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  syllableDot: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: COLORS.textMuted,
+  },
+  stressChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.accentSoft,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
+  stressChipDot: {
+    fontSize: 11,
+    color: COLORS.accent,
+  },
+  stressChipText: {
+    fontSize: 19,
+    fontWeight: '700',
+    color: COLORS.accentText,
+  },
+  weakChip: {
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  weakChipText: {
+    fontSize: 18,
+    fontWeight: '400',
+    color: COLORS.textMuted,
+  },
+  normalSyllableText: {
+    fontSize: 19,
+    fontWeight: '500',
     color: COLORS.text,
   },
+  inlineWordRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  exampleWord: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: COLORS.text,
+    letterSpacing: 0.3,
+  },
+  inlineStressSpan: {
+    backgroundColor: COLORS.accentSoft,
+    color: COLORS.accentText,
+    fontWeight: '700',
+  },
+  inlineWeakSpan: {
+    color: COLORS.textMuted,
+    fontWeight: '400',
+  },
   exampleMeta: {
-    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     color: COLORS.textMuted,
-    fontWeight: '600',
+    fontWeight: '400',
+  },
+  emphasisTipBox: {
+    marginTop: 2,
+    backgroundColor: COLORS.goldSoft,
+    borderRadius: RADIUS.md,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  emphasisTipIcon: {
+    marginTop: 3,
+  },
+  emphasisTipText: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.body,
+    lineHeight: 26,
+    fontWeight: '500',
+    color: COLORS.goldText,
   },
   exampleButtons: {
     flexDirection: 'row',
@@ -464,7 +926,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryDark,
   },
   playBtnPrimaryText: {
-    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '700',
     color: COLORS.white,
@@ -474,9 +935,7 @@ const styles = StyleSheet.create({
     minWidth: 120,
     minHeight: TOUCH.minTarget,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.tint,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
+    backgroundColor: COLORS.tealSoft,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -485,14 +944,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   playBtnSlowActive: {
-    backgroundColor: COLORS.accentSoft,
-    borderColor: COLORS.accent,
+    backgroundColor: COLORS.teal,
   },
   playBtnSlowText: {
-    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
-    fontWeight: '700',
-    color: COLORS.primaryDark,
+    fontWeight: '500',
+    color: COLORS.tealText,
   },
   footer: {
     paddingTop: SPACING.sm,
@@ -508,22 +965,22 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   learnedButtonTodo: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.success,
   },
   learnedButtonDone: {
-    backgroundColor: COLORS.tint,
-    borderWidth: 2,
-    borderColor: COLORS.primary,
+    backgroundColor: COLORS.successSoft,
   },
   learnedButtonText: {
-    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.bodyLarge,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   learnedButtonTextTodo: {
     color: COLORS.white,
   },
   learnedButtonTextDone: {
-    color: COLORS.primaryDark,
+    color: COLORS.successText,
+  },
+  buttonPressed: {
+    opacity: 0.82,
   },
 });

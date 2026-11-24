@@ -33,7 +33,7 @@ const ARPA_TO_IPA: Record<string, string> = {
   AO: 'ɔː',
   AW: 'aʊ',
   AY: 'aɪ',
-  EH: 'e',
+  EH: 'ɛ',
   ER: 'ɜːr',
   EY: 'eɪ',
   IH: 'ɪ',
@@ -68,13 +68,16 @@ const ARPA_TO_IPA: Record<string, string> = {
   ZH: 'ʒ',
 };
 
-// Tab 1 핵심 18개 발음기호 ID 매핑
+// 미국식 영어 전체 40개 발음기호 ID 매핑
 const ARPA_TO_SYMBOL_ID: Record<string, string> = {
   AE: 'sym_ae',
   IH: 'sym_ih',
   IY: 'sym_iy',
   AA: 'sym_aa',
   UW: 'sym_uw',
+  EH: 'sym_eh',
+  UH: 'sym_uh_short',
+  AO: 'sym_ao',
   EY: 'sym_ey',
   AY: 'sym_ay',
   OW: 'sym_ow',
@@ -86,7 +89,38 @@ const ARPA_TO_SYMBOL_ID: Record<string, string> = {
   V: 'sym_v',
   R: 'sym_r',
   L: 'sym_l',
+  SH: 'sym_sh',
+  ZH: 'sym_zh',
+  CH: 'sym_ch',
+  JH: 'sym_jh',
+  Z: 'sym_z',
+  NG: 'sym_ng',
+  W: 'sym_w',
+  Y: 'sym_y',
+  P: 'sym_p',
+  B: 'sym_b',
+  T: 'sym_t',
+  D: 'sym_d',
+  K: 'sym_k',
+  G: 'sym_g',
+  M: 'sym_m',
+  N: 'sym_n',
+  S: 'sym_s',
+  HH: 'sym_h',
 };
+
+const BASIC_CONSONANT_SYMBOL_IDS = new Set([
+  'sym_p',
+  'sym_b',
+  'sym_t',
+  'sym_d',
+  'sym_k',
+  'sym_g',
+  'sym_m',
+  'sym_n',
+  'sym_s',
+  'sym_h',
+]);
 
 // 한글 음절 조합 상수
 const CHO_INDEX: Record<string, number> = {
@@ -459,17 +493,22 @@ export function splitWordSpelling(word: string, syllableCount: number): string[]
 }
 
 /**
- * Tab 1 18개 발음기호 ID 추출 (역추적 바텀시트용)
+ * 전체 40개 발음기호 ID 추출 (역추적 바텀시트용 — 헷갈리는 핵심 기호를 앞쪽에 배치)
  */
 export function extractSymbolIdsFromArpa(arpaPron: string): string[] {
   const phonemes = parseArpaTokens(arpaPron);
   const seen = new Set<string>();
-  const result: string[] = [];
+  const primaryIds: string[] = [];
+  const basicIds: string[] = [];
 
   const push = (id: string) => {
     if (!seen.has(id)) {
       seen.add(id);
-      result.push(id);
+      if (BASIC_CONSONANT_SYMBOL_IDS.has(id)) {
+        basicIds.push(id);
+      } else {
+        primaryIds.push(id);
+      }
     }
   };
 
@@ -484,18 +523,18 @@ export function extractSymbolIdsFromArpa(arpaPron: string): string[] {
       continue;
     }
     if (p.base === 'ER') {
-      push('sym_r');
+      push('sym_er');
       continue;
     }
     const mapped = ARPA_TO_SYMBOL_ID[p.base];
     if (mapped) push(mapped);
   }
 
-  return result;
+  return [...primaryIds, ...basicIds];
 }
 
 /**
- * IPA 문자열만으로 18개 기호 ID 추출 (CMUdict 음소 누락 시 폴백)
+ * IPA 문자열만으로 전체 40개 기호 ID 추출 (CMUdict 음소 누락 시 폴백)
  */
 export function extractSymbolIdsFromIpa(ipa: string): string[] {
   const rules: [RegExp, string][] = [
@@ -504,30 +543,57 @@ export function extractSymbolIdsFromIpa(ipa: string): string[] {
     [/oʊ|əʊ/, 'sym_ow'],
     [/aʊ/, 'sym_aw'],
     [/ɔɪ/, 'sym_oy'],
+    [/ɜː?r|ɝ/, 'sym_er'],
     [/iː|i(?![a-z])/, 'sym_iy'],
     [/uː|u/, 'sym_uw'],
     [/ɑː|ɑ/, 'sym_aa'],
+    [/ɔː|ɔ/, 'sym_ao'],
     [/æ/, 'sym_ae'],
+    [/ɛ|(?<![a-z])e(?![ɪ])/, 'sym_eh'],
     [/ɪ/, 'sym_ih'],
+    [/ʊ/, 'sym_uh_short'],
     [/ʌ/, 'sym_uh'],
     [/ə|ɚ/, 'sym_schwa'],
+    [/tʃ|ʧ/, 'sym_ch'],
+    [/dʒ|ʤ/, 'sym_jh'],
     [/θ/, 'sym_th_voiceless'],
     [/ð/, 'sym_th_voiced'],
+    [/ʃ/, 'sym_sh'],
+    [/ʒ/, 'sym_zh'],
     [/f/, 'sym_f'],
     [/v/, 'sym_v'],
     [/r|ɹ|ɚ/, 'sym_r'],
     [/l/, 'sym_l'],
+    [/z/, 'sym_z'],
+    [/ŋ/, 'sym_ng'],
+    [/w/, 'sym_w'],
+    [/j/, 'sym_y'],
+    [/p/, 'sym_p'],
+    [/b/, 'sym_b'],
+    [/t(?!ʃ)/, 'sym_t'],
+    [/d(?!ʒ)/, 'sym_d'],
+    [/k/, 'sym_k'],
+    [/ɡ|g/, 'sym_g'],
+    [/m/, 'sym_m'],
+    [/n/, 'sym_n'],
+    [/s/, 'sym_s'],
+    [/h/, 'sym_h'],
   ];
 
   const seen = new Set<string>();
-  const ids: string[] = [];
+  const primaryIds: string[] = [];
+  const basicIds: string[] = [];
   for (const [regex, id] of rules) {
     if (regex.test(ipa) && !seen.has(id)) {
       seen.add(id);
-      ids.push(id);
+      if (BASIC_CONSONANT_SYMBOL_IDS.has(id)) {
+        basicIds.push(id);
+      } else {
+        primaryIds.push(id);
+      }
     }
   }
-  return ids;
+  return [...primaryIds, ...basicIds];
 }
 
 export interface BuiltPhonetics {
@@ -535,6 +601,48 @@ export interface BuiltPhonetics {
   syllables: SyllableItem[];
   koPronunciation: string;
   symbolIds: string[];
+}
+
+/**
+ * CMUdict의 약모음 합류(weak-vowel merger)로 인해 원래 /ɪ/(이)로 배우고 발음하는
+ * 비강세 음절이 AH0(/ə/, 어)로 표기되는 경우를 표준 미국식 학습 발음(/ɪ/)으로 보정합니다.
+ * 예: reforms/receive (re- -> 리), republic (-lic -> 릭), office/service (-fice/-vice -> 피스/비스),
+ *     ticket/market (-ket -> 킷), orange/village (-ange/-lage -> 인지/리지), family (-mi- -> 미)
+ */
+function shouldUseShortIInsteadOfSchwa(
+  group: RawSyllableGroup,
+  spellingPart: string,
+  syllableIndex: number,
+  totalSyllables: number
+): boolean {
+  if (!group.nucleus.isSchwa || group.nucleus.base !== 'AH') {
+    return false;
+  }
+
+  const part = spellingPart.toLowerCase().replace(/[^a-z]/g, '');
+  if (!part) return false;
+
+  // 1) 단어 첫 비강세 접두사 re-, be-, de-, pre- (reforms, receive, before, decide, prepare 등)
+  if (syllableIndex === 0 && /^(?:re|be|de|pre)$/.test(part)) {
+    return true;
+  }
+
+  // 2) 모음이 i 하나뿐인 비강세 음절 (-lic, -fice, -vice, -tice, -sin, -cil, -mi-, -ti- 등)
+  if (/^[bcdfghjklmnpqrstvwxz]*i[bcdfghjklmnpqrstvwxz]*e?$/.test(part)) {
+    return true;
+  }
+
+  // 3) 단어 끝 비강세 -et (ticket, market, pocket, jacket) 및 -age/-ange (orange, village, message)
+  if (syllableIndex === totalSyllables - 1) {
+    if (/^[bcdfghjklmnpqrstvwxz]+et$/.test(part)) {
+      return true;
+    }
+    if (/(?:age|ange)$/.test(part)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -554,7 +662,23 @@ export function buildPhoneticsFromArpa(
 
   const spellingParts = splitWordSpelling(word, groups.length);
 
-  const syllables: SyllableItem[] = groups.map((group, idx) => {
+  const normalizedGroups: RawSyllableGroup[] = groups.map((group, idx) => {
+    const part = spellingParts[idx] ?? word;
+    if (shouldUseShortIInsteadOfSchwa(group, part, idx, groups.length)) {
+      return {
+        ...group,
+        nucleus: {
+          ...group.nucleus,
+          raw: 'IH0',
+          base: 'IH',
+          isSchwa: false,
+        },
+      };
+    }
+    return group;
+  });
+
+  const syllables: SyllableItem[] = normalizedGroups.map((group, idx) => {
     const ipaText = [...group.onset, group.nucleus, ...group.coda]
       .map(phonemeToIpa)
       .join('');
@@ -587,7 +711,11 @@ export function buildPhoneticsFromArpa(
           .join('')}/`;
 
   const koPronunciation = syllables.map((s) => s.koHint).join('-');
-  const symbolIds = extractSymbolIdsFromArpa(arpaPron);
+  const normalizedArpa = normalizedGroups
+    .flatMap((g) => [...g.onset, g.nucleus, ...g.coda])
+    .map((p) => p.raw)
+    .join(' ');
+  const symbolIds = extractSymbolIdsFromArpa(normalizedArpa);
 
   return {
     ipa: builtIpa,
