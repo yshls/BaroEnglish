@@ -1,4 +1,4 @@
-import { IconSearch, IconUser, IconUserFilled } from '@tabler/icons-react-native';
+import { MagnifyingGlass, User } from 'phosphor-react-native';
 import {
   Pressable,
   StyleSheet,
@@ -25,7 +25,7 @@ interface TabMeta {
 }
 
 const TAB_ITEMS: TabMeta[] = [
-  { name: 'index', label: '단어 읽기', softBg: COLORS.tint, textColor: COLORS.primary },
+  { name: 'index', label: '단어 읽기', softBg: COLORS.tint, textColor: COLORS.primaryDark },
   { name: 'shorts', label: '발음 쇼츠', softBg: COLORS.roseSoft, textColor: COLORS.roseText },
   { name: 'bookmarks', label: '마이페이지', softBg: COLORS.successSoft, textColor: COLORS.successText },
   { name: 'symbols', label: '발음기호', softBg: COLORS.purpleSoft, textColor: COLORS.purpleText },
@@ -95,7 +95,7 @@ export function BaroHeader({ activeRouteName, onNavigateTab }: BaroHeaderProps) 
               accessibilityRole="button"
               accessibilityLabel="단어 검색으로 이동"
             >
-              <IconSearch size={19} color={COLORS.primary} />
+              <MagnifyingGlass size={19} color={COLORS.primary} />
             </Pressable>
           ) : null}
 
@@ -112,11 +112,11 @@ export function BaroHeader({ activeRouteName, onNavigateTab }: BaroHeaderProps) 
             accessibilityRole="button"
             accessibilityLabel="마이페이지로 이동"
           >
-            {activeTab.name === 'bookmarks' ? (
-              <IconUserFilled size={17} color={COLORS.white} />
-            ) : (
-              <IconUser size={17} color={COLORS.successText} />
-            )}
+            <User
+              size={17}
+              color={activeTab.name === 'bookmarks' ? COLORS.white : COLORS.successText}
+              weight={activeTab.name === 'bookmarks' ? 'fill' : 'regular'}
+            />
             <Text
               style={[
                 styles.bookmarkActionCount,

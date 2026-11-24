@@ -1,4 +1,4 @@
-import { IconBookmark, IconBookmarkFilled, IconCircleCheck, IconCircleCheckFilled, IconGauge, IconMoodSmile, IconRefresh, IconSparkles, IconVolume, IconVolume2, IconX } from '@tabler/icons-react-native';
+import { ArrowsClockwise, BookmarkSimple, CheckCircle, Gauge, Smiley, Sparkle, SpeakerHigh, SpeakerLow, X } from 'phosphor-react-native';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -26,7 +26,7 @@ const DIFFICULTY_TABS: {
   titleLabel: string;
   activeBg: string;
 }[] = [
-  { id: 'beginner', label: '초급 (기초)', titleLabel: '초급(기초)', activeBg: COLORS.success },
+  { id: 'beginner', label: '초급', titleLabel: '초급', activeBg: COLORS.success },
   { id: 'intermediate', label: '중급', titleLabel: '중급', activeBg: COLORS.accent },
   { id: 'advanced', label: '고급', titleLabel: '고급', activeBg: COLORS.purple },
 ];
@@ -287,11 +287,11 @@ export function SymbolDetailSheet({
                     : `${activeSymbol.ipa} 북마크 저장`
                 }
               >
-                {isBookmarked ? (
-                  <IconBookmarkFilled size={24} color={COLORS.goldText} />
-                ) : (
-                  <IconBookmark size={24} color={COLORS.text} />
-                )}
+                <BookmarkSimple
+                  size={24}
+                  color={isBookmarked ? COLORS.goldText : COLORS.text}
+                  weight={isBookmarked ? 'fill' : 'regular'}
+                />
               </Pressable>
 
               <Pressable
@@ -303,7 +303,7 @@ export function SymbolDetailSheet({
                 accessibilityRole="button"
                 accessibilityLabel="닫기"
               >
-                <IconX size={24} color={COLORS.text} />
+                <X size={24} color={COLORS.text} />
               </Pressable>
             </View>
           </View>
@@ -316,7 +316,7 @@ export function SymbolDetailSheet({
             {/* 입 모양·혀 위치 안내 카드 */}
             <View style={styles.guideCard}>
               <View style={styles.guideHeaderRow}>
-                <IconMoodSmile size={24} color={COLORS.teal} />
+                <Smiley size={24} color={COLORS.teal} />
                 <Text style={styles.guideLabel} maxFontSizeMultiplier={1.4}>
                   입 모양 · 혀 위치 안내
                 </Text>
@@ -352,7 +352,7 @@ export function SymbolDetailSheet({
                     accessibilityRole="button"
                     accessibilityLabel="다른 대표 단어 3개 불러오기"
                   >
-                    <IconRefresh size={18} color={COLORS.indigoText} />
+                    <ArrowsClockwise size={18} color={COLORS.indigoText} />
                     <Text style={styles.refreshExamplesText} maxFontSizeMultiplier={1.3}>
                       다른 단어
                     </Text>
@@ -450,7 +450,7 @@ export function SymbolDetailSheet({
                         </Text>
                         {ex.emphasisTipKo ? (
                           <View style={styles.emphasisTipBox}>
-                            <IconSparkles
+                            <Sparkle
                               size={18}
                               color={COLORS.gold}
                               style={styles.emphasisTipIcon}
@@ -474,9 +474,9 @@ export function SymbolDetailSheet({
                           accessibilityLabel={`${ex.word} 소리 듣기`}
                         >
                           {isNormalPlaying ? (
-                            <IconVolume size={20} color={COLORS.white} />
+                            <SpeakerHigh size={20} color={COLORS.white} />
                           ) : (
-                            <IconVolume2 size={20} color={COLORS.white} />
+                            <SpeakerLow size={20} color={COLORS.white} />
                           )}
                           <Text
                             style={styles.playBtnPrimaryText}
@@ -496,7 +496,7 @@ export function SymbolDetailSheet({
                           accessibilityRole="button"
                           accessibilityLabel={`${ex.word} 천천히 듣기`}
                         >
-                          <IconGauge
+                          <Gauge
                             size={20}
                             color={isSlowPlaying ? COLORS.white : COLORS.tealText}
                           />
@@ -532,11 +532,11 @@ export function SymbolDetailSheet({
               accessibilityState={{ checked: isLearned }}
               accessibilityLabel={isLearned ? '익힘 완료 해제하기' : '익혔어요 완료 체크'}
             >
-              {isLearned ? (
-                <IconCircleCheckFilled size={26} color={COLORS.successText} />
-              ) : (
-                <IconCircleCheck size={26} color={COLORS.white} />
-              )}
+              <CheckCircle
+                size={26}
+                color={isLearned ? COLORS.successText : COLORS.white}
+                weight={isLearned ? 'fill' : 'regular'}
+              />
               <Text
                 style={[
                   styles.learnedButtonText,

@@ -1,4 +1,4 @@
-import { IconBolt, IconBookmark, IconBookmarkFilled, IconCloudOff, IconGauge, IconLanguage, IconMicrophone, IconSparkles, IconVolume, IconVolume2 } from '@tabler/icons-react-native';
+import { BookmarkSimple, CloudSlash, Gauge, Lightning, Microphone, SpeakerHigh, SpeakerLow, Sparkle, Translate } from 'phosphor-react-native';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -440,11 +440,11 @@ export default function PronunciationShortsScreen() {
                   isBookmarked ? `${item.word} 북마크 해제` : `${item.word} 북마크 저장`
                 }
               >
-                {isBookmarked ? (
-                  <IconBookmarkFilled size={20} color={COLORS.goldText} />
-                ) : (
-                  <IconBookmark size={20} color={COLORS.textMuted} />
-                )}
+                <BookmarkSimple
+                  size={20}
+                  color={isBookmarked ? COLORS.goldText : COLORS.textMuted}
+                  weight={isBookmarked ? 'fill' : 'regular'}
+                />
                 <Text
                   style={[
                     styles.bookmarkBtnText,
@@ -530,9 +530,9 @@ export default function PronunciationShortsScreen() {
                           {syl.text}
                         </Text>
                         {isSylPlaying ? (
-                          <IconVolume size={14} color={COLORS.primary} />
+                          <SpeakerHigh size={14} color={COLORS.primary} />
                         ) : (
-                          <IconVolume2 size={14} color={COLORS.textMuted} />
+                          <SpeakerLow size={14} color={COLORS.textMuted} />
                         )}
                       </Pressable>
                     );
@@ -555,7 +555,7 @@ export default function PronunciationShortsScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={`${item.word} 천천히 듣기`}
                 >
-                  <IconGauge
+                  <Gauge
                     size={19}
                     color={isSlowPlaying ? COLORS.white : COLORS.tealText}
                   />
@@ -587,7 +587,7 @@ export default function PronunciationShortsScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={`${item.word} 보통 속도 듣기`}
                 >
-                  <IconVolume size={20} color={COLORS.white} />
+                  <SpeakerHigh size={20} color={COLORS.white} />
                   <Text style={styles.speedNormalText} maxFontSizeMultiplier={1.25}>
                     {isNormalPlaying ? '재생 중' : '듣기'}
                   </Text>
@@ -606,7 +606,7 @@ export default function PronunciationShortsScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={`${item.word} 빠르게 듣기`}
                 >
-                  <IconBolt
+                  <Lightning
                     size={19}
                     color={isFastPlaying ? COLORS.white : COLORS.purpleText}
                   />
@@ -634,7 +634,7 @@ export default function PronunciationShortsScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={`${item.word} 따라 말하고 내 발음 비교하기`}
                 >
-                  <IconMicrophone size={19} color={COLORS.roseText} />
+                  <Microphone size={19} color={COLORS.roseText} />
                   <Text style={styles.speakCompactText} maxFontSizeMultiplier={1.25}>
                     말하기
                   </Text>
@@ -684,7 +684,7 @@ export default function PronunciationShortsScreen() {
                       accessibilityRole="button"
                       accessibilityLabel="예문 듣기"
                     >
-                      <IconVolume2
+                      <SpeakerLow
                         size={16}
                         color={isExNormalPlaying ? COLORS.white : COLORS.primaryDark}
                       />
@@ -739,7 +739,7 @@ export default function PronunciationShortsScreen() {
                     accessibilityRole="button"
                     accessibilityLabel="예문 한글 뜻 보기"
                   >
-                    <IconLanguage
+                    <Translate
                       size={16}
                       color={COLORS.indigoText}
                     />
@@ -798,7 +798,7 @@ export default function PronunciationShortsScreen() {
         <View style={styles.footerLoadingCard}>
           {feedError ? (
             <>
-              <IconCloudOff size={34} color={COLORS.roseText} />
+              <CloudSlash size={34} color={COLORS.roseText} />
               <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
                 다음 단어를 잠시 불러오지 못했어요
               </Text>
@@ -831,7 +831,7 @@ export default function PronunciationShortsScreen() {
             </>
           ) : (
             <>
-              <IconSparkles size={34} color={COLORS.rose} />
+              <Sparkle size={34} color={COLORS.rose} />
               <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
                 새로운 발음 쇼츠가 준비돼 있어요
               </Text>
@@ -863,7 +863,7 @@ export default function PronunciationShortsScreen() {
       <View style={styles.centerState}>
         {feedError ? (
           <View style={styles.emptyCard}>
-            <IconCloudOff size={36} color={COLORS.roseText} />
+            <CloudSlash size={36} color={COLORS.roseText} />
             <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
               단어 피드를 불러오지 못했어요
             </Text>

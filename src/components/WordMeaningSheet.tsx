@@ -1,4 +1,4 @@
-import { IconArrowRight, IconBook2, IconGauge, IconVolume, IconVolume2, IconX } from '@tabler/icons-react-native';
+import { ArrowRight, BookOpen, Gauge, SpeakerHigh, SpeakerLow, X } from 'phosphor-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -154,7 +154,7 @@ export function WordMeaningSheet({
           <View style={styles.headerRow}>
             <View style={styles.badgeGroup}>
               <View style={styles.contextBadge}>
-                <IconBook2 size={16} color={COLORS.indigoText} />
+                <BookOpen size={16} color={COLORS.indigoText} />
                 <Text style={styles.contextBadgeText} maxFontSizeMultiplier={1.3}>
                   예문 속 단어 뜻
                 </Text>
@@ -177,7 +177,7 @@ export function WordMeaningSheet({
               accessibilityRole="button"
               accessibilityLabel="닫기"
             >
-              <IconX size={22} color={COLORS.text} />
+              <X size={22} color={COLORS.text} />
               <Text style={styles.closeButtonText} maxFontSizeMultiplier={1.3}>
                 닫기
               </Text>
@@ -246,9 +246,9 @@ export function WordMeaningSheet({
                 accessibilityLabel={`${cleanWord} 보통 속도 듣기`}
               >
                 {isNormalPlaying ? (
-                  <IconVolume size={22} color={COLORS.white} />
+                  <SpeakerHigh size={22} color={COLORS.white} />
                 ) : (
-                  <IconVolume2 size={22} color={COLORS.white} />
+                  <SpeakerLow size={22} color={COLORS.white} />
                 )}
                 <Text style={styles.playBtnPrimaryText} maxFontSizeMultiplier={1.3}>
                   {isNormalPlaying ? '재생 중...' : '듣기 (1.0x)'}
@@ -265,7 +265,7 @@ export function WordMeaningSheet({
                 accessibilityRole="button"
                 accessibilityLabel={`${cleanWord} 천천히 듣기`}
               >
-                <IconGauge
+                <Gauge
                   size={22}
                   color={isSlowPlaying ? COLORS.white : COLORS.tealText}
                 />
@@ -296,7 +296,7 @@ export function WordMeaningSheet({
               <Text style={styles.fullStudyBtnText} maxFontSizeMultiplier={1.35}>
                 &apos;{cleanWord}&apos; 강세 · 예문 자세히 공부하기
               </Text>
-              <IconArrowRight size={20} color={COLORS.indigoText} />
+              <ArrowRight size={20} color={COLORS.indigoText} />
             </Pressable>
           ) : null}
         </View>

@@ -1,22 +1,21 @@
 import {
-  IconBook2,
-  IconBookmark,
-  IconBookmarkFilled,
-  IconChartBar,
-  IconCheck,
-  IconChevronRight,
-  IconCircleCheck,
-  IconCircleX,
-  IconClock,
-  IconFlameFilled,
-  IconGauge,
-  IconPencil,
-  IconPlayerPlay,
-  IconSearch,
-  IconUser,
-  IconVolume,
-  IconVolume2,
-} from '@tabler/icons-react-native';
+  BookOpen,
+  BookmarkSimple,
+  CaretRight,
+  ChartBar,
+  Check,
+  CheckCircle,
+  Clock,
+  Fire,
+  Gauge,
+  MagnifyingGlass,
+  PencilSimple,
+  Play,
+  SpeakerHigh,
+  SpeakerLow,
+  User,
+  XCircle,
+} from 'phosphor-react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
@@ -181,7 +180,7 @@ export default function BookmarksScreen() {
                   {avatarInitial}
                 </Text>
               ) : (
-                <IconUser size={26} color={COLORS.successText} />
+                <User size={26} color={COLORS.successText} />
               )}
             </View>
 
@@ -206,7 +205,7 @@ export default function BookmarksScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="닉네임 설정 및 변경"
               >
-                <IconPencil size={16} color={COLORS.textMuted} />
+                <PencilSimple size={16} color={COLORS.textMuted} />
                 <Text style={styles.editNicknameBtnText} maxFontSizeMultiplier={1.2}>
                   {nickname.trim() ? '변경' : '닉네임'}
                 </Text>
@@ -278,7 +277,7 @@ export default function BookmarksScreen() {
             {/* 연속 실행 */}
             <View style={[styles.statTile, styles.statTileStreak]}>
               <View style={styles.statTileTop}>
-                <IconFlameFilled size={18} color={COLORS.accent} />
+                <Fire size={18} color={COLORS.accent} weight="fill" />
                 <Text style={styles.statLabelStreak} maxFontSizeMultiplier={1.2}>
                   연속 실행
                 </Text>
@@ -294,7 +293,7 @@ export default function BookmarksScreen() {
             {/* 오늘 이용 시간 */}
             <View style={[styles.statTile, styles.statTileToday]}>
               <View style={styles.statTileTop}>
-                <IconClock size={18} color={COLORS.primary} />
+                <Clock size={18} color={COLORS.primary} />
                 <Text style={styles.statLabelToday} maxFontSizeMultiplier={1.2}>
                   오늘 이용
                 </Text>
@@ -310,7 +309,7 @@ export default function BookmarksScreen() {
             {/* 총 누적 이용 시간 */}
             <View style={[styles.statTile, styles.statTileTotal]}>
               <View style={styles.statTileTop}>
-                <IconChartBar size={18} color={COLORS.purple} />
+                <ChartBar size={18} color={COLORS.purple} />
                 <Text style={styles.statLabelTotal} maxFontSizeMultiplier={1.2}>
                   총 이용
                 </Text>
@@ -360,9 +359,9 @@ export default function BookmarksScreen() {
                     >
                       {isDone ? (
                         day.isToday ? (
-                          <IconFlameFilled size={17} color={COLORS.white} />
+                          <Fire size={17} color={COLORS.white} weight="fill" />
                         ) : (
-                          <IconCheck size={17} color={COLORS.white} />
+                          <Check size={17} color={COLORS.white} weight="bold" />
                         )
                       ) : (
                         <Text
@@ -392,7 +391,7 @@ export default function BookmarksScreen() {
               </Text>
             </View>
             <View style={styles.countBadge}>
-              <IconBookmarkFilled size={18} color={COLORS.goldText} />
+              <BookmarkSimple size={18} color={COLORS.goldText} weight="fill" />
               <Text style={styles.countBadgeText} maxFontSizeMultiplier={1.3}>
                 {totalCount}개
               </Text>
@@ -436,7 +435,7 @@ export default function BookmarksScreen() {
 
           {totalCount >= 4 ? (
             <View style={styles.filterInputRow}>
-              <IconSearch size={20} color={COLORS.textMuted} />
+              <MagnifyingGlass size={20} color={COLORS.textMuted} />
               <TextInput
                 value={filterText}
                 onChangeText={setFilterText}
@@ -458,7 +457,7 @@ export default function BookmarksScreen() {
                   accessibilityRole="button"
                   accessibilityLabel="검색어 지우기"
                 >
-                  <IconCircleX size={22} color={COLORS.textMuted} />
+                  <XCircle size={22} color={COLORS.textMuted} />
                 </Pressable>
               ) : null}
             </View>
@@ -469,7 +468,7 @@ export default function BookmarksScreen() {
         {!isHydrated ? null : totalCount === 0 ? (
           <View style={styles.emptyCard}>
             <View style={styles.emptyIconCircle}>
-              <IconBookmark size={38} color={COLORS.goldText} />
+              <BookmarkSimple size={38} color={COLORS.goldText} />
             </View>
             <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
               아직 저장한 북마크가 없어요
@@ -488,7 +487,7 @@ export default function BookmarksScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="단어 바로 읽기 화면으로 이동"
               >
-                <IconBook2 size={20} color={COLORS.white} />
+                <BookOpen size={20} color={COLORS.white} />
                 <Text style={styles.emptyPrimaryBtnText} maxFontSizeMultiplier={1.3}>
                   단어 읽기 가기
                 </Text>
@@ -503,7 +502,7 @@ export default function BookmarksScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="발음 쇼츠 화면으로 이동"
               >
-                <IconPlayerPlay size={20} color={COLORS.roseText} />
+                <Play size={20} color={COLORS.roseText} />
                 <Text style={styles.emptySecondaryBtnText} maxFontSizeMultiplier={1.3}>
                   발음 쇼츠 보기
                 </Text>
@@ -601,7 +600,7 @@ export default function BookmarksScreen() {
                           accessibilityRole="button"
                           accessibilityLabel={`${item.word} 북마크 해제`}
                         >
-                          <IconBookmarkFilled size={22} color={COLORS.goldText} />
+                          <BookmarkSimple size={22} color={COLORS.goldText} weight="fill" />
                         </Pressable>
                       </View>
 
@@ -623,9 +622,9 @@ export default function BookmarksScreen() {
                           accessibilityLabel={`${item.word} 보통 속도 듣기`}
                         >
                           {isNormalPlaying ? (
-                            <IconVolume size={20} color={COLORS.white} />
+                            <SpeakerHigh size={20} color={COLORS.white} />
                           ) : (
-                            <IconVolume2 size={20} color={COLORS.white} />
+                            <SpeakerLow size={20} color={COLORS.white} />
                           )}
                           <Text style={styles.playNormalBtnText} maxFontSizeMultiplier={1.3}>
                             {isNormalPlaying ? '재생 중' : '듣기'}
@@ -642,7 +641,7 @@ export default function BookmarksScreen() {
                           accessibilityRole="button"
                           accessibilityLabel={`${item.word} 천천히 듣기`}
                         >
-                          <IconGauge
+                          <Gauge
                             size={20}
                             color={isSlowPlaying ? COLORS.white : COLORS.tealText}
                           />
@@ -669,7 +668,7 @@ export default function BookmarksScreen() {
                           <Text style={styles.detailBtnText} maxFontSizeMultiplier={1.3}>
                             자세히
                           </Text>
-                          <IconChevronRight
+                          <CaretRight
                             size={18}
                             color={COLORS.indigoText}
                           />
@@ -717,7 +716,7 @@ export default function BookmarksScreen() {
                           </View>
                           {isLearned ? (
                             <View style={styles.learnedTag}>
-                              <IconCircleCheck
+                              <CheckCircle
                                 size={16}
                                 color={COLORS.success}
                               />
@@ -741,7 +740,7 @@ export default function BookmarksScreen() {
                         accessibilityRole="button"
                         accessibilityLabel={`${sym.ipa} 북마크 해제`}
                       >
-                        <IconBookmarkFilled size={22} color={COLORS.goldText} />
+                        <BookmarkSimple size={22} color={COLORS.goldText} weight="fill" />
                       </Pressable>
                     </View>
                   );

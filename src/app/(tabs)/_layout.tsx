@@ -1,4 +1,4 @@
-import { IconBook2, IconPlayerPlay, IconPlayerPlayFilled, IconUser, IconUserFilled, IconVolume } from '@tabler/icons-react-native';
+import { BookOpen, Play, SpeakerHigh, User } from 'phosphor-react-native';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BaroHeader, type BaroTabName } from '../../components/BaroHeader';
@@ -28,19 +28,27 @@ export default function TabLayout() {
             }}
           />
         ),
-        tabBarActiveTintColor: COLORS.primary,
+        tabBarActiveTintColor: COLORS.text,
         tabBarInactiveTintColor: COLORS.textMuted,
+        tabBarActiveBackgroundColor: COLORS.background,
         tabBarStyle: {
           backgroundColor: COLORS.card,
           borderTopWidth: 0,
+          borderRadius: 28,
+          marginHorizontal: 12,
           minHeight: TOUCH.tabBarHeight + bottomPadding - 6,
-          paddingTop: 8,
+          paddingTop: 4,
           paddingBottom: bottomPadding,
           ...SHADOW.tabBar,
         },
+        tabBarItemStyle: {
+          borderRadius: 999,
+          marginVertical: 6,
+          marginHorizontal: 2,
+        },
         tabBarLabelStyle: {
           fontFamily: FONTS.family,
-          fontSize: 14,
+          fontSize: 11,
           fontWeight: '500',
           marginTop: 2,
         },
@@ -52,12 +60,11 @@ export default function TabLayout() {
         options={{
           title: '단어 바로 읽기',
           tabBarLabel: '단어 읽기',
-          tabBarActiveTintColor: COLORS.primary,
           tabBarIcon: ({ focused }) => (
-            <IconBook2
-              size={25}
-              color={focused ? COLORS.primary : COLORS.textMuted}
-              strokeWidth={focused ? 2.5 : 1.5}
+            <BookOpen
+              size={24}
+              color={focused ? COLORS.text : COLORS.textMuted}
+              weight={focused ? 'fill' : 'regular'}
             />
           ),
         }}
@@ -67,13 +74,13 @@ export default function TabLayout() {
         options={{
           title: '발음 쇼츠',
           tabBarLabel: '발음 쇼츠',
-          tabBarActiveTintColor: COLORS.rose,
-          tabBarIcon: ({ focused }) =>
-            focused ? (
-              <IconPlayerPlayFilled size={25} color={COLORS.rose} />
-            ) : (
-              <IconPlayerPlay size={25} color={COLORS.textMuted} strokeWidth={1.5} />
-            ),
+          tabBarIcon: ({ focused }) => (
+            <Play
+              size={24}
+              color={focused ? COLORS.text : COLORS.textMuted}
+              weight={focused ? 'fill' : 'regular'}
+            />
+          ),
         }}
       />
       <Tabs.Screen
@@ -81,20 +88,20 @@ export default function TabLayout() {
         options={{
           title: '마이페이지',
           tabBarLabel: '마이페이지',
-          tabBarActiveTintColor: COLORS.success,
           tabBarBadge: totalBookmarkCount > 0 ? totalBookmarkCount : undefined,
           tabBarBadgeStyle: {
-            backgroundColor: COLORS.success,
+            backgroundColor: COLORS.text,
             color: COLORS.white,
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: '700',
           },
-          tabBarIcon: ({ focused }) =>
-            focused ? (
-              <IconUserFilled size={25} color={COLORS.success} />
-            ) : (
-              <IconUser size={25} color={COLORS.textMuted} strokeWidth={1.5} />
-            ),
+          tabBarIcon: ({ focused }) => (
+            <User
+              size={24}
+              color={focused ? COLORS.text : COLORS.textMuted}
+              weight={focused ? 'fill' : 'regular'}
+            />
+          ),
         }}
       />
       <Tabs.Screen
@@ -102,12 +109,11 @@ export default function TabLayout() {
         options={{
           title: '발음기호 기초',
           tabBarLabel: '발음기호',
-          tabBarActiveTintColor: COLORS.purple,
           tabBarIcon: ({ focused }) => (
-            <IconVolume
-              size={25}
-              color={focused ? COLORS.purple : COLORS.textMuted}
-              strokeWidth={focused ? 2.5 : 1.5}
+            <SpeakerHigh
+              size={24}
+              color={focused ? COLORS.text : COLORS.textMuted}
+              weight={focused ? 'fill' : 'regular'}
             />
           ),
         }}

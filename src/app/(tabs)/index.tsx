@@ -1,4 +1,4 @@
-import { IconBolt, IconBookmark, IconBookmarkFilled, IconCircleX, IconEye, IconEyeOff, IconGauge, IconHelpCircle, IconInfoCircle, IconLanguage, IconMicrophone, IconRefresh, IconSearch, IconVolume } from '@tabler/icons-react-native';
+import { ArrowsClockwise, BookmarkSimple, Eye, EyeSlash, Gauge, Info, Lightning, MagnifyingGlass, Microphone, Question, SpeakerHigh, Translate, XCircle } from 'phosphor-react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -450,7 +450,7 @@ export default function WordReaderScreen() {
         {/* 심플 검색 Bento 카드 */}
         <View style={styles.searchCard}>
           <View style={styles.searchRow}>
-            <IconSearch size={22} color={COLORS.primary} />
+            <MagnifyingGlass size={22} color={COLORS.primary} />
             <TextInput
               value={query}
               onChangeText={setQuery}
@@ -477,7 +477,7 @@ export default function WordReaderScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="검색어 지우기"
               >
-                <IconCircleX
+                <XCircle
                   size={22}
                   color={COLORS.textMuted}
                 />
@@ -599,7 +599,7 @@ export default function WordReaderScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="다른 일상 추천 단어 새로 받기"
               >
-                <IconRefresh size={16} color={COLORS.indigoText} />
+                <ArrowsClockwise size={16} color={COLORS.indigoText} />
                 <Text
                   style={styles.refreshChipsBtnText}
                   maxFontSizeMultiplier={1.25}
@@ -751,7 +751,7 @@ export default function WordReaderScreen() {
         {!isLoading && failedQuery ? (
           <View style={styles.fallbackCard}>
             <View style={styles.fallbackHeader}>
-              <IconInfoCircle
+              <Info
                 size={28}
                 color={COLORS.rose}
               />
@@ -778,7 +778,7 @@ export default function WordReaderScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={`${failedQuery} 천천히 소리만 먼저 듣기`}
               >
-                <IconVolume size={24} color={COLORS.white} />
+                <SpeakerHigh size={24} color={COLORS.white} />
                 <Text style={styles.primaryBtnText} maxFontSizeMultiplier={1.35}>
                   {isFallbackSlowPlaying
                     ? '천천히 소리 재생 중...'
@@ -842,7 +842,7 @@ export default function WordReaderScreen() {
                   ) : null}
                   {displayedWord.audioUrl ? (
                     <View style={styles.nativeAudioBadge}>
-                      <IconMicrophone
+                      <Microphone
                         size={16}
                         color={COLORS.successText}
                       />
@@ -871,11 +871,11 @@ export default function WordReaderScreen() {
                       : `${displayedWord.word} 북마크 저장`
                   }
                 >
-                  {isDisplayedWordBookmarked ? (
-                    <IconBookmarkFilled size={22} color={COLORS.goldText} />
-                  ) : (
-                    <IconBookmark size={22} color={COLORS.text} />
-                  )}
+                  <BookmarkSimple
+                    size={22}
+                    color={isDisplayedWordBookmarked ? COLORS.goldText : COLORS.text}
+                    weight={isDisplayedWordBookmarked ? 'fill' : 'regular'}
+                  />
                   <Text
                     style={[
                       styles.bookmarkToggleText,
@@ -977,7 +977,7 @@ export default function WordReaderScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={`${displayedWord.word} 보통 속도 듣기`}
                 >
-                  <IconVolume size={24} color={COLORS.white} />
+                  <SpeakerHigh size={24} color={COLORS.white} />
                   <Text style={styles.primaryBtnText} maxFontSizeMultiplier={1.3}>
                     {isNormalPlaying ? '재생 중...' : '보통 속도 (1.0x)'}
                   </Text>
@@ -996,7 +996,7 @@ export default function WordReaderScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={`${displayedWord.word} 천천히 듣기`}
                 >
-                  <IconGauge
+                  <Gauge
                     size={24}
                     color={isSlowPlaying ? COLORS.white : COLORS.tealText}
                   />
@@ -1074,9 +1074,9 @@ export default function WordReaderScreen() {
                     }
                   >
                     {showExampleKo ? (
-                      <IconEye size={17} color={COLORS.indigoText} />
+                      <Eye size={17} color={COLORS.indigoText} />
                     ) : (
-                      <IconEyeOff size={17} color={COLORS.textMuted} />
+                      <EyeSlash size={17} color={COLORS.textMuted} />
                     )}
                     <Text
                       style={[
@@ -1160,7 +1160,7 @@ export default function WordReaderScreen() {
                               accessibilityRole="button"
                               accessibilityLabel={`예문 ${idx + 1} 한글 뜻 불러오기`}
                             >
-                              <IconLanguage
+                              <Translate
                                 size={18}
                                 color={COLORS.indigoText}
                               />
@@ -1185,7 +1185,7 @@ export default function WordReaderScreen() {
                             accessibilityRole="button"
                             accessibilityLabel={`예문 ${idx + 1} 천천히 듣기`}
                           >
-                            <IconGauge
+                            <Gauge
                               size={20}
                               color={
                                 isExSlowPlaying ? COLORS.white : COLORS.tealText
@@ -1214,7 +1214,7 @@ export default function WordReaderScreen() {
                             accessibilityRole="button"
                             accessibilityLabel={`예문 ${idx + 1} 보통 속도 듣기`}
                           >
-                            <IconVolume
+                            <SpeakerHigh
                               size={20}
                               color={COLORS.white}
                             />
@@ -1236,7 +1236,7 @@ export default function WordReaderScreen() {
                             accessibilityRole="button"
                             accessibilityLabel={`예문 ${idx + 1} 빠르게 듣기`}
                           >
-                            <IconBolt
+                            <Lightning
                               size={20}
                               color={
                                 isExFastPlaying ? COLORS.white : COLORS.purpleText
@@ -1297,7 +1297,7 @@ export default function WordReaderScreen() {
                           {sym.koHint}
                         </Text>
                         <View style={styles.symbolBacktrackAction}>
-                          <IconHelpCircle
+                          <Question
                             size={18}
                             color={COLORS.purpleText}
                           />

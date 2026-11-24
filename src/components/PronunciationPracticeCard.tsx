@@ -1,4 +1,4 @@
-import { IconAlertCircle, IconGitCompare, IconMicrophone, IconPlayerStopFilled, IconShieldCheck, IconUser, IconX } from '@tabler/icons-react-native';
+import { GitDiff, Microphone, ShieldCheck, StopCircle, User, WarningCircle, X } from 'phosphor-react-native';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePronunciationPractice } from '../hooks/usePronunciationPractice';
@@ -74,7 +74,7 @@ export function PronunciationPracticeCard({
           따라 말하며 내 발음 비교
         </Text>
         <View style={styles.privacyPill}>
-          <IconShieldCheck size={15} color={COLORS.successText} />
+          <ShieldCheck size={15} color={COLORS.successText} />
           <Text style={styles.privacyPillText} maxFontSizeMultiplier={1.25}>
             저장 안 됨
           </Text>
@@ -107,9 +107,9 @@ export function PronunciationPracticeCard({
         }
       >
         {isRecording ? (
-          <IconPlayerStopFilled size={26} color={COLORS.white} />
+          <StopCircle size={26} color={COLORS.white} weight="fill" />
         ) : (
-          <IconMicrophone size={26} color={COLORS.white} />
+          <Microphone size={26} color={COLORS.white} />
         )}
         <Text style={styles.micButtonText} maxFontSizeMultiplier={1.35}>
           {isRecording
@@ -147,7 +147,7 @@ export function PronunciationPracticeCard({
       {/* 권한/오류 안내 */}
       {errorMessage ? (
         <View style={styles.errorBox}>
-          <IconAlertCircle size={20} color={COLORS.roseText} />
+          <WarningCircle size={20} color={COLORS.roseText} />
           <Text style={styles.errorText} maxFontSizeMultiplier={1.4}>
             {errorMessage}
           </Text>
@@ -235,7 +235,7 @@ export function PronunciationPracticeCard({
                 accessibilityRole="button"
                 accessibilityLabel="방금 내가 말한 목소리 들어보기"
               >
-                <IconUser
+                <User
                   size={20}
                   color={
                     isPlayingUser && !isComparing
@@ -264,7 +264,7 @@ export function PronunciationPracticeCard({
                 accessibilityRole="button"
                 accessibilityLabel="원어민 발음과 내 발음 연달아 비교해 듣기"
               >
-                <IconGitCompare
+                <GitDiff
                   size={20}
                   color={isComparing ? COLORS.white : COLORS.indigoText}
                 />
@@ -361,7 +361,7 @@ export function PronunciationPracticeSheet({
               accessibilityRole="button"
               accessibilityLabel="닫기"
             >
-              <IconX size={22} color={COLORS.text} />
+              <X size={22} color={COLORS.text} />
               <Text style={styles.sheetCloseText} maxFontSizeMultiplier={1.3}>
                 닫기
               </Text>

@@ -1,4 +1,4 @@
-import { IconMusic, IconPlayerPlay, IconVolume, IconVolume2 } from '@tabler/icons-react-native';
+import { MusicNote, Play, SpeakerHigh, SpeakerLow } from 'phosphor-react-native';
 import { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSpeechAudio } from '../hooks/useSpeechAudio';
@@ -111,9 +111,9 @@ export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
           accessibilityLabel="음절별 리듬으로 연속 듣기"
         >
           {isRhythmPlaying ? (
-            <IconMusic size={18} color={COLORS.white} />
+            <MusicNote size={18} color={COLORS.white} />
           ) : (
-            <IconPlayerPlay size={18} color={COLORS.accentText} />
+            <Play size={18} color={COLORS.accentText} />
           )}
           <Text
             style={[
@@ -224,13 +224,13 @@ export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
 
               {/* 소리 아이콘 */}
               {isSylActive ? (
-                <IconVolume
+                <SpeakerHigh
                   size={18}
                   color={COLORS.primary}
                   style={styles.speakerIcon}
                 />
               ) : (
-                <IconVolume2
+                <SpeakerLow
                   size={18}
                   color={isPrimary ? COLORS.accentText : COLORS.textMuted}
                   style={styles.speakerIcon}

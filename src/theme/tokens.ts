@@ -1,10 +1,9 @@
 import { Platform } from 'react-native';
 
 /**
- * baro (바로영어) 디자인 토큰 — Headspace-inspired warm brand
+ * baro (바로영어) 디자인 토큰 — Warm brand with #FF4C4B primary
  * - Spoqa Han Sans Neo 웹·모바일 공통 폰트
- * - Cream 배경(#f9f4f2) + 딥 블루 CTA(#0061ef) + 웜 뉴트럴 텍스트(#2d2c2b)
- * - 색상 스펙: DESIGN.md 참조
+ * - Cream 배경(#f9f4f2) + baro 메인 코랄 레드(#FF4C4B) + 웜 뉴트럴 텍스트(#2d2c2b)
  */
 export const FONT_FAMILY_NAME = 'SpokaHanSansNeo';
 
@@ -18,13 +17,13 @@ export const FONTS = {
 
 export const PALETTE = {
   brand: {
-    100: '#e6f0ff',
-    200: '#c2daff',
-    300: '#80b3ff',
-    400: '#4d93f7',
-    500: '#0061ef',
-    600: '#0040ea',
-    700: '#0000db',
+    100: '#FFF0F0',
+    200: '#FFD6D6',
+    300: '#FFA8A7',
+    400: '#FF7675',
+    500: '#FF4C4B',
+    600: '#E03433',
+    700: '#C92423',
   },
   blue: {
     100: '#e6f0ff',
@@ -124,9 +123,9 @@ export const COLORS = {
   card: '#FFFFFF',                // canvas
   border: PALETTE.gray[300],      // border-tan #e2ded9
 
-  // 메인 브랜드 (딥 블루 #0061ef — 로고, 기본 듣기 1.0x, 검색, 주요 CTA)
+  // 메인 브랜드 (baro 코랄 레드 #FF4C4B — 로고, 기본 듣기 1.0x, 검색, 주요 CTA)
   primary: PALETTE.brand[500],
-  primaryDark: PALETTE.brand[600],
+  primaryDark: PALETTE.brand[700],
   tint: PALETTE.brand[100],
 
   // 강조 (웜 앰버 — 강세 ⬤ 리듬, 중급 난이도)

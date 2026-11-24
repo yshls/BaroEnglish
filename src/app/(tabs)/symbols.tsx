@@ -1,4 +1,4 @@
-import { IconCircleCheck, IconSparkles, IconVolume, IconVolume2, IconX } from '@tabler/icons-react-native';
+import { CheckCircle, Sparkle, SpeakerHigh, SpeakerLow, X } from 'phosphor-react-native';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -101,7 +101,7 @@ export default function IpaSymbolsScreen() {
           <View style={styles.welcomeBanner}>
             <View style={styles.welcomeHeader}>
               <View style={styles.welcomeTitleRow}>
-                <IconSparkles size={24} color={COLORS.indigoText} />
+                <Sparkle size={24} color={COLORS.indigoText} />
                 <Text style={styles.welcomeTitle} maxFontSizeMultiplier={1.4}>
                   바로영어에 오신 걸 환영해요!
                 </Text>
@@ -115,7 +115,7 @@ export default function IpaSymbolsScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="안내 배너 닫기"
               >
-                <IconX size={20} color={COLORS.indigoText} />
+                <X size={20} color={COLORS.indigoText} />
                 <Text style={styles.dismissBtnText} maxFontSizeMultiplier={1.3}>
                   닫기
                 </Text>
@@ -305,7 +305,7 @@ export default function IpaSymbolsScreen() {
                           ) : null}
                           {isLearned ? (
                             <View style={styles.doneTag}>
-                              <IconCircleCheck
+                              <CheckCircle
                                 size={18}
                                 color={COLORS.success}
                               />
@@ -350,9 +350,9 @@ export default function IpaSymbolsScreen() {
                         accessibilityLabel={`${symbol.ipa} 소리 바로 듣기`}
                       >
                         {isQuickPlaying ? (
-                          <IconVolume size={16} color={COLORS.white} />
+                          <SpeakerHigh size={16} color={COLORS.white} />
                         ) : (
-                          <IconVolume2 size={16} color={accent.text} />
+                          <SpeakerLow size={16} color={accent.text} />
                         )}
                         <Text
                           style={[
