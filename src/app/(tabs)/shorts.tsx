@@ -396,16 +396,16 @@ export default function PronunciationShortsScreen() {
 
   const scrollToCard = useCallback(
     (targetIndex: number) => {
-      if (targetIndex < 0 || targetIndex >= visibleFeedWords.length) return;
+      if (viewportHeight <= 0 || targetIndex < 0 || targetIndex >= visibleFeedWords.length) return;
       stop();
       lastActiveIndexRef.current = targetIndex;
       setActiveIndex(targetIndex);
-      flatListRef.current?.scrollToIndex({
-        index: targetIndex,
+      flatListRef.current?.scrollToOffset({
+        offset: targetIndex * viewportHeight,
         animated: true,
       });
     },
-    [stop, visibleFeedWords.length]
+    [stop, viewportHeight, visibleFeedWords.length]
   );
 
   // 웹에서 키보드 ↑ / ↓ 방향키로도 릴스처럼 한 장씩 넘기기 지원
@@ -1426,10 +1426,10 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 320,
     flexDirection: 'row',
-    backgroundColor: COLORS.tealSoft,
+    backgroundColor: 'transparent',
     borderRadius: RADIUS.pill,
-    padding: 3,
-    gap: 3,
+    padding: 2,
+    gap: 6,
   },
   modeSwitchBtn: {
     flex: 1,

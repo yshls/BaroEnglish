@@ -6,7 +6,7 @@ import {
   Sparkle,
   SpeakerHigh,
 } from './PlumpIcons';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -43,6 +43,7 @@ export function BookmarkFlipDeck({
   const [queue, setQueue] = useState<CoreWord[]>(words);
   const [knownCount, setKnownCount] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [deckMode, setDeckMode] = useState<DeckMode>('standard');
 
   const [flipAnim] = useState(() => new Animated.Value(0));
@@ -56,8 +57,23 @@ export function BookmarkFlipDeck({
   const progressPct = Math.min(100, Math.round((knownCount / totalWords) * 100));
   const isRecall = deckMode === 'recall';
 
+  // 뜻→말하기 모드: 뒷면(정답) 공개 시 자동 재생 (카드 전환·언마운트 시 자동 정리)
+  useEffect(() => {
+    if (!isFlipped || deckMode !== 'recall' || !currentWord || isTransitioning) return;
+    const timer = setTimeout(() => {
+      void playNormal(currentWord.word, {
+        audioUrl: currentWord.audioUrl,
+        audioAsset: currentWord.audioAsset,
+        key: `deck:normal:${currentWord.id}`,
+      });
+    }, 250);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [currentWord, deckMode, isFlipped, isTransitioning, playNormal]);
+
   const handleFlip = useCallback(() => {
-    if (!currentWord) return;
+    if (!currentWord || isTransitioning) return;
     triggerLightHaptic();
     const nextFlipped = !isFlipped;
     setIsFlipped(nextFlipped);
@@ -68,22 +84,12 @@ export function BookmarkFlipDeck({
       tension: 80,
       useNativeDriver: USE_NATIVE_DRIVER,
     }).start();
-
-    // 뜻→말하기 모드: 뒷면(정답) 공개 시 자동 재생
-    if (nextFlipped && deckMode === 'recall') {
-      setTimeout(() => {
-        void playNormal(currentWord.word, {
-          audioUrl: currentWord.audioUrl,
-          audioAsset: currentWord.audioAsset,
-          key: `deck:normal:${currentWord.id}`,
-        });
-      }, 250);
-    }
-  }, [currentWord, deckMode, flipAnim, isFlipped, playNormal]);
+  }, [currentWord, flipAnim, isFlipped, isTransitioning]);
 
   const transitionToNext = useCallback(
     (direction: 'known' | 'again') => {
-      if (!currentWord) return;
+      if (!currentWord || isTransitioning) return;
+      setIsTransitioning(true);
       stop();
       onReviewWord?.(currentWord.word, direction === 'known' ? 'pass' : 'again');
 
@@ -134,14 +140,17 @@ export function BookmarkFlipDeck({
             duration: 180,
             useNativeDriver: USE_NATIVE_DRIVER,
           }),
-        ]).start();
+        ]).start(() => {
+          setIsTransitioning(false);
+        });
       });
     },
-    [cardOpacity, currentWord, flipAnim, onReviewWord, slideAnim, stop]
+    [cardOpacity, currentWord, flipAnim, isTransitioning, onReviewWord, slideAnim, stop]
   );
 
   const handleResetDeck = useCallback(() => {
     triggerLightHaptic();
+    setIsTransitioning(false);
     stop();
     setQueue(words);
     setKnownCount(0);

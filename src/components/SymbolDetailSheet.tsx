@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Animated,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -21,6 +22,8 @@ import type {
   IpaSymbol,
   SymbolExampleWord,
 } from '../types/learning';
+
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 const DIFFICULTY_TABS: {
   id: ExampleDifficultyLevel;
@@ -149,7 +152,13 @@ export function SymbolDetailSheet({
   const [heartScale] = useState(() => new Animated.Value(1));
   const triggerHeartPop = useCallback(() => {
     heartScale.setValue(0.6);
-    Animated.spring(heartScale, { toValue: 1, stiffness: 300, damping: 10, mass: 0.6, useNativeDriver: true }).start();
+    Animated.spring(heartScale, {
+      toValue: 1,
+      stiffness: 300,
+      damping: 10,
+      mass: 0.6,
+      useNativeDriver: USE_NATIVE_DRIVER,
+    }).start();
   }, [heartScale]);
 
   const [difficulty, setDifficulty] = useState<ExampleDifficultyLevel>('beginner');

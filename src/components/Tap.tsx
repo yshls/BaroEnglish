@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from 'react';
 import {
   Animated,
+  Platform,
   Pressable,
   type GestureResponderEvent,
   type PressableProps,
@@ -10,6 +11,7 @@ import {
 import { MOTION } from '../theme/tokens';
 import { triggerLightHaptic } from '../utils/haptics';
 
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 const AP = Animated.createAnimatedComponent(Pressable);
 
 // 쫀득한 느낌의 결(feel)은 theme/tokens.ts의 MOTION.spring에서 한 곳으로 조절한다.
@@ -46,7 +48,7 @@ export function Tap({
       // RN Animated.spring는 물리 기반(stiffness/damping/mass) 설정을 그대로 받는다.
       Animated.spring(scale, {
         toValue: toScale,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
         stiffness: spring.stiffness,
         damping: spring.damping,
         mass: spring.mass,
@@ -54,7 +56,7 @@ export function Tap({
       Animated.timing(opacity, {
         toValue: toOpacity,
         duration: MOTION.duration.instant,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_DRIVER,
       }),
     ]).start();
 
