@@ -1,7 +1,19 @@
+import { Platform } from 'react-native';
+
 /**
  * 바로영어 (baro-english) 시니어 친화 디자인 토큰
  * SPEC.md Section 2 기준 (50대 영어 왕초보 맞춤형)
  */
+
+export const FONT_FAMILY_NAME = 'SpokaHanSansNeo';
+
+export const FONTS = {
+  family:
+    Platform.select({
+      web: `'${FONT_FAMILY_NAME}', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`,
+      default: FONT_FAMILY_NAME,
+    }) ?? FONT_FAMILY_NAME,
+} as const;
 
 export const COLORS = {
   // 배경 & 서피스
