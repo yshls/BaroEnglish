@@ -7,7 +7,7 @@ import { useWordCacheStore } from '../../store/useWordCacheStore';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
-  const bottomInset = Math.max(insets.bottom, 12);
+  const bottomInset = Math.max(insets.bottom, 10);
   const wordBookmarkCount = useWordCacheStore((state) =>
     Array.isArray(state.bookmarkedWordKeys) ? state.bookmarkedWordKeys.length : 0
   );

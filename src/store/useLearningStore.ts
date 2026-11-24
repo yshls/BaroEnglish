@@ -21,6 +21,93 @@ export function getPreviousDateKey(dateKey: string): string {
   return getLocalDateKey(prev);
 }
 
+export function addDaysToDateKey(dateKey: string, days: number): string {
+  const parts = dateKey.split('-').map(Number);
+  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) {
+    return getLocalDateKey(new Date(Date.now() + days * 86_400_000));
+  }
+  const next = new Date(parts[0], parts[1] - 1, parts[2] + days);
+  return getLocalDateKey(next);
+}
+
+function diffDateKeyDays(fromKey: string, toKey: string): number {
+  const a = fromKey.split('-').map(Number);
+  const b = toKey.split('-').map(Number);
+  if (a.length !== 3 || b.length !== 3 || a.some(Number.isNaN) || b.some(Number.isNaN)) {
+    return 0;
+  }
+  const t1 = new Date(a[0], a[1] - 1, a[2]).getTime();
+  const t2 = new Date(b[0], b[1] - 1, b[2]).getTime();
+  return Math.round((t2 - t1) / 86_400_000);
+}
+
+/**
+ * Leitner 4단계 간격 반복 스케줄:
+ * - stage 0: 오늘 다시 (1일 뒤)
+ * - stage 1: 1일 뒤 복습
+ * - stage 2: 3일 뒤 복습
+ * - stage 3: 7일 뒤 복습
+ * - stage 4: 입에 붙음 완료 (14일 뒤 가벼운 리마인드)
+ */
+export type ReviewStage = 0 | 1 | 2 | 3 | 4;
+
+export interface WordReviewSchedule {
+  stage: ReviewStage;
+  nextReviewDate: string;
+  lastReviewedDate: string;
+  completedMissions: number;
+}
+
+const STAGE_INTERVAL_DAYS: Record<ReviewStage, number> = {
+  0: 1,
+  1: 1,
+  2: 3,
+  3: 7,
+  4: 14,
+};
+
+export function normalizeReviewWordKey(word: string): string {
+  return word.trim().toLowerCase();
+}
+
+export function getNextStageIntervalLabel(
+  schedule: WordReviewSchedule | undefined
+): string {
+  const currentStage = schedule?.stage ?? 0;
+  const nextStage = Math.min(4, currentStage + 1) as ReviewStage;
+  if (nextStage >= 4) return '입에 붙음';
+  return `${STAGE_INTERVAL_DAYS[nextStage]}일 뒤`;
+}
+
+export function isWordDueForReview(
+  schedule: WordReviewSchedule | undefined,
+  todayKey: string = getLocalDateKey()
+): boolean {
+  if (!schedule) return true;
+  return schedule.nextReviewDate <= todayKey;
+}
+
+export function getReviewStatusMeta(
+  schedule: WordReviewSchedule | undefined,
+  todayKey: string = getLocalDateKey()
+): { label: string; isDue: boolean; isMastered: boolean } {
+  if (!schedule) {
+    return { label: '오늘 꺼낼 차례', isDue: true, isMastered: false };
+  }
+  if (schedule.nextReviewDate <= todayKey) {
+    return { label: '오늘 꺼낼 차례', isDue: true, isMastered: false };
+  }
+  if (schedule.stage >= 4) {
+    return { label: '입에 붙음 완료', isDue: false, isMastered: true };
+  }
+  const remain = Math.max(1, diffDateKeyDays(todayKey, schedule.nextReviewDate));
+  return {
+    label: remain === 1 ? '내일 다시' : `${remain}일 뒤`,
+    isDue: false,
+    isMastered: false,
+  };
+}
+
 export interface RecentDayItem {
   key: string;
   weekdayKo: string;
@@ -66,11 +153,16 @@ function appendActiveDate(history: string[], dateKey: string): string[] {
   return [...safe, dateKey].sort().slice(-MAX_ACTIVE_HISTORY_DAYS);
 }
 
+export type ShortsMode = 'both' | 'word' | 'sentence';
+
 export interface LearningState {
   learnedSymbolIds: string[];
   bookmarkedSymbolIds: string[];
   showKoPronunciation: boolean;
   hasDismissedWelcomeBanner: boolean;
+
+  // 발음 쇼츠 모드 선택 (함께/단어/문장) — 앱 재실행 시 유지
+  shortsMode: ShortsMode;
 
   // 마이페이지: 프로필 · 이용 시간 통계 · 연속 실행 기록
   nickname: string;
@@ -82,6 +174,9 @@ export interface LearningState {
   lastActiveDate: string | null;
   activeDateHistory: string[];
 
+  // 망각 곡선 기반 간격 반복 (1일 · 3일 · 7일 · 완료)
+  wordReviews: Record<string, WordReviewSchedule>;
+
   hasHydrated: boolean;
   setHasHydrated: (hydrated: boolean) => void;
   toggleSymbolLearned: (symbolId: string) => void;
@@ -90,10 +185,13 @@ export interface LearningState {
   isSymbolBookmarked: (symbolId: string) => boolean;
   setShowKoPronunciation: (show: boolean) => void;
   toggleShowKoPronunciation: () => void;
+  setShortsMode: (mode: ShortsMode) => void;
   dismissWelcomeBanner: () => void;
   setNickname: (nickname: string) => void;
   recordAppVisit: (now?: Date) => void;
   addStudySeconds: (seconds: number, now?: Date) => void;
+  recordWordReview: (wordKey: string, outcome: 'pass' | 'again', now?: Date) => void;
+  recordMasteryMissionComplete: (wordKey: string, now?: Date) => void;
   resetProgress: () => void;
 }
 
@@ -104,6 +202,7 @@ export const useLearningStore = create<LearningState>()(
       bookmarkedSymbolIds: [],
       showKoPronunciation: true,
       hasDismissedWelcomeBanner: false,
+      shortsMode: 'both',
 
       nickname: '',
       totalStudySeconds: 0,
@@ -113,6 +212,7 @@ export const useLearningStore = create<LearningState>()(
       longestStreakDays: 0,
       lastActiveDate: null,
       activeDateHistory: [],
+      wordReviews: {},
 
       hasHydrated: false,
 
@@ -162,6 +262,11 @@ export const useLearningStore = create<LearningState>()(
       toggleShowKoPronunciation: () => {
         if (!get().hasHydrated) return;
         set((state) => ({ showKoPronunciation: !state.showKoPronunciation }));
+      },
+
+      setShortsMode: (mode: ShortsMode) => {
+        if (!get().hasHydrated) return;
+        set({ shortsMode: mode });
       },
 
       dismissWelcomeBanner: () => {
@@ -254,12 +359,58 @@ export const useLearningStore = create<LearningState>()(
         });
       },
 
+      recordWordReview: (wordKey: string, outcome: 'pass' | 'again', now: Date = new Date()) => {
+        if (!get().hasHydrated) return;
+        const key = normalizeReviewWordKey(wordKey);
+        const todayKey = getLocalDateKey(now);
+        const reviews = { ...get().wordReviews };
+        const current = reviews[key];
+
+        if (outcome === 'pass') {
+          const currentStage = current?.stage ?? 0;
+          const nextStage = Math.min(4, currentStage + 1) as ReviewStage;
+          reviews[key] = {
+            stage: nextStage,
+            nextReviewDate: addDaysToDateKey(todayKey, STAGE_INTERVAL_DAYS[nextStage]),
+            lastReviewedDate: todayKey,
+            completedMissions: current?.completedMissions ?? 0,
+          };
+        } else {
+          reviews[key] = {
+            stage: 0,
+            nextReviewDate: addDaysToDateKey(todayKey, 1),
+            lastReviewedDate: todayKey,
+            completedMissions: current?.completedMissions ?? 0,
+          };
+        }
+
+        set({ wordReviews: reviews });
+      },
+
+      recordMasteryMissionComplete: (wordKey: string, now: Date = new Date()) => {
+        if (!get().hasHydrated) return;
+        const key = normalizeReviewWordKey(wordKey);
+        const todayKey = getLocalDateKey(now);
+        const reviews = { ...get().wordReviews };
+        const current = reviews[key];
+
+        reviews[key] = {
+          stage: current?.stage ?? 0,
+          nextReviewDate: current?.nextReviewDate ?? addDaysToDateKey(todayKey, 1),
+          lastReviewedDate: todayKey,
+          completedMissions: (current?.completedMissions ?? 0) + 1,
+        };
+
+        set({ wordReviews: reviews });
+      },
+
       resetProgress: () => {
         set({
           learnedSymbolIds: [],
           bookmarkedSymbolIds: [],
           showKoPronunciation: true,
           hasDismissedWelcomeBanner: false,
+          shortsMode: 'both',
           nickname: '',
           totalStudySeconds: 0,
           todayDateKey: '',
@@ -268,6 +419,7 @@ export const useLearningStore = create<LearningState>()(
           longestStreakDays: 0,
           lastActiveDate: null,
           activeDateHistory: [],
+          wordReviews: {},
         });
       },
     }),
@@ -280,6 +432,7 @@ export const useLearningStore = create<LearningState>()(
         bookmarkedSymbolIds: state.bookmarkedSymbolIds,
         showKoPronunciation: state.showKoPronunciation,
         hasDismissedWelcomeBanner: state.hasDismissedWelcomeBanner,
+        shortsMode: state.shortsMode,
         nickname: state.nickname,
         totalStudySeconds: state.totalStudySeconds,
         todayDateKey: state.todayDateKey,
@@ -288,6 +441,7 @@ export const useLearningStore = create<LearningState>()(
         longestStreakDays: state.longestStreakDays,
         lastActiveDate: state.lastActiveDate,
         activeDateHistory: state.activeDateHistory,
+        wordReviews: state.wordReviews,
       }),
       onRehydrateStorage: () => (_state, error) => {
         if (error) {

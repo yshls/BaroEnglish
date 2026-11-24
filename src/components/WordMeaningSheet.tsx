@@ -16,7 +16,7 @@ import {
   type QuickWordInfo,
 } from '../services/wordApi';
 import { useWordCacheStore } from '../store/useWordCacheStore';
-import { COLORS, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../theme/tokens';
+import { COLORS, LAYOUT, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../theme/tokens';
 
 interface WordMeaningSheetProps {
   word: string | null;
@@ -312,6 +312,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sheetContainer: {
+    width: '100%',
+    maxWidth: LAYOUT.mobileFrameMaxWidth,
+    alignSelf: 'center',
     backgroundColor: COLORS.background,
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,

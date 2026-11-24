@@ -1,7 +1,17 @@
-import type { ComponentProps } from 'react';
+import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import type { Tabs } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { COLORS, FONTS, LAYOUT, RADIUS, SHADOW, SPACING } from '../theme/tokens';
+import {
+  Animated,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
+import { useLearningStore } from '../store/useLearningStore';
+import { COLORS, FONTS, LAYOUT, RADIUS, SHADOW, SPACING, Z_INDEX } from '../theme/tokens';
+import { triggerLightHaptic } from '../utils/haptics';
 import { BookOpen, Play, SpeakerHigh, User } from './PlumpIcons';
 
 type ExpoBottomTabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
@@ -20,6 +30,10 @@ const DEFAULT_LABELS: Record<OrderedTabName, string> = {
   symbols: '발음기호',
   bookmarks: '마이페이지',
 };
+
+const PILL_PADDING = 5;
+const TAB_GAP = 2;
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 function renderTabIcon(name: string, focused: boolean) {
   const color = focused ? COLORS.text : COLORS.textMuted;
@@ -46,6 +60,9 @@ export function FloatingPillTabBar({
   bookmarkCount,
   bottomInset,
 }: FloatingPillTabBarProps) {
+  const nickname = useLearningStore((s) => s.nickname);
+  const customMyLabel = nickname.trim();
+
   // 탭 순서를 항상 [단어 읽기, 발음 쇼츠, 발음기호, 마이페이지]로 고정 (마이페이지 맨 오른쪽)
   const orderedRoutes = [...state.routes].sort((a, b) => {
     const idxA = TAB_ORDER.indexOf(a.name as OrderedTabName);
@@ -55,21 +72,97 @@ export function FloatingPillTabBar({
     return rankA - rankB;
   });
 
-  const activeRouteKey = state.routes[state.index]?.key;
+  const activeRoute = state.routes[state.index];
+  const activeRouteKey = activeRoute?.key;
+  const activeRouteName = activeRoute?.name;
+  const activeOrderedIdx = Math.max(
+    0,
+    orderedRoutes.findIndex((r) => r.key === activeRouteKey)
+  );
+
+  const [barWidth, setBarWidth] = useState(0);
+  const [slideAnim] = useState(() => new Animated.Value(0));
+  const [defaultIconScale] = useState(() => new Animated.Value(1));
+  const [iconScales] = useState<Record<string, Animated.Value>>(() =>
+    Object.fromEntries(TAB_ORDER.map((name) => [name, new Animated.Value(1)]))
+  );
+  const hasMeasuredRef = useRef(false);
+
+  const tabCount = Math.max(1, orderedRoutes.length);
+  const innerWidth = Math.max(0, barWidth - PILL_PADDING * 2);
+  const slotWidth =
+    innerWidth > 0 ? (innerWidth - TAB_GAP * (tabCount - 1)) / tabCount : 0;
+
+  useEffect(() => {
+    if (slotWidth <= 0) return;
+    const targetX = activeOrderedIdx * (slotWidth + TAB_GAP);
+
+    if (!hasMeasuredRef.current) {
+      hasMeasuredRef.current = true;
+      slideAnim.setValue(targetX);
+      return;
+    }
+
+    Animated.spring(slideAnim, {
+      toValue: targetX,
+      stiffness: 260,
+      damping: 24,
+      mass: 0.85,
+      useNativeDriver: USE_NATIVE_DRIVER,
+    }).start();
+  }, [activeOrderedIdx, slideAnim, slotWidth]);
+
+  useEffect(() => {
+    if (!activeRouteName) return;
+    const scale = iconScales[activeRouteName] ?? defaultIconScale;
+    scale.setValue(0.84);
+    Animated.spring(scale, {
+      toValue: 1,
+      friction: 4.5,
+      tension: 180,
+      useNativeDriver: USE_NATIVE_DRIVER,
+    }).start();
+  }, [activeRouteKey, activeRouteName, defaultIconScale, iconScales]);
+
+  const handleBarLayout = (e: LayoutChangeEvent) => {
+    const nextWidth = e.nativeEvent.layout.width;
+    if (nextWidth > 0 && Math.abs(nextWidth - barWidth) > 0.5) {
+      setBarWidth(nextWidth);
+    }
+  };
 
   return (
-    <View style={[styles.outerWrap, { paddingBottom: bottomInset }]}>
-      <View style={styles.pillBar} accessibilityRole="tablist">
+    <View pointerEvents="box-none" style={[styles.outerWrap, { paddingBottom: bottomInset }]}>
+      <View
+        style={styles.pillBar}
+        accessibilityRole="tablist"
+        onLayout={handleBarLayout}
+      >
+        {slotWidth > 0 ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.slidingIndicator,
+              {
+                width: slotWidth,
+                transform: [{ translateX: slideAnim }],
+              },
+            ]}
+          />
+        ) : null}
+
         {orderedRoutes.map((route) => {
           const descriptor = descriptors[route.key];
           const options = descriptor?.options;
           const isFocused = route.key === activeRouteKey;
           const label =
-            typeof options?.tabBarLabel === 'string'
-              ? options.tabBarLabel
-              : typeof options?.title === 'string'
-                ? options.title
-                : (DEFAULT_LABELS[route.name as OrderedTabName] ?? route.name);
+            route.name === 'bookmarks'
+              ? customMyLabel || DEFAULT_LABELS.bookmarks
+              : typeof options?.tabBarLabel === 'string'
+                ? options.tabBarLabel
+                : typeof options?.title === 'string'
+                  ? options.title
+                  : (DEFAULT_LABELS[route.name as OrderedTabName] ?? route.name);
 
           const onPress = () => {
             const event = emitter.emit({
@@ -78,6 +171,7 @@ export function FloatingPillTabBar({
               canPreventDefault: true,
             });
             if (!isFocused && !event.defaultPrevented) {
+              triggerLightHaptic();
               navigateToTab(route.key);
             }
           };
@@ -91,6 +185,7 @@ export function FloatingPillTabBar({
 
           const showBadge = route.name === 'bookmarks' && bookmarkCount > 0;
           const badgeText = bookmarkCount > 99 ? '99+' : String(bookmarkCount);
+          const iconScale = iconScales[route.name] ?? defaultIconScale;
 
           return (
             <Pressable
@@ -102,11 +197,13 @@ export function FloatingPillTabBar({
               onLongPress={onLongPress}
               style={({ pressed }) => [
                 styles.tabItem,
-                isFocused && styles.tabItemActive,
+                slotWidth <= 0 && isFocused && styles.tabItemActive,
                 pressed && styles.tabItemPressed,
               ]}
             >
-              <View style={styles.iconWrap}>
+              <Animated.View
+                style={[styles.iconWrap, { transform: [{ scale: iconScale }] }]}
+              >
                 {renderTabIcon(route.name, isFocused)}
                 {showBadge ? (
                   <View style={styles.badge}>
@@ -115,10 +212,11 @@ export function FloatingPillTabBar({
                     </Text>
                   </View>
                 ) : null}
-              </View>
+              </Animated.View>
               <Text
                 style={[styles.tabLabel, isFocused && styles.tabLabelActive]}
                 numberOfLines={1}
+                ellipsizeMode="tail"
                 allowFontScaling={true}
               >
                 {label}
@@ -133,38 +231,53 @@ export function FloatingPillTabBar({
 
 const styles = StyleSheet.create({
   outerWrap: {
-    backgroundColor: COLORS.background,
-    paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.xs,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: COLORS.transparent,
+    paddingHorizontal: SPACING.sm,
+    paddingTop: 4,
     alignItems: 'center',
+    zIndex: Z_INDEX.tabBar,
   },
   pillBar: {
+    position: 'relative',
     width: '100%',
     maxWidth: LAYOUT.contentMaxWidth,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.pill,
-    padding: 5,
-    gap: 2,
+    padding: PILL_PADDING,
+    gap: TAB_GAP,
     ...SHADOW.floating,
+  },
+  slidingIndicator: {
+    position: 'absolute',
+    top: PILL_PADDING,
+    bottom: PILL_PADDING,
+    left: PILL_PADDING,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.surface,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 54,
-    paddingVertical: 7,
+    minHeight: 50,
+    paddingVertical: 6,
     paddingHorizontal: 4,
     borderRadius: RADIUS.pill,
     backgroundColor: COLORS.transparent,
+    zIndex: 1,
   },
   tabItemActive: {
-    backgroundColor: COLORS.tint,
+    backgroundColor: COLORS.surface,
   },
   tabItemPressed: {
-    opacity: 0.82,
-    transform: [{ scale: 0.97 }],
+    backgroundColor: COLORS.background,
+    transform: [{ scale: 0.96 }],
   },
   iconWrap: {
     position: 'relative',

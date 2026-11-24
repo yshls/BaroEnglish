@@ -1,33 +1,283 @@
-import { MusicNote, Play, SpeakerHigh, SpeakerLow } from './PlumpIcons';
-import { useCallback, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { CheckCircle, MusicNote, Play, Sparkle, SpeakerHigh, SpeakerLow } from './PlumpIcons';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSpeechAudio } from '../hooks/useSpeechAudio';
 import { COLORS, RADIUS, SPACING, TOUCH, TYPOGRAPHY } from '../theme/tokens';
 import type { SyllableItem } from '../types/learning';
+import {
+  triggerErrorHaptic,
+  triggerLightHaptic,
+  triggerMediumHaptic,
+  triggerSuccessHaptic,
+} from '../utils/haptics';
 import { InfoTipBox, InfoTipButton } from './InfoTip';
 import { Tap } from './Tap';
+
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 interface RhythmBlocksProps {
   syllables: SyllableItem[];
   showKoHint: boolean;
+  word?: string;
+  onPlayWord?: () => void | Promise<void>;
 }
 
-export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
-  const { playSlow, stop, activeKey } = useSpeechAudio();
+type QuizState = 'asking' | 'wrong' | 'correct' | 'revealed';
+
+interface BlockAnim {
+  scale: Animated.Value;
+  liftY: Animated.Value;
+  shakeX: Animated.Value;
+  dotScale: Animated.Value;
+}
+
+export function RhythmBlocks({
+  syllables,
+  showKoHint,
+  word,
+  onPlayWord,
+}: RhythmBlocksProps) {
+  const { playNormal, playSlow, stop, activeKey } = useSpeechAudio();
   const [rhythmIndex, setRhythmIndex] = useState<number | null>(null);
   const [showTip, setShowTip] = useState(false);
+  const [quizMode, setQuizMode] = useState(false);
+  const [quizState, setQuizState] = useState<QuizState>('asking');
+  const [wrongIdx, setWrongIdx] = useState<number | null>(null);
+  const [correctIdx, setCorrectIdx] = useState<number | null>(null);
   const rhythmSessionRef = useRef(0);
+
+  const resetKey = `${word ?? ''}::${syllables.map((s) => `${s.text}:${s.stress}`).join('|')}`;
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey);
+    setRhythmIndex(null);
+    setQuizMode(false);
+    setQuizState('asking');
+    setWrongIdx(null);
+    setCorrectIdx(null);
+  }
+
+  const blockAnims = useMemo<BlockAnim[]>(
+    () =>
+      syllables.map(() => ({
+        scale: new Animated.Value(1),
+        liftY: new Animated.Value(0),
+        shakeX: new Animated.Value(0),
+        dotScale: new Animated.Value(1),
+      })),
+    [syllables]
+  );
+
+  const primaryIndices = useMemo(
+    () =>
+      syllables
+        .map((syl, idx) => (syl.stress === 'primary' ? idx : -1))
+        .filter((idx) => idx >= 0),
+    [syllables]
+  );
+  const canQuiz = syllables.length >= 2 && primaryIndices.length > 0;
+  const isQuizHidingStress =
+    quizMode && (quizState === 'asking' || quizState === 'wrong');
+
+  const getBlockAnim = useCallback(
+    (idx: number): BlockAnim | undefined => blockAnims[idx],
+    [blockAnims]
+  );
+
+  // 단어가 바뀌면 진행 중인 리듬 재생 세션 무효화
+  useEffect(() => {
+    rhythmSessionRef.current += 1;
+  }, [resetKey]);
+
+  const animateBounce = useCallback(
+    (idx: number, stress: SyllableItem['stress']) => {
+      const anim = getBlockAnim(idx);
+      if (!anim) return;
+      const liftTarget = stress === 'primary' ? -10 : stress === 'secondary' ? -6 : -3;
+      const scaleTarget = stress === 'primary' ? 1.08 : stress === 'secondary' ? 1.05 : 1.03;
+      const dotTarget = stress === 'primary' ? 1.48 : 1.3;
+
+      anim.liftY.stopAnimation();
+      anim.scale.stopAnimation();
+      anim.dotScale.stopAnimation();
+
+      Animated.parallel([
+        Animated.sequence([
+          Animated.spring(anim.liftY, {
+            toValue: liftTarget,
+            speed: 28,
+            bounciness: 12,
+            useNativeDriver: USE_NATIVE_DRIVER,
+          }),
+          Animated.spring(anim.liftY, {
+            toValue: 0,
+            speed: 18,
+            bounciness: 10,
+            useNativeDriver: USE_NATIVE_DRIVER,
+          }),
+        ]),
+        Animated.sequence([
+          Animated.spring(anim.scale, {
+            toValue: scaleTarget,
+            speed: 28,
+            bounciness: 12,
+            useNativeDriver: USE_NATIVE_DRIVER,
+          }),
+          Animated.spring(anim.scale, {
+            toValue: 1,
+            speed: 18,
+            bounciness: 10,
+            useNativeDriver: USE_NATIVE_DRIVER,
+          }),
+        ]),
+        Animated.sequence([
+          Animated.spring(anim.dotScale, {
+            toValue: dotTarget,
+            speed: 30,
+            bounciness: 14,
+            useNativeDriver: USE_NATIVE_DRIVER,
+          }),
+          Animated.spring(anim.dotScale, {
+            toValue: 1,
+            speed: 20,
+            bounciness: 8,
+            useNativeDriver: USE_NATIVE_DRIVER,
+          }),
+        ]),
+      ]).start();
+    },
+    [getBlockAnim]
+  );
+
+  const animateShake = useCallback(
+    (idx: number) => {
+      const anim = getBlockAnim(idx);
+      if (!anim) return;
+      anim.shakeX.stopAnimation();
+      anim.shakeX.setValue(0);
+      Animated.sequence([
+        Animated.timing(anim.shakeX, {
+          toValue: -8,
+          duration: 55,
+          useNativeDriver: USE_NATIVE_DRIVER,
+        }),
+        Animated.timing(anim.shakeX, {
+          toValue: 8,
+          duration: 55,
+          useNativeDriver: USE_NATIVE_DRIVER,
+        }),
+        Animated.timing(anim.shakeX, {
+          toValue: -5,
+          duration: 50,
+          useNativeDriver: USE_NATIVE_DRIVER,
+        }),
+        Animated.timing(anim.shakeX, {
+          toValue: 5,
+          duration: 50,
+          useNativeDriver: USE_NATIVE_DRIVER,
+        }),
+        Animated.timing(anim.shakeX, {
+          toValue: 0,
+          duration: 45,
+          useNativeDriver: USE_NATIVE_DRIVER,
+        }),
+      ]).start();
+    },
+    [getBlockAnim]
+  );
+
+  const playTargetWord = useCallback(() => {
+    if (onPlayWord) {
+      void onPlayWord();
+    } else if (word) {
+      void playNormal(word, { key: `rhythm:quiz:${word}` });
+    }
+  }, [onPlayWord, playNormal, word]);
+
+  const handleToggleQuizMode = useCallback(() => {
+    rhythmSessionRef.current += 1;
+    setRhythmIndex(null);
+    stop();
+
+    if (quizMode) {
+      triggerLightHaptic();
+      setQuizMode(false);
+      setQuizState('asking');
+      setWrongIdx(null);
+      setCorrectIdx(null);
+      return;
+    }
+
+    triggerLightHaptic();
+    setQuizMode(true);
+    setQuizState('asking');
+    setWrongIdx(null);
+    setCorrectIdx(null);
+    setTimeout(() => {
+      playTargetWord();
+    }, 120);
+  }, [playTargetWord, quizMode, stop]);
+
+  const handleRestartQuiz = useCallback(() => {
+    triggerLightHaptic();
+    setQuizState('asking');
+    setWrongIdx(null);
+    setCorrectIdx(null);
+    playTargetWord();
+  }, [playTargetWord]);
+
+  const handleRevealQuiz = useCallback(() => {
+    triggerLightHaptic();
+    setQuizState('revealed');
+    setWrongIdx(null);
+    const firstPrimary = primaryIndices[0];
+    if (typeof firstPrimary === 'number') {
+      setCorrectIdx(firstPrimary);
+      animateBounce(firstPrimary, 'primary');
+    }
+    playTargetWord();
+  }, [animateBounce, playTargetWord, primaryIndices]);
 
   const handleSyllableTap = useCallback(
     (syl: SyllableItem, idx: number) => {
       rhythmSessionRef.current += 1;
       setRhythmIndex(null);
+
+      // 강세 퀴즈 풀이 중이라면 정답 판정 인터랙션 수행
+      if (isQuizHidingStress) {
+        if (syl.stress === 'primary') {
+          triggerSuccessHaptic();
+          setQuizState('correct');
+          setWrongIdx(null);
+          setCorrectIdx(idx);
+          animateBounce(idx, 'primary');
+          void playSlow(syl.text, { key: `rhythm:syl:${idx}:${syl.text}` });
+        } else {
+          triggerErrorHaptic();
+          setQuizState('wrong');
+          setWrongIdx(idx);
+          animateShake(idx);
+        }
+        return;
+      }
+
+      if (syl.stress === 'primary') {
+        triggerMediumHaptic();
+      } else {
+        triggerLightHaptic();
+      }
+      animateBounce(idx, syl.stress);
       void playSlow(syl.text, { key: `rhythm:syl:${idx}:${syl.text}` });
     },
-    [playSlow]
+    [animateBounce, animateShake, isQuizHidingStress, playSlow]
   );
 
   const handleRhythmPlay = useCallback(() => {
+    if (isQuizHidingStress) {
+      playTargetWord();
+      return;
+    }
+
     rhythmSessionRef.current += 1;
     const session = rhythmSessionRef.current;
     stop();
@@ -40,6 +290,12 @@ export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
       setTimeout(() => {
         if (rhythmSessionRef.current !== session) return;
         setRhythmIndex(idx);
+        if (syl.stress === 'primary') {
+          triggerMediumHaptic();
+        } else {
+          triggerLightHaptic();
+        }
+        animateBounce(idx, syl.stress);
         void playSlow(syl.text, { key: `rhythm:seq:${idx}:${syl.text}` });
       }, delay);
 
@@ -58,13 +314,13 @@ export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
       if (rhythmSessionRef.current !== session) return;
       setRhythmIndex(null);
     }, cumulativeDelay + 400);
-  }, [syllables, playSlow, stop]);
+  }, [animateBounce, isQuizHidingStress, playSlow, playTargetWord, stop, syllables]);
 
   const isRhythmPlaying = rhythmIndex !== null;
 
   return (
     <View style={styles.container}>
-      {/* 상단 강약 박자 리듬 요약 (● ⬤ ●) + 리듬 연속 듣기 버튼 */}
+      {/* 상단 강약 박자 리듬 요약 (● ⬤ ●) + 강세 퀴즈 / 리듬 듣기 버튼 */}
       <View style={styles.rhythmBar}>
         <View style={styles.rhythmBarLeft}>
           <Text style={styles.rhythmBarLabel} maxFontSizeMultiplier={1.4}>
@@ -80,67 +336,187 @@ export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
               const isPrimary = syl.stress === 'primary';
               const isSecondary = syl.stress === 'secondary';
               const isActive = rhythmIndex === idx;
+              const anim = blockAnims[idx];
               return (
-                <Text
+                <Animated.View
                   key={`dot-${idx}-${syl.text}`}
-                  style={[
-                    isPrimary
-                      ? styles.dotPrimary
-                      : isSecondary
-                        ? styles.dotSecondary
-                        : styles.dotNormal,
-                    isActive && styles.dotActive,
-                  ]}
-                  maxFontSizeMultiplier={1.25}
-                  accessibilityLabel={
-                    isPrimary
-                      ? '강세 박자'
-                      : isSecondary
-                        ? '보조 강세 박자'
-                        : '약한 박자'
-                  }
+                  style={anim ? { transform: [{ scale: anim.dotScale }] } : undefined}
                 >
-                  {isPrimary ? '⬤' : '●'}
-                </Text>
+                  <Text
+                    style={[
+                      isQuizHidingStress
+                        ? styles.dotHidden
+                        : isPrimary
+                          ? styles.dotPrimary
+                          : isSecondary
+                            ? styles.dotSecondary
+                            : styles.dotNormal,
+                      isActive && styles.dotActive,
+                    ]}
+                    maxFontSizeMultiplier={1.25}
+                    accessibilityLabel={
+                      isQuizHidingStress
+                        ? '퀴즈 박자'
+                        : isPrimary
+                          ? '강세 박자'
+                          : isSecondary
+                            ? '보조 강세 박자'
+                            : '약한 박자'
+                    }
+                  >
+                    {isQuizHidingStress ? '?' : isPrimary ? '⬤' : '●'}
+                  </Text>
+                </Animated.View>
               );
             })}
           </View>
         </View>
 
-        <Pressable
-          onPress={handleRhythmPlay}
-          style={({ pressed }) => [
-            styles.rhythmPlayBtn,
-            isRhythmPlaying && styles.rhythmPlayBtnActive,
-            pressed && styles.pressed,
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="음절별 리듬으로 연속 듣기"
-        >
-          {isRhythmPlaying ? (
-            <MusicNote size={18} color={COLORS.white} />
-          ) : (
-            <Play size={18} color={COLORS.accentText} />
-          )}
-          <Text
-            style={[
-              styles.rhythmPlayBtnText,
-              isRhythmPlaying && styles.rhythmPlayBtnTextActive,
+        <View style={styles.barActionsRow}>
+          {canQuiz ? (
+            <Pressable
+              onPress={handleToggleQuizMode}
+              style={({ pressed }) => [
+                styles.quizToggleBtn,
+                quizMode && styles.quizToggleBtnActive,
+                pressed && styles.pressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: quizMode }}
+              accessibilityLabel={quizMode ? '강세 퀴즈 종료' : '강세 맞추기 퀴즈 시작'}
+            >
+              <Sparkle
+                size={15}
+                color={quizMode ? COLORS.white : COLORS.purpleText}
+                weight={quizMode ? 'fill' : 'regular'}
+              />
+              <Text
+                style={[
+                  styles.quizToggleText,
+                  quizMode && styles.quizToggleTextActive,
+                ]}
+                maxFontSizeMultiplier={1.2}
+              >
+                {quizMode ? '퀴즈 끄기' : '강세 퀴즈'}
+              </Text>
+            </Pressable>
+          ) : null}
+
+          <Pressable
+            onPress={handleRhythmPlay}
+            style={({ pressed }) => [
+              styles.rhythmPlayBtn,
+              isRhythmPlaying && styles.rhythmPlayBtnActive,
+              pressed && styles.pressed,
             ]}
-            maxFontSizeMultiplier={1.25}
+            accessibilityRole="button"
+            accessibilityLabel={
+              isQuizHidingStress ? '전체 단어 다시 듣기' : '음절별 리듬으로 연속 듣기'
+            }
           >
-            {isRhythmPlaying ? '재생 중...' : '리듬 듣기'}
-          </Text>
-        </Pressable>
+            {isRhythmPlaying ? (
+              <MusicNote size={17} color={COLORS.white} />
+            ) : (
+              <Play size={17} color={COLORS.accentText} />
+            )}
+            <Text
+              style={[
+                styles.rhythmPlayBtnText,
+                isRhythmPlaying && styles.rhythmPlayBtnTextActive,
+              ]}
+              maxFontSizeMultiplier={1.25}
+            >
+              {isQuizHidingStress
+                ? '다시 듣기'
+                : isRhythmPlaying
+                  ? '재생 중...'
+                  : '리듬 듣기'}
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       <InfoTipBox
         visible={showTip}
-        text="각 음절 카드를 누르면 해당 음절 소리를 따로 들어볼 수 있어요."
+        text="각 음절 카드를 누르면 해당 음절 소리를 따로 들어볼 수 있어요. 강세 퀴즈를 켜면 귀로 강세를 직접 맞출 수 있어요."
         onClose={() => setShowTip(false)}
       />
 
-      {/* 음절별 리듬 블록 카드 (터치 인터랙티브) */}
+      {/* 강세 퀴즈 상태 안내 배너 */}
+      {quizMode ? (
+        <View
+          style={[
+            styles.quizBanner,
+            quizState === 'correct' && styles.quizBannerSuccess,
+            quizState === 'wrong' && styles.quizBannerWrong,
+          ]}
+        >
+          <View style={styles.quizBannerTextCol}>
+            <View style={styles.quizBannerTitleRow}>
+              {quizState === 'correct' ? (
+                <CheckCircle size={18} color={COLORS.successText} weight="fill" />
+              ) : (
+                <Sparkle
+                  size={17}
+                  color={quizState === 'wrong' ? COLORS.roseText : COLORS.purpleText}
+                />
+              )}
+              <Text
+                style={[
+                  styles.quizBannerText,
+                  quizState === 'correct' && styles.quizBannerTextSuccess,
+                  quizState === 'wrong' && styles.quizBannerTextWrong,
+                ]}
+                maxFontSizeMultiplier={1.35}
+              >
+                {quizState === 'asking'
+                  ? '어디가 가장 세게 들렸나요? 음절 카드를 눌러 보세요!'
+                  : quizState === 'wrong'
+                    ? '조금 아쉬워요! 다시 들어보고 다른 음절을 눌러 보세요.'
+                    : quizState === 'correct'
+                      ? `정답이에요! '${syllables[correctIdx ?? primaryIndices[0]]?.text ?? ''}' 부분을 가장 세게 읽어요.`
+                      : `'${syllables[primaryIndices[0]]?.text ?? ''}' 음절에 가장 강한 강세가 있어요.`}
+              </Text>
+            </View>
+          </View>
+
+          {quizState === 'wrong' ? (
+            <Pressable
+              onPress={handleRevealQuiz}
+              style={({ pressed }) => [styles.quizMiniActionBtn, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel="강세 정답 보기"
+            >
+              <Text style={styles.quizMiniActionText} maxFontSizeMultiplier={1.2}>
+                정답 보기
+              </Text>
+            </Pressable>
+          ) : quizState === 'correct' || quizState === 'revealed' ? (
+            <Pressable
+              onPress={handleRestartQuiz}
+              style={({ pressed }) => [
+                styles.quizMiniActionBtn,
+                styles.quizMiniActionBtnSuccess,
+                pressed && styles.pressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="강세 퀴즈 다시 풀기"
+            >
+              <Text
+                style={[
+                  styles.quizMiniActionText,
+                  styles.quizMiniActionTextSuccess,
+                ]}
+                maxFontSizeMultiplier={1.2}
+              >
+                다시 풀기
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+
+      {/* 음절별 리듬 블록 카드 (스프링 바운스 + 터치 인터랙티브) */}
       <View style={styles.blocksRow}>
         {syllables.map((syl, idx) => {
           const isPrimary = syl.stress === 'primary';
@@ -149,102 +525,142 @@ export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
           const isSylActive =
             activeKey === `rhythm:syl:${idx}:${syl.text}` ||
             activeKey === `rhythm:seq:${idx}:${syl.text}`;
+          const isQuizCorrectBlock =
+            quizMode && (quizState === 'correct' || quizState === 'revealed') && isPrimary;
+          const isQuizWrongBlock = quizMode && quizState === 'wrong' && wrongIdx === idx;
+          const anim = blockAnims[idx];
 
           return (
-            <Tap
+            <Animated.View
               key={`syl-${idx}-${syl.text}`}
-              onPress={() => handleSyllableTap(syl, idx)}
               style={[
-                styles.block,
-                isPrimary && styles.blockPrimary,
-                !isPrimary && isSecondary && styles.blockSecondary,
-                !isPrimary && !isSecondary && isSchwa && styles.blockSchwa,
-                isSylActive && styles.blockActive,
+                styles.blockAnimWrap,
+                !isQuizHidingStress && isPrimary && styles.blockAnimWrapPrimary,
+                anim
+                  ? {
+                      transform: [
+                        { translateY: anim.liftY },
+                        { translateX: anim.shakeX },
+                        { scale: anim.scale },
+                      ],
+                    }
+                  : undefined,
               ]}
-              accessibilityRole="button"
-              accessibilityLabel={`${syl.text} 음절 듣기, ${isPrimary ? '강세' : isSecondary ? '보조 강세' : '약한'} 음절`}
             >
-              {/* 음절 상단 박자 배지 */}
-              {isPrimary ? (
-                <View style={styles.primaryTag}>
-                  <Text style={styles.primaryTagText} maxFontSizeMultiplier={1.3}>
-                    ⬤ 강하게
-                  </Text>
-                </View>
-              ) : isSecondary ? (
-                <View style={styles.secondaryTag}>
-                  <Text
-                    style={styles.secondaryTagText}
-                    maxFontSizeMultiplier={1.3}
-                  >
-                    ● 살짝 강하게
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.normalDotSmall}>●</Text>
-              )}
-
-              {/* 음절 영문 */}
-              <Text
+              <Tap
+                onPress={() => handleSyllableTap(syl, idx)}
                 style={[
-                  styles.syllableText,
-                  isPrimary && styles.syllableTextPrimary,
-                  !isPrimary && isSchwa && styles.syllableTextSchwa,
-                  isSylActive && styles.syllableTextActive,
+                  styles.block,
+                  !isQuizHidingStress && isPrimary && styles.blockPrimary,
+                  !isQuizHidingStress && !isPrimary && isSecondary && styles.blockSecondary,
+                  !isQuizHidingStress && !isPrimary && !isSecondary && isSchwa && styles.blockSchwa,
+                  isQuizHidingStress && styles.blockQuizNeutral,
+                  isQuizWrongBlock && styles.blockQuizWrong,
+                  isQuizCorrectBlock && styles.blockQuizCorrect,
+                  !isQuizHidingStress && isSylActive && styles.blockActive,
                 ]}
-                maxFontSizeMultiplier={1.4}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  isQuizHidingStress
+                    ? `${syl.text} 음절을 강세 정답으로 선택`
+                    : `${syl.text} 음절 듣기, ${isPrimary ? '강세' : isSecondary ? '보조 강세' : '약한'} 음절`
+                }
               >
-                {syl.text}
-              </Text>
+                {/* 음절 상단 박자 배지 */}
+                {isQuizHidingStress ? (
+                  <View style={styles.quizBadge}>
+                    <Text style={styles.quizBadgeText} maxFontSizeMultiplier={1.25}>
+                      ? 선택
+                    </Text>
+                  </View>
+                ) : isQuizCorrectBlock ? (
+                  <View style={styles.correctTag}>
+                    <Text style={styles.correctTagText} maxFontSizeMultiplier={1.25}>
+                      ✓ 정답 강세
+                    </Text>
+                  </View>
+                ) : isPrimary ? (
+                  <View style={styles.primaryTag}>
+                    <Text style={styles.primaryTagText} maxFontSizeMultiplier={1.3}>
+                      ⬤ 강하게
+                    </Text>
+                  </View>
+                ) : isSecondary ? (
+                  <View style={styles.secondaryTag}>
+                    <Text
+                      style={styles.secondaryTagText}
+                      maxFontSizeMultiplier={1.3}
+                    >
+                      ● 살짝 강하게
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.normalDotSmall}>●</Text>
+                )}
 
-              {/* 음절 IPA */}
-              <Text
-                style={[
-                  styles.syllableIpa,
-                  isPrimary && styles.syllableIpaPrimary,
-                ]}
-                maxFontSizeMultiplier={1.4}
-              >
-                /{syl.ipa}/
-              </Text>
-
-              {/* 한글 발음 힌트 (토글 On일 때) */}
-              {showKoHint ? (
+                {/* 음절 영문 */}
                 <Text
                   style={[
-                    styles.syllableKoHint,
-                    isPrimary && styles.syllableKoHintPrimary,
+                    styles.syllableText,
+                    !isQuizHidingStress && isPrimary && styles.syllableTextPrimary,
+                    !isQuizHidingStress && !isPrimary && isSchwa && styles.syllableTextSchwa,
+                    isQuizCorrectBlock && styles.syllableTextCorrect,
+                    !isQuizHidingStress && isSylActive && styles.syllableTextActive,
                   ]}
                   maxFontSizeMultiplier={1.4}
                 >
-                  {syl.koHint}
+                  {syl.text}
                 </Text>
-              ) : null}
 
-              {/* 약화 모음(Schwa) 힌트 */}
-              {isSchwa ? (
-                <View style={styles.schwaBadge}>
-                  <Text style={styles.schwaBadgeText} maxFontSizeMultiplier={1.3}>
-                    힘 빼고 약하게 &apos;어&apos;
+                {/* 음절 IPA */}
+                <Text
+                  style={[
+                    styles.syllableIpa,
+                    !isQuizHidingStress && isPrimary && styles.syllableIpaPrimary,
+                  ]}
+                  maxFontSizeMultiplier={1.4}
+                >
+                  /{syl.ipa}/
+                </Text>
+
+                {/* 한글 발음 힌트 (토글 On일 때) */}
+                {showKoHint ? (
+                  <Text
+                    style={[
+                      styles.syllableKoHint,
+                      !isQuizHidingStress && isPrimary && styles.syllableKoHintPrimary,
+                    ]}
+                    maxFontSizeMultiplier={1.4}
+                  >
+                    {syl.koHint}
                   </Text>
-                </View>
-              ) : null}
+                ) : null}
 
-              {/* 소리 아이콘 */}
-              {isSylActive ? (
-                <SpeakerHigh
-                  size={18}
-                  color={COLORS.primary}
-                  style={styles.speakerIcon}
-                />
-              ) : (
-                <SpeakerLow
-                  size={18}
-                  color={isPrimary ? COLORS.accentText : COLORS.textMuted}
-                  style={styles.speakerIcon}
-                />
-              )}
-            </Tap>
+                {/* 약화 모음(Schwa) 힌트 — 퀴즈 풀이 중에는 스포일러 방지 */}
+                {!isQuizHidingStress && isSchwa ? (
+                  <View style={styles.schwaBadge}>
+                    <Text style={styles.schwaBadgeText} maxFontSizeMultiplier={1.3}>
+                      힘 빼고 약하게 &apos;어&apos;
+                    </Text>
+                  </View>
+                ) : null}
+
+                {/* 소리 아이콘 */}
+                {isQuizHidingStress ? null : isSylActive ? (
+                  <SpeakerHigh
+                    size={18}
+                    color={COLORS.primary}
+                    style={styles.speakerIcon}
+                  />
+                ) : (
+                  <SpeakerLow
+                    size={18}
+                    color={isPrimary ? COLORS.accentText : COLORS.textMuted}
+                    style={styles.speakerIcon}
+                  />
+                )}
+              </Tap>
+            </Animated.View>
           );
         })}
       </View>
@@ -268,11 +684,10 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
   },
   rhythmBarLeft: {
-    flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: SPACING.sm,
+    gap: SPACING.xs,
   },
   rhythmBarLabel: {
     fontSize: TYPOGRAPHY.body,
@@ -282,7 +697,8 @@ const styles = StyleSheet.create({
   dotsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
+    marginLeft: 4,
   },
   dotPrimary: {
     fontSize: 20,
@@ -296,12 +712,43 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textMuted,
   },
+  dotHidden: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.purpleText,
+  },
   dotActive: {
     color: COLORS.primary,
   },
+  barActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  quizToggleBtn: {
+    minHeight: TOUCH.minTarget,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.purpleSoft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  quizToggleBtnActive: {
+    backgroundColor: COLORS.purple,
+  },
+  quizToggleText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.purpleText,
+  },
+  quizToggleTextActive: {
+    color: COLORS.white,
+  },
   rhythmPlayBtn: {
     minHeight: TOUCH.minTarget,
-    paddingHorizontal: 14,
+    paddingHorizontal: 13,
     paddingVertical: 8,
     borderRadius: RADIUS.pill,
     backgroundColor: COLORS.accentSoft,
@@ -314,17 +761,65 @@ const styles = StyleSheet.create({
   },
   rhythmPlayBtnText: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
     color: COLORS.accentText,
   },
   rhythmPlayBtnTextActive: {
     color: COLORS.white,
   },
-  tapHint: {
+  quizBanner: {
+    backgroundColor: COLORS.purpleSoft,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
+  },
+  quizBannerSuccess: {
+    backgroundColor: COLORS.successSoft,
+  },
+  quizBannerWrong: {
+    backgroundColor: COLORS.roseSoft,
+  },
+  quizBannerTextCol: {
+    flex: 1,
+  },
+  quizBannerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  quizBannerText: {
+    flex: 1,
     fontSize: 13,
-    fontWeight: '400',
-    color: COLORS.textMuted,
-    textAlign: 'center',
+    fontWeight: '600',
+    color: COLORS.purpleText,
+    lineHeight: 19,
+  },
+  quizBannerTextSuccess: {
+    color: COLORS.successText,
+  },
+  quizBannerTextWrong: {
+    color: COLORS.roseText,
+  },
+  quizMiniActionBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.card,
+  },
+  quizMiniActionBtnSuccess: {
+    backgroundColor: COLORS.card,
+  },
+  quizMiniActionText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.roseText,
+  },
+  quizMiniActionTextSuccess: {
+    color: COLORS.successText,
   },
   blocksRow: {
     flexDirection: 'row',
@@ -332,10 +827,17 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
     gap: SPACING.sm,
+    paddingTop: 6,
   },
-  block: {
+  blockAnimWrap: {
     minWidth: 84,
     flexGrow: 1,
+  },
+  blockAnimWrapPrimary: {
+    minWidth: 96,
+  },
+  block: {
+    width: '100%',
     backgroundColor: COLORS.background,
     borderRadius: RADIUS.lg,
     paddingVertical: 12,
@@ -344,22 +846,54 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   blockPrimary: {
-    minWidth: 96,
     backgroundColor: COLORS.accentSoft,
     paddingVertical: 14,
     paddingHorizontal: 14,
   },
   blockSecondary: {
-    minWidth: 88,
     backgroundColor: COLORS.tealSoft,
   },
   blockSchwa: {
-    minWidth: 76,
     backgroundColor: COLORS.background,
     paddingVertical: 9,
   },
+  blockQuizNeutral: {
+    backgroundColor: COLORS.background,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+  },
+  blockQuizWrong: {
+    backgroundColor: COLORS.roseSoft,
+  },
+  blockQuizCorrect: {
+    backgroundColor: COLORS.successSoft,
+  },
   blockActive: {
     backgroundColor: COLORS.tint,
+  },
+  quizBadge: {
+    backgroundColor: COLORS.purpleSoft,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginBottom: 3,
+  },
+  quizBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.purpleText,
+  },
+  correctTag: {
+    backgroundColor: COLORS.success,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginBottom: 3,
+  },
+  correctTagText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.white,
   },
   primaryTag: {
     backgroundColor: COLORS.accent,
@@ -399,6 +933,9 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.syllablePrimary,
     fontWeight: '700',
     color: COLORS.accentText,
+  },
+  syllableTextCorrect: {
+    color: COLORS.successText,
   },
   syllableTextSchwa: {
     fontSize: TYPOGRAPHY.syllableSchwa,

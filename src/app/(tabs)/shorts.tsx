@@ -3,6 +3,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   FlatList,
   Platform,
   Pressable,
@@ -16,6 +17,7 @@ import {
 } from 'react-native';
 import { InfoTipBox, InfoTipButton } from '../../components/InfoTip';
 import { PronunciationPracticeSheet } from '../../components/PronunciationPracticeCard';
+import { Tap } from '../../components/Tap';
 import { TappableExampleSentence } from '../../components/TappableExampleSentence';
 import { WordMeaningSheet } from '../../components/WordMeaningSheet';
 import { useSpeechAudio } from '../../hooks/useSpeechAudio';
@@ -24,9 +26,13 @@ import {
   lookupWordFromApis,
   translateEnglishSentenceToKorean,
 } from '../../services/wordApi';
+import { useLearningStore, type ShortsMode } from '../../store/useLearningStore';
 import { useWordCacheStore } from '../../store/useWordCacheStore';
-import { COLORS, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
+import { COLORS, LAYOUT, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
 import type { CoreWord } from '../../types/learning';
+import { triggerLightHaptic, triggerSuccessHaptic } from '../../utils/haptics';
+
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 const INITIAL_BATCH_SIZE = 4;
 const PREFETCH_BATCH_SIZE = 4;
@@ -45,7 +51,35 @@ const WEB_PAGE_SNAP_STYLE: ViewStyle | undefined =
       } as unknown as ViewStyle)
     : undefined;
 
+const SHORTS_MODES: { id: ShortsMode; label: string }[] = [
+  { id: 'both', label: '함께' },
+  { id: 'word', label: '단어' },
+  { id: 'sentence', label: '문장' },
+];
+
+interface ShortsPracticeTarget {
+  id: string;
+  text: string;
+  ipa?: string;
+  syllableCount: number;
+  audioUrl?: string;
+  audioAsset?: CoreWord['audioAsset'];
+  isSentence: boolean;
+}
+
+function getFirstExample(item: CoreWord): { en: string; ko?: string } | null {
+  if (item.examples && item.examples.length > 0 && item.examples[0].en.trim()) {
+    return item.examples[0];
+  }
+  if (item.exampleEn && item.exampleEn.trim()) {
+    return { en: item.exampleEn, ko: undefined };
+  }
+  return null;
+}
+
 export default function PronunciationShortsScreen() {
+  const shortsMode = useLearningStore((s) => s.shortsMode);
+  const setShortsMode = useLearningStore((s) => s.setShortsMode);
   const [feedWords, setFeedWords] = useState<CoreWord[]>([]);
   const [viewportHeight, setViewportHeight] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -54,9 +88,10 @@ export default function PronunciationShortsScreen() {
   const [feedError, setFeedError] = useState(false);
   const [tappedExampleWord, setTappedExampleWord] = useState<string | null>(null);
   const [openExampleTipId, setOpenExampleTipId] = useState<string | null>(null);
-  const [practiceWord, setPracticeWord] = useState<CoreWord | null>(null);
+  const [practiceTarget, setPracticeTarget] = useState<ShortsPracticeTarget | null>(null);
   const [exampleKoMap, setExampleKoMap] = useState<Record<string, string>>({});
   const [translatingExamples, setTranslatingExamples] = useState<Record<string, boolean>>({});
+  const [heartBurstWordId, setHeartBurstWordId] = useState<string | null>(null);
 
   const flatListRef = useRef<FlatList<CoreWord>>(null);
   const seenWordsRef = useRef<Set<string>>(new Set());
@@ -68,6 +103,9 @@ export default function PronunciationShortsScreen() {
   const didInitRef = useRef(false);
   const mountedRef = useRef(true);
   const lastActiveIndexRef = useRef(0);
+  const lastHeroTapRef = useRef<{ wordId: string; ts: number }>({ wordId: '', ts: 0 });
+  const [heartBurstScale] = useState(() => new Animated.Value(0));
+  const [heartBurstOpacity] = useState(() => new Animated.Value(0));
 
   const cachedWords = useWordCacheStore((state) => state.cachedWords);
   const bookmarkedWordKeys = useWordCacheStore((state) => state.bookmarkedWordKeys);
@@ -96,6 +134,69 @@ export default function PronunciationShortsScreen() {
   const markStudied = useCallback((wordId: string) => {
     setStudiedIds((prev) => (prev[wordId] ? prev : { ...prev, [wordId]: true }));
   }, []);
+
+  const triggerHeartBurst = useCallback(
+    (wordId: string) => {
+      setHeartBurstWordId(wordId);
+      heartBurstScale.stopAnimation();
+      heartBurstOpacity.stopAnimation();
+      heartBurstScale.setValue(0.35);
+      heartBurstOpacity.setValue(0);
+
+      Animated.sequence([
+        Animated.parallel([
+          Animated.spring(heartBurstScale, {
+            toValue: 1.15,
+            speed: 24,
+            bounciness: 14,
+            useNativeDriver: USE_NATIVE_DRIVER,
+          }),
+          Animated.timing(heartBurstOpacity, {
+            toValue: 1,
+            duration: 130,
+            useNativeDriver: USE_NATIVE_DRIVER,
+          }),
+        ]),
+        Animated.delay(340),
+        Animated.parallel([
+          Animated.timing(heartBurstScale, {
+            toValue: 1.4,
+            duration: 240,
+            useNativeDriver: USE_NATIVE_DRIVER,
+          }),
+          Animated.timing(heartBurstOpacity, {
+            toValue: 0,
+            duration: 240,
+            useNativeDriver: USE_NATIVE_DRIVER,
+          }),
+        ]),
+      ]).start(({ finished }) => {
+        if (finished && mountedRef.current) {
+          setHeartBurstWordId((prev) => (prev === wordId ? null : prev));
+        }
+      });
+    },
+    [heartBurstOpacity, heartBurstScale]
+  );
+
+  const handleHeroTap = useCallback(
+    (item: CoreWord, isAlreadyBookmarked: boolean) => {
+      const now = Date.now();
+      const prev = lastHeroTapRef.current;
+      if (prev.wordId === item.id && now - prev.ts < 320) {
+        lastHeroTapRef.current = { wordId: '', ts: 0 };
+        if (!isAlreadyBookmarked) {
+          toggleBookmark(item);
+        }
+        markStudied(item.id);
+        triggerSuccessHaptic();
+        triggerHeartBurst(item.id);
+        return;
+      }
+      lastHeroTapRef.current = { wordId: item.id, ts: now };
+    },
+    [markStudied, toggleBookmark, triggerHeartBurst]
+  );
 
   const loadNextBatch = useCallback(
     async (count: number) => {
@@ -211,12 +312,39 @@ export default function PronunciationShortsScreen() {
     };
   }, [cacheHasHydrated, cachedWords, loadNextBatch]);
 
+  const visibleFeedWords = useMemo(
+    () =>
+      shortsMode === 'sentence'
+        ? feedWords.filter((w) => getFirstExample(w) !== null)
+        : feedWords,
+    [feedWords, shortsMode]
+  );
+
+  const handleChangeMode = useCallback(
+    (nextMode: ShortsMode) => {
+      if (nextMode === shortsMode) return;
+      triggerLightHaptic();
+      stop();
+      setShortsMode(nextMode);
+      lastActiveIndexRef.current = 0;
+      setActiveIndex(0);
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+      if (nextMode === 'sentence') {
+        const sentenceCount = feedWords.filter((w) => getFirstExample(w) !== null).length;
+        if (sentenceCount < 3 && !isFetchingRef.current) {
+          void loadNextBatch(PREFETCH_BATCH_SIZE);
+        }
+      }
+    },
+    [feedWords, loadNextBatch, setShortsMode, shortsMode, stop]
+  );
+
   // 현재 카드 기준 남은 카드가 4장 이하이고 로딩 중이 아니면 다음 배치를 자동으로 미리 불러옴
   useEffect(() => {
     if (!didInitRef.current || feedWords.length === 0 || isFetchingMore || feedError) {
       return;
     }
-    if (feedWords.length - 1 - activeIndex > PREFETCH_AHEAD_THRESHOLD) return;
+    if (visibleFeedWords.length - 1 - activeIndex > PREFETCH_AHEAD_THRESHOLD) return;
 
     let cancelled = false;
     void Promise.resolve().then(() => {
@@ -228,7 +356,7 @@ export default function PronunciationShortsScreen() {
     return () => {
       cancelled = true;
     };
-  }, [activeIndex, feedError, feedWords.length, isFetchingMore, loadNextBatch]);
+  }, [activeIndex, feedError, feedWords.length, isFetchingMore, loadNextBatch, visibleFeedWords.length]);
 
   const handleViewportLayout = useCallback((event: LayoutChangeEvent) => {
     const nextHeight = Math.round(event.nativeEvent.layout.height);
@@ -240,9 +368,9 @@ export default function PronunciationShortsScreen() {
   // 모바일 스와이프 + 웹 마우스 휠/트랙패드 스크롤 모두에서 현재 카드 인덱스를 실시간 추적
   const syncIndexFromOffset = useCallback(
     (offsetY: number) => {
-      if (viewportHeight <= 0 || feedWords.length === 0) return;
+      if (viewportHeight <= 0 || visibleFeedWords.length === 0) return;
       const rawIndex = Math.round(offsetY / viewportHeight);
-      const nextIndex = Math.max(0, Math.min(feedWords.length - 1, rawIndex));
+      const nextIndex = Math.max(0, Math.min(visibleFeedWords.length - 1, rawIndex));
       if (nextIndex !== lastActiveIndexRef.current) {
         lastActiveIndexRef.current = nextIndex;
         setActiveIndex(nextIndex);
@@ -250,13 +378,13 @@ export default function PronunciationShortsScreen() {
       }
       // 끝부분이나 하단 로딩 카드로 스크롤했을 때 대기 중이 아니라면 즉시 추가 로드
       if (
-        rawIndex >= feedWords.length - PREFETCH_AHEAD_THRESHOLD &&
+        rawIndex >= visibleFeedWords.length - PREFETCH_AHEAD_THRESHOLD &&
         !isFetchingRef.current
       ) {
         void loadNextBatch(PREFETCH_BATCH_SIZE);
       }
     },
-    [feedWords.length, loadNextBatch, stop, viewportHeight]
+    [loadNextBatch, stop, viewportHeight, visibleFeedWords.length]
   );
 
   const handleScroll = useCallback(
@@ -268,7 +396,7 @@ export default function PronunciationShortsScreen() {
 
   const scrollToCard = useCallback(
     (targetIndex: number) => {
-      if (targetIndex < 0 || targetIndex >= feedWords.length) return;
+      if (targetIndex < 0 || targetIndex >= visibleFeedWords.length) return;
       stop();
       lastActiveIndexRef.current = targetIndex;
       setActiveIndex(targetIndex);
@@ -277,17 +405,17 @@ export default function PronunciationShortsScreen() {
         animated: true,
       });
     },
-    [feedWords.length, stop]
+    [stop, visibleFeedWords.length]
   );
 
   // 웹에서 키보드 ↑ / ↓ 방향키로도 릴스처럼 한 장씩 넘기기 지원
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (tappedExampleWord !== null || practiceWord !== null) return;
+      if (tappedExampleWord !== null || practiceTarget !== null) return;
       if (event.key === 'ArrowDown') {
         event.preventDefault();
-        if (lastActiveIndexRef.current < feedWords.length - 1) {
+        if (lastActiveIndexRef.current < visibleFeedWords.length - 1) {
           scrollToCard(lastActiveIndexRef.current + 1);
         } else {
           void loadNextBatch(PREFETCH_BATCH_SIZE);
@@ -303,7 +431,7 @@ export default function PronunciationShortsScreen() {
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [feedWords.length, loadNextBatch, practiceWord, scrollToCard, tappedExampleWord]);
+  }, [loadNextBatch, practiceTarget, scrollToCard, tappedExampleWord, visibleFeedWords.length]);
 
   const ensureExampleTranslation = useCallback(
     async (wordItem: CoreWord, sentence: string) => {
@@ -345,14 +473,9 @@ export default function PronunciationShortsScreen() {
 
   // 현재 보고 있는 쇼츠 카드의 예문에 한글 뜻이 없으면 자동으로 보강
   useEffect(() => {
-    const activeItem = feedWords[activeIndex];
+    const activeItem = visibleFeedWords[activeIndex];
     if (!activeItem) return;
-    const firstEx =
-      activeItem.examples && activeItem.examples.length > 0
-        ? activeItem.examples[0]
-        : activeItem.exampleEn
-          ? { en: activeItem.exampleEn, ko: undefined }
-          : null;
+    const firstEx = getFirstExample(activeItem);
     if (!firstEx || firstEx.ko || attemptedExampleRef.current.has(firstEx.en)) {
       return;
     }
@@ -365,7 +488,7 @@ export default function PronunciationShortsScreen() {
     return () => {
       cancelled = true;
     };
-  }, [activeIndex, ensureExampleTranslation, feedWords]);
+  }, [activeIndex, ensureExampleTranslation, visibleFeedWords]);
 
   const studiedCount = Object.keys(studiedIds).length;
   const safeBookmarkKeys = useMemo(
@@ -376,24 +499,23 @@ export default function PronunciationShortsScreen() {
   const renderCard = useCallback(
     ({ item, index }: { item: CoreWord; index: number }) => {
       const isBookmarked = safeBookmarkKeys.includes(item.word.toLowerCase());
-      const firstExample =
-        item.examples && item.examples.length > 0
-          ? item.examples[0]
-          : item.exampleEn
-            ? { en: item.exampleEn, ko: undefined }
-            : null;
+      const firstExample = getFirstExample(item);
+      const isSentenceOnly = shortsMode === 'sentence' && firstExample !== null;
+      const isWordOnly = shortsMode === 'word';
 
       const slowKey = `shorts:${item.id}:slow`;
       const normalKey = `shorts:${item.id}:normal`;
       const fastKey = `shorts:${item.id}:fast`;
       const exSlowKey = `shorts:${item.id}:ex:slow`;
       const exNormalKey = `shorts:${item.id}:ex:normal`;
+      const exFastKey = `shorts:${item.id}:ex:fast`;
 
       const isSlowPlaying = activeKey === slowKey;
       const isNormalPlaying = activeKey === normalKey;
       const isFastPlaying = activeKey === fastKey;
       const isExSlowPlaying = activeKey === exSlowKey;
       const isExNormalPlaying = activeKey === exNormalKey;
+      const isExFastPlaying = activeKey === exFastKey;
 
       const showStressChips = item.syllables.length > 1;
 
@@ -404,6 +526,33 @@ export default function PronunciationShortsScreen() {
         firstExample && translatingExamples[firstExample.en]
       );
 
+      const openWordPractice = () => {
+        stop();
+        markStudied(item.id);
+        setPracticeTarget({
+          id: item.id,
+          text: item.word,
+          ipa: item.ipa,
+          syllableCount: Math.max(1, item.syllables.length),
+          audioUrl: item.audioUrl,
+          audioAsset: item.audioAsset,
+          isSentence: false,
+        });
+      };
+
+      const openSentencePractice = () => {
+        if (!firstExample) return;
+        stop();
+        markStudied(item.id);
+        const wordCount = firstExample.en.trim().split(/\s+/).filter(Boolean).length;
+        setPracticeTarget({
+          id: `${item.id}:sentence`,
+          text: firstExample.en,
+          syllableCount: Math.max(3, wordCount * 2),
+          isSentence: true,
+        });
+      };
+
       return (
         <View
           style={[
@@ -413,10 +562,27 @@ export default function PronunciationShortsScreen() {
           ]}
         >
           <View style={styles.shortsCard}>
-            {/* 심플 상단 바: 품사·순번 + 북마크 */}
+            {/* 심플 상단 바: 품사·순번 (문장 모드에서는 핵심 단어 칩) + 북마크 */}
             <View style={styles.topBar}>
               <View style={styles.topMetaRow}>
-                {item.partOfSpeech ? (
+                {isSentenceOnly ? (
+                  <Pressable
+                    onPress={() => setTappedExampleWord(item.word)}
+                    style={({ pressed }) => [
+                      styles.sentenceWordPill,
+                      pressed && styles.pressed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${item.word} ${item.meaningKo} 단어 뜻 보기`}
+                  >
+                    <Text style={styles.sentenceWordPillText} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+                      {item.word}
+                    </Text>
+                    <Text style={styles.sentenceWordPillKo} numberOfLines={1} maxFontSizeMultiplier={1.2}>
+                      {item.meaningKo}
+                    </Text>
+                  </Pressable>
+                ) : item.partOfSpeech ? (
                   <View style={styles.posBadge}>
                     <Text style={styles.posBadgeText} maxFontSizeMultiplier={1.25}>
                       {item.partOfSpeech}
@@ -429,12 +595,14 @@ export default function PronunciationShortsScreen() {
                 </Text>
               </View>
 
-              <Pressable
-                onPress={() => toggleBookmark(item)}
-                style={({ pressed }) => [
+              <Tap
+                onPress={() => {
+                  triggerLightHaptic();
+                  toggleBookmark(item);
+                }}
+                style={[
                   styles.bookmarkBtn,
                   isBookmarked && styles.bookmarkBtnActive,
-                  pressed && styles.pressed,
                 ]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isBookmarked }}
@@ -444,335 +612,566 @@ export default function PronunciationShortsScreen() {
               >
                 <Heart
                   size={22}
-                  color={isBookmarked ? COLORS.primary : COLORS.textMuted}
+                  color={isBookmarked ? '#FF3B30' : COLORS.textMuted}
                   weight={isBookmarked ? 'fill' : 'regular'}
                 />
-              </Pressable>
+              </Tap>
             </View>
 
-            {/* 중앙 핵심 영역: 영단어 + 뜻 바로 표시 + 발음 + 1줄 액션 */}
-            <View style={styles.heroCenter}>
-              <Text
-                style={styles.heroWord}
-                adjustsFontSizeToFit
-                numberOfLines={1}
-                maxFontSizeMultiplier={1.3}
-              >
-                {item.word}
-              </Text>
-
-              <Text style={styles.heroMeaning} maxFontSizeMultiplier={1.35}>
-                {item.meaningKo}
-              </Text>
-
-              <View style={styles.pronRow}>
-                <View style={styles.ipaPill}>
-                  <Text style={styles.ipaText} maxFontSizeMultiplier={1.3}>
-                    {item.ipa}
-                  </Text>
-                </View>
-                {item.koPronunciation ? (
-                  <Text style={styles.koPronText} maxFontSizeMultiplier={1.3}>
-                    {item.koPronunciation}
-                  </Text>
-                ) : null}
-              </View>
-
-              {/* 2음절 이상일 때만 강세 리듬 칩 표시 (터치하면 개별 음절 소리 재생) */}
-              {showStressChips ? (
-                <View style={styles.syllablesRow}>
-                  {item.syllables.map((syl, sIdx) => {
-                    const isPrimary = syl.stress === 'primary';
-                    const isSecondary = syl.stress === 'secondary';
-                    const sylKey = `shorts:${item.id}:syl:${sIdx}`;
-                    const isSylPlaying = activeKey === sylKey;
-                    return (
-                      <Pressable
-                        key={`${item.id}-syl-${sIdx}`}
-                        onPress={() => {
-                          markStudied(item.id);
-                          void playSlow(syl.text, { key: sylKey });
-                        }}
-                        style={({ pressed }) => [
-                          styles.sylChip,
-                          isPrimary && styles.sylChipPrimary,
-                          !isPrimary && isSecondary && styles.sylChipSecondary,
-                          isSylPlaying && styles.sylChipActive,
-                          pressed && styles.pressed,
-                        ]}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${syl.text} 음절 듣기`}
-                      >
-                        <Text
-                          style={[
-                            styles.sylDot,
-                            isPrimary && styles.sylDotPrimary,
-                          ]}
-                          maxFontSizeMultiplier={1.2}
-                        >
-                          {isPrimary ? '⬤' : '●'}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.sylText,
-                            isPrimary && styles.sylTextPrimary,
-                            isSylPlaying && styles.sylTextActive,
-                          ]}
-                          maxFontSizeMultiplier={1.3}
-                        >
-                          {syl.text}
-                        </Text>
-                        {isSylPlaying ? (
-                          <SpeakerHigh size={14} color={COLORS.primary} />
-                        ) : (
-                          <SpeakerLow size={14} color={COLORS.textMuted} />
-                        )}
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              ) : null}
-
-              {/* 핵심 듣기·말하기 1줄 통합 버튼 */}
-              <View style={styles.speedRow}>
+            {isSentenceOnly && firstExample ? (
+              /* 문장 전용 쉐도잉 모드 */
+              <View style={styles.sentenceHeroCenter}>
                 <Pressable
-                  onPress={() => {
-                    markStudied(item.id);
-                    void playSlow(item.word, { key: slowKey });
-                  }}
-                  style={({ pressed }) => [
-                    styles.speedSlowBtn,
-                    isSlowPlaying && styles.speedSlowBtnActive,
-                    pressed && styles.pressed,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${item.word} 천천히 듣기`}
+                  onPress={() => handleHeroTap(item, isBookmarked)}
+                  style={styles.sentenceHeroTapArea}
+                  accessibilityHint="두 번 빠르게 누르면 단어장에 저장돼요"
                 >
-                  <Gauge
-                    size={19}
-                    color={isSlowPlaying ? COLORS.white : COLORS.tealText}
-                  />
-                  <Text
-                    style={[
-                      styles.speedSlowText,
-                      isSlowPlaying && styles.speedTextActive,
-                    ]}
-                    maxFontSizeMultiplier={1.25}
-                  >
-                    {isSlowPlaying ? '중' : '천천히'}
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => {
-                    markStudied(item.id);
-                    void playNormal(item.word, {
-                      audioUrl: item.audioUrl,
-                      audioAsset: item.audioAsset,
-                      key: normalKey,
-                    });
-                  }}
-                  style={({ pressed }) => [
-                    styles.speedNormalBtn,
-                    isNormalPlaying && styles.speedNormalBtnActive,
-                    pressed && styles.pressed,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${item.word} 보통 속도 듣기`}
-                >
-                  <SpeakerHigh size={20} color={COLORS.white} />
-                  <Text style={styles.speedNormalText} maxFontSizeMultiplier={1.25}>
-                    {isNormalPlaying ? '재생 중' : '듣기'}
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => {
-                    markStudied(item.id);
-                    void playFast(item.word, { key: fastKey });
-                  }}
-                  style={({ pressed }) => [
-                    styles.speedFastBtn,
-                    isFastPlaying && styles.speedFastBtnActive,
-                    pressed && styles.pressed,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${item.word} 빠르게 듣기`}
-                >
-                  <Lightning
-                    size={19}
-                    color={isFastPlaying ? COLORS.white : COLORS.purpleText}
-                  />
-                  <Text
-                    style={[
-                      styles.speedFastText,
-                      isFastPlaying && styles.speedTextActive,
-                    ]}
-                    maxFontSizeMultiplier={1.25}
-                  >
-                    {isFastPlaying ? '중' : '빠르게'}
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => {
-                    stop();
-                    markStudied(item.id);
-                    setPracticeWord(item);
-                  }}
-                  style={({ pressed }) => [
-                    styles.speakCompactBtn,
-                    pressed && styles.pressed,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${item.word} 따라 말하고 내 발음 비교하기`}
-                >
-                  <Microphone size={19} color={COLORS.roseText} />
-                  <Text style={styles.speakCompactText} maxFontSizeMultiplier={1.25}>
-                    말하기
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-
-            {/* 예문 + 한글 뜻 (바로 표시) */}
-            {firstExample ? (
-              <View style={styles.exampleBox}>
-                <View style={styles.exampleTopRow}>
-                  <View style={styles.exampleLabelRow}>
-                    <Text style={styles.exampleLabel} maxFontSizeMultiplier={1.25}>
-                      예문
-                    </Text>
-                    <InfoTipButton
-                      open={openExampleTipId === item.id}
-                      onToggle={() =>
-                        setOpenExampleTipId((prev) =>
-                          prev === item.id ? null : item.id
-                        )
-                      }
-                      accessibilityLabel="예문 단어 뜻 보기 안내"
+                  <View style={styles.sentenceHeroBox}>
+                    <TappableExampleSentence
+                      sentence={firstExample.en}
+                      targetWord={item.word}
+                      selectedWord={tappedExampleWord}
+                      onWordPress={(w) => setTappedExampleWord(w)}
                     />
                   </View>
-                  <View style={styles.exampleMiniAudioRow}>
+
+                  {resolvedExKo ? (
+                    <Text
+                      style={styles.sentenceHeroKo}
+                      numberOfLines={3}
+                      maxFontSizeMultiplier={1.35}
+                    >
+                      {resolvedExKo}
+                    </Text>
+                  ) : isExTranslating ? (
+                    <View style={styles.exampleKoLoadingRow}>
+                      <ActivityIndicator size="small" color={COLORS.indigo} />
+                      <Text
+                        style={styles.exampleKoLoadingText}
+                        maxFontSizeMultiplier={1.25}
+                      >
+                        문장 뜻 불러오는 중...
+                      </Text>
+                    </View>
+                  ) : (
                     <Pressable
                       onPress={() =>
-                        void playSlow(firstExample.en, { key: exSlowKey })
+                        void ensureExampleTranslation(item, firstExample.en)
                       }
                       style={({ pressed }) => [
-                        styles.exMiniSlowBtn,
-                        isExSlowPlaying && styles.speedSlowBtnActive,
+                        styles.exampleKoRetryBtn,
                         pressed && styles.pressed,
                       ]}
                       accessibilityRole="button"
-                      accessibilityLabel="예문 천천히 듣기"
+                      accessibilityLabel="문장 한글 뜻 보기"
                     >
+                      <Translate size={16} color={COLORS.indigoText} />
                       <Text
-                        style={[
-                          styles.exMiniSlowText,
-                          isExSlowPlaying && styles.speedTextActive,
-                        ]}
-                        maxFontSizeMultiplier={1.2}
+                        style={styles.exampleKoRetryText}
+                        maxFontSizeMultiplier={1.25}
                       >
-                        0.6x
+                        문장 뜻 보기
                       </Text>
                     </Pressable>
-                    <Pressable
-                      onPress={() =>
-                        void playNormal(firstExample.en, { key: exNormalKey })
-                      }
-                      style={({ pressed }) => [
-                        styles.exMiniPlayBtn,
-                        isExNormalPlaying && styles.speedNormalBtnActive,
-                        pressed && styles.pressed,
+                  )}
+                </Pressable>
+
+                {/* 핵심 단어 강세 리듬 (문장 모드에서도 단어 리듬 확인) */}
+                {showStressChips ? (
+                  <View style={styles.sentenceRhythmBox}>
+                    <Text
+                      style={styles.sentenceRhythmLabel}
+                      maxFontSizeMultiplier={1.2}
+                    >
+                      핵심 단어 리듬 · {item.word}
+                    </Text>
+                    <View style={styles.syllablesRow}>
+                      {item.syllables.map((syl, sIdx) => {
+                        const isPrimary = syl.stress === 'primary';
+                        const isSecondary = syl.stress === 'secondary';
+                        const sentSylKey = `shorts:sent:${item.id}:syl:${sIdx}`;
+                        const isSentSylPlaying = activeKey === sentSylKey;
+                        return (
+                          <Tap
+                            key={`${item.id}-sent-syl-${sIdx}`}
+                            onPress={() => {
+                              triggerLightHaptic();
+                              markStudied(item.id);
+                              void playSlow(syl.text, { key: sentSylKey });
+                            }}
+                            style={[
+                              styles.sylChip,
+                              isPrimary && styles.sylChipPrimary,
+                              !isPrimary && isSecondary && styles.sylChipSecondary,
+                              isSentSylPlaying && styles.sylChipActive,
+                            ]}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${syl.text} 음절 듣기`}
+                          >
+                            <Text
+                              style={[styles.sylDot, isPrimary && styles.sylDotPrimary]}
+                              maxFontSizeMultiplier={1.2}
+                            >
+                              {isPrimary ? '⬤' : '●'}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.sylText,
+                                isPrimary && styles.sylTextPrimary,
+                                isSentSylPlaying && styles.sylTextActive,
+                              ]}
+                              maxFontSizeMultiplier={1.3}
+                            >
+                              {syl.text}
+                            </Text>
+                          </Tap>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ) : null}
+
+                {/* 문장 전용 듣기·말하기 1줄 통합 버튼 */}
+                <View style={styles.speedRow}>
+                  <Tap
+                    onPress={() => {
+                      markStudied(item.id);
+                      void playSlow(firstExample.en, { key: exSlowKey });
+                    }}
+                    style={[
+                      styles.speedSlowBtn,
+                      isExSlowPlaying && styles.speedSlowBtnActive,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel="문장 천천히 듣기"
+                  >
+                    <Gauge
+                      size={19}
+                      color={isExSlowPlaying ? COLORS.white : COLORS.tealText}
+                    />
+                    <Text
+                      style={[
+                        styles.speedSlowText,
+                        isExSlowPlaying && styles.speedTextActive,
+                      ]}
+                      maxFontSizeMultiplier={1.25}
+                    >
+                      {isExSlowPlaying ? '중' : '천천히'}
+                    </Text>
+                  </Tap>
+
+                  <Tap
+                    onPress={() => {
+                      markStudied(item.id);
+                      void playNormal(firstExample.en, { key: exNormalKey });
+                    }}
+                    style={[
+                      styles.speedNormalBtn,
+                      isExNormalPlaying && styles.speedNormalBtnActive,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel="문장 보통 속도 듣기"
+                  >
+                    <SpeakerHigh size={20} color={COLORS.white} />
+                    <Text style={styles.speedNormalText} maxFontSizeMultiplier={1.25}>
+                      {isExNormalPlaying ? '재생 중' : '듣기'}
+                    </Text>
+                  </Tap>
+
+                  <Tap
+                    onPress={() => {
+                      markStudied(item.id);
+                      void playFast(firstExample.en, { key: exFastKey });
+                    }}
+                    style={[
+                      styles.speedFastBtn,
+                      isExFastPlaying && styles.speedFastBtnActive,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel="문장 빠르게 듣기"
+                  >
+                    <Lightning
+                      size={19}
+                      color={isExFastPlaying ? COLORS.white : COLORS.purpleText}
+                    />
+                    <Text
+                      style={[
+                        styles.speedFastText,
+                        isExFastPlaying && styles.speedTextActive,
+                      ]}
+                      maxFontSizeMultiplier={1.25}
+                    >
+                      {isExFastPlaying ? '중' : '빠르게'}
+                    </Text>
+                  </Tap>
+
+                  <Tap
+                    onPress={openSentencePractice}
+                    style={styles.speakCompactBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel="문장 따라 말하고 내 발음 비교하기"
+                  >
+                    <Microphone size={19} color={COLORS.roseText} />
+                    <Text style={styles.speakCompactText} maxFontSizeMultiplier={1.25}>
+                      말하기
+                    </Text>
+                  </Tap>
+                </View>
+              </View>
+            ) : (
+              <>
+                {/* 중앙 핵심 영역: 단어 (함께 / 단어 전용 모드) */}
+                <View style={[styles.heroCenter, isWordOnly && styles.heroCenterWordOnly]}>
+                  <Pressable
+                    onPress={() => handleHeroTap(item, isBookmarked)}
+                    style={styles.heroDoubleTapZone}
+                    accessibilityHint="두 번 빠르게 누르면 단어장에 저장돼요"
+                  >
+                    <Text
+                      style={[styles.heroWord, isWordOnly && styles.heroWordLarge]}
+                      adjustsFontSizeToFit
+                      numberOfLines={1}
+                      maxFontSizeMultiplier={1.3}
+                    >
+                      {item.word}
+                    </Text>
+
+                    <Text style={styles.heroMeaning} maxFontSizeMultiplier={1.35}>
+                      {item.meaningKo}
+                    </Text>
+
+                    <View style={styles.pronRow}>
+                      <View style={styles.ipaPill}>
+                        <Text style={styles.ipaText} maxFontSizeMultiplier={1.3}>
+                          {item.ipa}
+                        </Text>
+                      </View>
+                      {item.koPronunciation ? (
+                        <Text style={styles.koPronText} maxFontSizeMultiplier={1.3}>
+                          {item.koPronunciation}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </Pressable>
+
+                  {/* 2음절 이상일 때만 강세 리듬 칩 표시 (터치하면 개별 음절 소리 재생) */}
+                  {showStressChips ? (
+                    <View style={styles.syllablesRow}>
+                      {item.syllables.map((syl, sIdx) => {
+                        const isPrimary = syl.stress === 'primary';
+                        const isSecondary = syl.stress === 'secondary';
+                        const sylKey = `shorts:${item.id}:syl:${sIdx}`;
+                        const isSylPlaying = activeKey === sylKey;
+                        return (
+                          <Tap
+                            key={`${item.id}-syl-${sIdx}`}
+                            onPress={() => {
+                              triggerLightHaptic();
+                              markStudied(item.id);
+                              void playSlow(syl.text, { key: sylKey });
+                            }}
+                            style={[
+                              styles.sylChip,
+                              isPrimary && styles.sylChipPrimary,
+                              !isPrimary && isSecondary && styles.sylChipSecondary,
+                              isSylPlaying && styles.sylChipActive,
+                            ]}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${syl.text} 음절 듣기`}
+                          >
+                            <Text
+                              style={[
+                                styles.sylDot,
+                                isPrimary && styles.sylDotPrimary,
+                              ]}
+                              maxFontSizeMultiplier={1.2}
+                            >
+                              {isPrimary ? '⬤' : '●'}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.sylText,
+                                isPrimary && styles.sylTextPrimary,
+                                isSylPlaying && styles.sylTextActive,
+                              ]}
+                              maxFontSizeMultiplier={1.3}
+                            >
+                              {syl.text}
+                            </Text>
+                            {isSylPlaying ? (
+                              <SpeakerHigh size={14} color={COLORS.primary} />
+                            ) : (
+                              <SpeakerLow size={14} color={COLORS.textMuted} />
+                            )}
+                          </Tap>
+                        );
+                      })}
+                    </View>
+                  ) : null}
+
+                  {/* 핵심 듣기·말하기 1줄 통합 버튼 */}
+                  <View style={styles.speedRow}>
+                    <Tap
+                      onPress={() => {
+                        markStudied(item.id);
+                        void playSlow(item.word, { key: slowKey });
+                      }}
+                      style={[
+                        styles.speedSlowBtn,
+                        isSlowPlaying && styles.speedSlowBtnActive,
                       ]}
                       accessibilityRole="button"
-                      accessibilityLabel="예문 듣기"
+                      accessibilityLabel={`${item.word} 천천히 듣기`}
                     >
-                      <SpeakerLow
-                        size={16}
-                        color={isExNormalPlaying ? COLORS.white : COLORS.primaryDark}
+                      <Gauge
+                        size={19}
+                        color={isSlowPlaying ? COLORS.white : COLORS.tealText}
                       />
                       <Text
                         style={[
-                          styles.exMiniPlayText,
-                          isExNormalPlaying && styles.speedTextActive,
+                          styles.speedSlowText,
+                          isSlowPlaying && styles.speedTextActive,
                         ]}
-                        maxFontSizeMultiplier={1.2}
+                        maxFontSizeMultiplier={1.25}
                       >
-                        듣기
+                        {isSlowPlaying ? '중' : '천천히'}
                       </Text>
-                    </Pressable>
+                    </Tap>
+
+                    <Tap
+                      onPress={() => {
+                        markStudied(item.id);
+                        void playNormal(item.word, {
+                          audioUrl: item.audioUrl,
+                          audioAsset: item.audioAsset,
+                          key: normalKey,
+                        });
+                      }}
+                      style={[
+                        styles.speedNormalBtn,
+                        isNormalPlaying && styles.speedNormalBtnActive,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${item.word} 보통 속도 듣기`}
+                    >
+                      <SpeakerHigh size={20} color={COLORS.white} />
+                      <Text style={styles.speedNormalText} maxFontSizeMultiplier={1.25}>
+                        {isNormalPlaying ? '재생 중' : '듣기'}
+                      </Text>
+                    </Tap>
+
+                    <Tap
+                      onPress={() => {
+                        markStudied(item.id);
+                        void playFast(item.word, { key: fastKey });
+                      }}
+                      style={[
+                        styles.speedFastBtn,
+                        isFastPlaying && styles.speedFastBtnActive,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${item.word} 빠르게 듣기`}
+                    >
+                      <Lightning
+                        size={19}
+                        color={isFastPlaying ? COLORS.white : COLORS.purpleText}
+                      />
+                      <Text
+                        style={[
+                          styles.speedFastText,
+                          isFastPlaying && styles.speedTextActive,
+                        ]}
+                        maxFontSizeMultiplier={1.25}
+                      >
+                        {isFastPlaying ? '중' : '빠르게'}
+                      </Text>
+                    </Tap>
+
+                    <Tap
+                      onPress={openWordPractice}
+                      style={styles.speakCompactBtn}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${item.word} 따라 말하고 내 발음 비교하기`}
+                    >
+                      <Microphone size={19} color={COLORS.roseText} />
+                      <Text style={styles.speakCompactText} maxFontSizeMultiplier={1.25}>
+                        말하기
+                      </Text>
+                    </Tap>
                   </View>
                 </View>
 
-                <InfoTipBox
-                  visible={openExampleTipId === item.id}
-                  text="문장 속 궁금한 단어를 누르면 뜻과 발음을 바로 볼 수 있어요."
-                  variant="surface"
-                  onClose={() => setOpenExampleTipId(null)}
-                />
+                {/* 예문 + 한글 뜻 (함께 모드에서만 표시, 문장 말하기 버튼 포함) */}
+                {!isWordOnly && firstExample ? (
+                  <View style={styles.exampleBox}>
+                    <View style={styles.exampleTopRow}>
+                      <View style={styles.exampleLabelRow}>
+                        <Text style={styles.exampleLabel} maxFontSizeMultiplier={1.25}>
+                          예문
+                        </Text>
+                        <InfoTipButton
+                          open={openExampleTipId === item.id}
+                          onToggle={() =>
+                            setOpenExampleTipId((prev) =>
+                              prev === item.id ? null : item.id
+                            )
+                          }
+                          accessibilityLabel="예문 단어 뜻 보기 안내"
+                        />
+                      </View>
+                      <View style={styles.exampleMiniAudioRow}>
+                        <Pressable
+                          onPress={() =>
+                            void playSlow(firstExample.en, { key: exSlowKey })
+                          }
+                          style={({ pressed }) => [
+                            styles.exMiniSlowBtn,
+                            isExSlowPlaying && styles.speedSlowBtnActive,
+                            pressed && styles.pressed,
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel="예문 천천히 듣기"
+                        >
+                          <Text
+                            style={[
+                              styles.exMiniSlowText,
+                              isExSlowPlaying && styles.speedTextActive,
+                            ]}
+                            maxFontSizeMultiplier={1.2}
+                          >
+                            0.6x
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() =>
+                            void playNormal(firstExample.en, { key: exNormalKey })
+                          }
+                          style={({ pressed }) => [
+                            styles.exMiniPlayBtn,
+                            isExNormalPlaying && styles.speedNormalBtnActive,
+                            pressed && styles.pressed,
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel="예문 듣기"
+                        >
+                          <SpeakerLow
+                            size={16}
+                            color={isExNormalPlaying ? COLORS.white : COLORS.primaryDark}
+                          />
+                          <Text
+                            style={[
+                              styles.exMiniPlayText,
+                              isExNormalPlaying && styles.speedTextActive,
+                            ]}
+                            maxFontSizeMultiplier={1.2}
+                          >
+                            듣기
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={openSentencePractice}
+                          style={({ pressed }) => [
+                            styles.exMiniSpeakBtn,
+                            pressed && styles.pressed,
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel="예문 따라 말하기"
+                        >
+                          <Microphone size={15} color={COLORS.text} />
+                        </Pressable>
+                      </View>
+                    </View>
 
-                <TappableExampleSentence
-                  sentence={firstExample.en}
-                  targetWord={item.word}
-                  selectedWord={tappedExampleWord}
-                  onWordPress={(w) => setTappedExampleWord(w)}
-                  compact
-                />
-
-                {resolvedExKo ? (
-                  <Text
-                    style={styles.exampleKo}
-                    numberOfLines={2}
-                    maxFontSizeMultiplier={1.35}
-                  >
-                    {resolvedExKo}
-                  </Text>
-                ) : isExTranslating ? (
-                  <View style={styles.exampleKoLoadingRow}>
-                    <ActivityIndicator size="small" color={COLORS.indigo} />
-                    <Text
-                      style={styles.exampleKoLoadingText}
-                      maxFontSizeMultiplier={1.25}
-                    >
-                      예문 뜻 불러오는 중...
-                    </Text>
-                  </View>
-                ) : (
-                  <Pressable
-                    onPress={() =>
-                      void ensureExampleTranslation(item, firstExample.en)
-                    }
-                    style={({ pressed }) => [
-                      styles.exampleKoRetryBtn,
-                      pressed && styles.pressed,
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityLabel="예문 한글 뜻 보기"
-                  >
-                    <Translate
-                      size={16}
-                      color={COLORS.indigoText}
+                    <InfoTipBox
+                      visible={openExampleTipId === item.id}
+                      text="문장 속 궁금한 단어를 누르면 뜻과 발음을 바로 볼 수 있어요."
+                      variant="surface"
+                      onClose={() => setOpenExampleTipId(null)}
                     />
-                    <Text
-                      style={styles.exampleKoRetryText}
-                      maxFontSizeMultiplier={1.25}
-                    >
-                      예문 뜻 보기
-                    </Text>
-                  </Pressable>
-                )}
-              </View>
-            ) : null}
+
+                    <TappableExampleSentence
+                      sentence={firstExample.en}
+                      targetWord={item.word}
+                      selectedWord={tappedExampleWord}
+                      onWordPress={(w) => setTappedExampleWord(w)}
+                      compact
+                    />
+
+                    {resolvedExKo ? (
+                      <Text
+                        style={styles.exampleKo}
+                        numberOfLines={2}
+                        maxFontSizeMultiplier={1.35}
+                      >
+                        {resolvedExKo}
+                      </Text>
+                    ) : isExTranslating ? (
+                      <View style={styles.exampleKoLoadingRow}>
+                        <ActivityIndicator size="small" color={COLORS.indigo} />
+                        <Text
+                          style={styles.exampleKoLoadingText}
+                          maxFontSizeMultiplier={1.25}
+                        >
+                          예문 뜻 불러오는 중...
+                        </Text>
+                      </View>
+                    ) : (
+                      <Pressable
+                        onPress={() =>
+                          void ensureExampleTranslation(item, firstExample.en)
+                        }
+                        style={({ pressed }) => [
+                          styles.exampleKoRetryBtn,
+                          pressed && styles.pressed,
+                        ]}
+                        accessibilityRole="button"
+                        accessibilityLabel="예문 한글 뜻 보기"
+                      >
+                        <Translate size={16} color={COLORS.indigoText} />
+                        <Text
+                          style={styles.exampleKoRetryText}
+                          maxFontSizeMultiplier={1.25}
+                        >
+                          예문 뜻 보기
+                        </Text>
+                      </Pressable>
+                    )}
+                  </View>
+                ) : null}
+              </>
+            )}
 
             {/* 스와이프 안내 (위·아래 버튼 없이 직접 넘기기) */}
             <View style={styles.reelCueRow}>
               <Text style={styles.reelSwipeText} maxFontSizeMultiplier={1.2}>
-                {isFetchingMore && index === feedWords.length - 1
-                  ? '새 단어 불러오는 중...'
-                  : '스와이프해서 다음 단어 보기'}
+                {isFetchingMore && index === visibleFeedWords.length - 1
+                  ? '새 카드 불러오는 중...'
+                  : '두 번 탭해서 저장 · 스와이프해서 다음'}
               </Text>
             </View>
+
+            {/* 더블탭 코랄 하트 팝업 오버레이 */}
+            {heartBurstWordId === item.id ? (
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.heartBurstOverlay,
+                  {
+                    opacity: heartBurstOpacity,
+                    transform: [{ scale: heartBurstScale }],
+                  },
+                ]}
+              >
+                <View style={styles.heartBurstCircle}>
+                  <Heart size={56} color="#FF3B30" weight="fill" />
+                </View>
+                <View style={styles.heartBurstPill}>
+                  <Text style={styles.heartBurstText} maxFontSizeMultiplier={1.2}>
+                    단어장에 저장했어요!
+                  </Text>
+                </View>
+              </Animated.View>
+            ) : null}
           </View>
         </View>
       );
@@ -781,7 +1180,10 @@ export default function PronunciationShortsScreen() {
       activeKey,
       ensureExampleTranslation,
       exampleKoMap,
-      feedWords.length,
+      handleHeroTap,
+      heartBurstOpacity,
+      heartBurstScale,
+      heartBurstWordId,
       isFetchingMore,
       markStudied,
       openExampleTipId,
@@ -789,12 +1191,14 @@ export default function PronunciationShortsScreen() {
       playNormal,
       playSlow,
       safeBookmarkKeys,
+      shortsMode,
       stop,
       studiedCount,
       tappedExampleWord,
       toggleBookmark,
       translatingExamples,
       viewportHeight,
+      visibleFeedWords.length,
     ]
   );
 
@@ -912,39 +1316,74 @@ export default function PronunciationShortsScreen() {
   }
 
   return (
-    <View style={styles.screen} onLayout={handleViewportLayout}>
-      <FlatList
-        ref={flatListRef}
-        style={WEB_LIST_SNAP_STYLE}
-        data={feedWords}
-        keyExtractor={(item) => item.id}
-        renderItem={renderCard}
-        ListFooterComponent={renderFooter}
-        pagingEnabled={viewportHeight > 0}
-        snapToInterval={viewportHeight > 0 ? viewportHeight : undefined}
-        snapToAlignment="start"
-        decelerationRate="fast"
-        showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        onMomentumScrollEnd={handleScroll}
-        onScrollEndDrag={handleScroll}
-        onEndReached={() => void loadNextBatch(PREFETCH_BATCH_SIZE)}
-        onEndReachedThreshold={1.5}
-        getItemLayout={
-          viewportHeight > 0
-            ? (_, idx) => ({
-                length: viewportHeight,
-                offset: viewportHeight * idx,
-                index: idx,
-              })
-            : undefined
-        }
-        windowSize={5}
-        initialNumToRender={2}
-        maxToRenderPerBatch={3}
-        removeClippedSubviews={false}
-      />
+    <View style={styles.screen}>
+      {/* 모드 전환 바: 함께 · 단어 · 문장 */}
+      <View style={styles.modeBarWrap}>
+        <View style={styles.modeSwitchTrack} accessibilityRole="tablist">
+          {SHORTS_MODES.map((m) => {
+            const active = shortsMode === m.id;
+            return (
+              <Tap
+                key={m.id}
+                feel="playful"
+                onPress={() => handleChangeMode(m.id)}
+                style={[
+                  styles.modeSwitchBtn,
+                  active && styles.modeSwitchBtnActive,
+                ]}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={`${m.label} 모드`}
+              >
+                <Text
+                  style={[
+                    styles.modeSwitchText,
+                    active && styles.modeSwitchTextActive,
+                  ]}
+                  maxFontSizeMultiplier={1.2}
+                >
+                  {m.label}
+                </Text>
+              </Tap>
+            );
+          })}
+        </View>
+      </View>
+
+      <View style={styles.listViewport} onLayout={handleViewportLayout}>
+        <FlatList
+          ref={flatListRef}
+          style={WEB_LIST_SNAP_STYLE}
+          data={visibleFeedWords}
+          keyExtractor={(item) => item.id}
+          renderItem={renderCard}
+          ListFooterComponent={renderFooter}
+          pagingEnabled={viewportHeight > 0}
+          snapToInterval={viewportHeight > 0 ? viewportHeight : undefined}
+          snapToAlignment="start"
+          decelerationRate="fast"
+          showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          onMomentumScrollEnd={handleScroll}
+          onScrollEndDrag={handleScroll}
+          onEndReached={() => void loadNextBatch(PREFETCH_BATCH_SIZE)}
+          onEndReachedThreshold={1.5}
+          getItemLayout={
+            viewportHeight > 0
+              ? (_, idx) => ({
+                  length: viewportHeight,
+                  offset: viewportHeight * idx,
+                  index: idx,
+                })
+              : undefined
+          }
+          windowSize={5}
+          initialNumToRender={2}
+          maxToRenderPerBatch={3}
+          removeClippedSubviews={false}
+        />
+      </View>
 
       <WordMeaningSheet
         word={tappedExampleWord}
@@ -953,20 +1392,20 @@ export default function PronunciationShortsScreen() {
       />
 
       <PronunciationPracticeSheet
-        visible={practiceWord !== null}
-        word={practiceWord?.word ?? null}
-        ipa={practiceWord?.ipa}
-        syllableCount={Math.max(1, practiceWord?.syllables.length ?? 1)}
+        visible={practiceTarget !== null}
+        word={practiceTarget?.text ?? null}
+        ipa={practiceTarget?.ipa}
+        syllableCount={Math.max(1, practiceTarget?.syllableCount ?? 1)}
         onPlayNative={() => {
-          if (!practiceWord) return;
-          return playNormal(practiceWord.word, {
-            audioUrl: practiceWord.audioUrl,
-            audioAsset: practiceWord.audioAsset,
-            key: `shorts:practice:${practiceWord.id}`,
+          if (!practiceTarget) return;
+          return playNormal(practiceTarget.text, {
+            audioUrl: practiceTarget.isSentence ? undefined : practiceTarget.audioUrl,
+            audioAsset: practiceTarget.isSentence ? undefined : practiceTarget.audioAsset,
+            key: `shorts:practice:${practiceTarget.id}`,
           });
         }}
         onStopNative={stop}
-        onClose={() => setPracticeWord(null)}
+        onClose={() => setPracticeTarget(null)}
       />
     </View>
   );
@@ -976,6 +1415,45 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  modeBarWrap: {
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.xs,
+    paddingBottom: 2,
+    alignItems: 'center',
+  },
+  modeSwitchTrack: {
+    width: '100%',
+    maxWidth: 320,
+    flexDirection: 'row',
+    backgroundColor: COLORS.tealSoft,
+    borderRadius: RADIUS.pill,
+    padding: 3,
+    gap: 3,
+  },
+  modeSwitchBtn: {
+    flex: 1,
+    minHeight: 34,
+    borderRadius: RADIUS.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  modeSwitchBtnActive: {
+    backgroundColor: COLORS.card,
+    ...SHADOW.card,
+  },
+  modeSwitchText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: COLORS.textMuted,
+  },
+  modeSwitchTextActive: {
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  listViewport: {
+    flex: 1,
   },
   centerState: {
     flex: 1,
@@ -1019,7 +1497,8 @@ const styles = StyleSheet.create({
   },
   pageSlot: {
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
+    paddingTop: SPACING.sm,
+    paddingBottom: LAYOUT.floatingTabClearance - 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1027,6 +1506,7 @@ const styles = StyleSheet.create({
     minHeight: 560,
   },
   shortsCard: {
+    position: 'relative',
     flex: 1,
     width: '100%',
     maxWidth: 560,
@@ -1035,7 +1515,45 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
     justifyContent: 'space-between',
     gap: SPACING.md,
+    overflow: 'hidden',
     ...SHADOW.card,
+  },
+  heroDoubleTapZone: {
+    width: '100%',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  heartBurstOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    zIndex: 10,
+  },
+  heartBurstCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.tint,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOW.floating,
+  },
+  heartBurstPill: {
+    backgroundColor: COLORS.text,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  heartBurstText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.white,
   },
   topBar: {
     flexDirection: 'row',
@@ -1047,6 +1565,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
   },
   posBadge: {
     backgroundColor: COLORS.background,
@@ -1058,6 +1577,27 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     color: COLORS.textMuted,
+  },
+  sentenceWordPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    maxWidth: '72%',
+  },
+  sentenceWordPillText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  sentenceWordPillKo: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: COLORS.textMuted,
+    flexShrink: 1,
   },
   indexCaption: {
     fontSize: 15,
@@ -1075,9 +1615,45 @@ const styles = StyleSheet.create({
   bookmarkBtnActive: {
     backgroundColor: COLORS.tint,
   },
+  sentenceHeroCenter: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: SPACING.md,
+  },
+  sentenceHeroTapArea: {
+    width: '100%',
+    gap: SPACING.md,
+  },
+  sentenceHeroBox: {
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.lg,
+  },
+  sentenceHeroKo: {
+    fontSize: 17,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
+    lineHeight: 25,
+    textAlign: 'center',
+    paddingHorizontal: SPACING.xs,
+  },
+  sentenceRhythmBox: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  sentenceRhythmLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: COLORS.textMuted,
+  },
   heroCenter: {
     alignItems: 'center',
     gap: 10,
+  },
+  heroCenterWordOnly: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 14,
   },
   heroWord: {
     fontSize: 32,
@@ -1085,10 +1661,13 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     textAlign: 'center',
   },
+  heroWordLarge: {
+    fontSize: 38,
+  },
   heroMeaning: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.primaryDark,
+    color: COLORS.textSecondary,
     textAlign: 'center',
   },
   pronRow: {
@@ -1307,6 +1886,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: COLORS.primaryDark,
+  },
+  exMiniSpeakBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.tealSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   exampleKo: {
     fontSize: 16,

@@ -102,6 +102,8 @@ export function evaluatePronunciationTranscripts(
   alternatives: { transcript: string; confidence?: number }[]
 ): PronunciationEvaluation {
   const cleanTarget = normalizeForCompare(targetWord);
+  const targetTokens = cleanTarget.split(' ').filter(Boolean);
+  const isSentence = targetTokens.length > 1;
   const targetPhonetic = toPhoneticSkeleton(cleanTarget);
 
   let bestScore = 0;
@@ -111,15 +113,72 @@ export function evaluatePronunciationTranscripts(
     const cleanAlt = normalizeForCompare(alt.transcript);
     if (!cleanAlt) continue;
 
-    // 사용자가 문장/여러 단어로 인식됐을 경우 각 단어 중 가장 가까운 토큰도 함께 검사
-    const tokens = cleanAlt.split(' ').filter(Boolean);
-    const candidatesToCheck = tokens.length > 1 ? [cleanAlt, ...tokens] : [cleanAlt];
+    const spokenTokens = cleanAlt.split(' ').filter(Boolean);
+
+    if (isSentence) {
+      let scoreFloat = 0;
+      if (cleanAlt === cleanTarget) {
+        const conf =
+          typeof alt.confidence === 'number' && alt.confidence > 0
+            ? alt.confidence
+            : 0.94;
+        scoreFloat = 0.92 + Math.min(1, conf) * 0.08;
+      } else {
+        // 문장: 목표 단어별 발음 일치율(65%) + 전체 문장 유사도(35%)
+        const usedIndices = new Set<number>();
+        let tokenSum = 0;
+        for (const tWord of targetTokens) {
+          const tSkel = toPhoneticSkeleton(tWord);
+          let bestTokenSim = 0;
+          let bestIdx = -1;
+          for (let i = 0; i < spokenTokens.length; i += 1) {
+            if (usedIndices.has(i)) continue;
+            const sWord = spokenTokens[i];
+            const sim =
+              sWord === tWord
+                ? 1
+                : normalizedSimilarity(tSkel, toPhoneticSkeleton(sWord)) * 0.65 +
+                  normalizedSimilarity(tWord, sWord) * 0.35;
+            if (sim > bestTokenSim) {
+              bestTokenSim = sim;
+              bestIdx = i;
+            }
+          }
+          if (bestIdx >= 0 && bestTokenSim >= 0.45) {
+            usedIndices.add(bestIdx);
+            tokenSum += bestTokenSim;
+          }
+        }
+        const wordMatchRatio = tokenSum / targetTokens.length;
+        const fullTextSim = normalizedSimilarity(cleanTarget, cleanAlt);
+        const fullPhoneticSim = normalizedSimilarity(
+          targetPhonetic,
+          toPhoneticSkeleton(cleanAlt)
+        );
+        const fullSim = fullPhoneticSim * 0.65 + fullTextSim * 0.35;
+        scoreFloat = wordMatchRatio * 0.65 + fullSim * 0.35;
+      }
+
+      const pct = Math.max(0, Math.min(100, Math.round(scoreFloat * 100)));
+      if (pct > bestScore || (!bestHeard && cleanAlt)) {
+        bestScore = pct;
+        bestHeard = cleanAlt;
+      }
+      continue;
+    }
+
+    // 단일 단어: 사용자가 여러 단어로 인식됐을 경우 각 단어 중 가장 가까운 토큰도 함께 검사
+    const candidatesToCheck =
+      spokenTokens.length > 1 ? [cleanAlt, ...spokenTokens] : [cleanAlt];
 
     for (const candidate of candidatesToCheck) {
       let scoreFloat = 0;
       if (candidate === cleanTarget) {
         // 정확히 일치: 인식 신뢰도가 있으면 92~100 사이로 반영, 없으면 96점
-        const conf = typeof alt.confidence === 'number' && alt.confidence > 0 ? alt.confidence : 0.94;
+        const conf =
+          typeof alt.confidence === 'number' && alt.confidence > 0
+            ? alt.confidence
+            : 0.94;
         scoreFloat = 0.91 + Math.min(1, conf) * 0.09;
       } else {
         const textSim = normalizedSimilarity(cleanTarget, candidate);
@@ -159,7 +218,9 @@ export function evaluatePronunciationTranscripts(
       grade: 'excellent',
       heardText: bestHeard,
       headlineKo: '아주 좋아요! 원어민과 아주 비슷해요',
-      tipKo: '내 목소리와 원어민 소리를 번갈아 들으며 자신감을 다져 보세요!',
+      tipKo: isSentence
+        ? '문장 리듬과 이어 읽기가 아주 자연스러워요!'
+        : '내 목소리와 원어민 소리를 번갈아 들으며 자신감을 다져 보세요!',
       mode: 'speech_recognition',
     };
   }
@@ -170,7 +231,9 @@ export function evaluatePronunciationTranscripts(
       grade: 'good',
       heardText: bestHeard,
       headlineKo: '잘하셨어요! 거의 비슷하게 들렸어요',
-      tipKo: '강세(큰 점) 음절만 살짝 더 힘주어 말하면 완벽해요.',
+      tipKo: isSentence
+        ? '문장을 0.6x로 한 번 듣고 핵심 단어에 살짝 힘주어 말해 보세요.'
+        : '강세(큰 점) 음절만 살짝 더 힘주어 말하면 완벽해요.',
       mode: 'speech_recognition',
     };
   }
@@ -181,7 +244,9 @@ export function evaluatePronunciationTranscripts(
       grade: 'close',
       heardText: bestHeard,
       headlineKo: '비슷해요! 한 번만 더 천천히 따라해 볼까요?',
-      tipKo: `기계에는 '${bestHeard}'처럼 들렸어요. 천천히(0.6x) 듣고 강세에 맞춰 말해 보세요.`,
+      tipKo: isSentence
+        ? '천천히(0.6x) 듣고 문장 리듬에 맞춰 한 호흡으로 따라 말해 보세요.'
+        : `기계에는 '${bestHeard}'처럼 들렸어요. 천천히(0.6x) 듣고 강세에 맞춰 말해 보세요.`,
       mode: 'speech_recognition',
     };
   }
@@ -191,7 +256,9 @@ export function evaluatePronunciationTranscripts(
     grade: 'retry',
     heardText: bestHeard,
     headlineKo: '조금 다르게 들렸어요. 다시 도전해 보세요!',
-    tipKo: `기계에는 '${bestHeard}'(으)로 인식됐어요. 원어민 소리를 한 번 더 듣고 따라 말해 보세요.`,
+    tipKo: isSentence
+      ? '원어민 문장을 한 번 더 듣고 천천히 또박또박 따라 읽어 보세요.'
+      : `기계에는 '${bestHeard}'(으)로 인식됐어요. 원어민 소리를 한 번 더 듣고 따라 말해 보세요.`,
     mode: 'speech_recognition',
   };
 }

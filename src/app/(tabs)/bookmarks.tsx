@@ -1,4 +1,5 @@
 import {
+  ArrowsClockwise,
   BookOpen,
   CaretRight,
   ChartBar,
@@ -11,6 +12,7 @@ import {
   MagnifyingGlass,
   PencilSimple,
   Play,
+  Sparkle,
   SpeakerHigh,
   SpeakerLow,
   User,
@@ -26,6 +28,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { BookmarkFlipDeck } from '../../components/BookmarkFlipDeck';
+import { DailyGoalRing } from '../../components/DailyGoalRing';
 import { InfoTipBox, InfoTipButton } from '../../components/InfoTip';
 import { SymbolDetailSheet } from '../../components/SymbolDetailSheet';
 import { IPA_SYMBOL_BY_ID } from '../../data/categories';
@@ -34,16 +38,22 @@ import {
   formatStudyDuration,
   getLocalDateKey,
   getRecentWeekDays,
+  getReviewStatusMeta,
+  isWordDueForReview,
+  normalizeReviewWordKey,
   useLearningStore,
 } from '../../store/useLearningStore';
 import { useWordCacheStore } from '../../store/useWordCacheStore';
-import { COLORS, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
+import { COLORS, LAYOUT, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
 import type { CoreWord, IpaSymbol } from '../../types/learning';
+import { triggerLightHaptic } from '../../utils/haptics';
 
 type BookmarkFilter = 'all' | 'words' | 'symbols';
+type WordViewMode = 'list' | 'deck';
 
 export default function BookmarksScreen() {
   const [filter, setFilter] = useState<BookmarkFilter>('all');
+  const [wordViewMode, setWordViewMode] = useState<WordViewMode>('list');
   const [filterText, setFilterText] = useState('');
   const [activeSymbol, setActiveSymbol] = useState<IpaSymbol | null>(null);
   const [isEditingNickname, setIsEditingNickname] = useState(false);
@@ -68,6 +78,8 @@ export default function BookmarksScreen() {
   const currentStreakDays = useLearningStore((state) => state.currentStreakDays);
   const longestStreakDays = useLearningStore((state) => state.longestStreakDays);
   const activeDateHistory = useLearningStore((state) => state.activeDateHistory);
+  const wordReviews = useLearningStore((state) => state.wordReviews);
+  const recordWordReview = useLearningStore((state) => state.recordWordReview);
   const recordAppVisit = useLearningStore((state) => state.recordAppVisit);
   const learningHasHydrated = useLearningStore((state) => state.hasHydrated);
 
@@ -120,6 +132,22 @@ export default function BookmarksScreen() {
     );
   }, [bookmarkedSymbols, filterText]);
 
+  const todayKey = getLocalDateKey();
+
+  const dueWords = useMemo(() => {
+    return bookmarkedWords.filter((w) => {
+      const key = normalizeReviewWordKey(w.word);
+      return isWordDueForReview(wordReviews[key], todayKey);
+    });
+  }, [bookmarkedWords, wordReviews, todayKey]);
+
+  const handleReviewWord = useCallback(
+    (wordKey: string, outcome: 'pass' | 'again') => {
+      recordWordReview(wordKey, outcome);
+    },
+    [recordWordReview]
+  );
+
   const handleOpenInReader = (word: string) => {
     stop();
     navSeqRef.current += 1;
@@ -143,7 +171,6 @@ export default function BookmarksScreen() {
   const totalCount = bookmarkedWords.length + bookmarkedSymbols.length;
   const shouldShowKoHint = learningHasHydrated ? showKoPronunciation : true;
 
-  const todayKey = getLocalDateKey();
   const displayNickname = nickname.trim() || '학습자';
   const avatarInitial = nickname.trim().slice(0, 1);
   const displayStreak = Math.max(learningHasHydrated ? currentStreakDays : 1, 1);
@@ -182,7 +209,7 @@ export default function BookmarksScreen() {
                   {avatarInitial}
                 </Text>
               ) : (
-                <User size={26} color={COLORS.successText} />
+                <User size={26} color={COLORS.text} />
               )}
             </View>
 
@@ -295,7 +322,7 @@ export default function BookmarksScreen() {
             {/* 오늘 이용 시간 */}
             <View style={[styles.statTile, styles.statTileToday]}>
               <View style={styles.statTileTop}>
-                <Clock size={18} color={COLORS.primary} />
+                <Clock size={18} color={COLORS.textSecondary} />
                 <Text style={styles.statLabelToday} maxFontSizeMultiplier={1.2}>
                   오늘 이용
                 </Text>
@@ -324,6 +351,12 @@ export default function BookmarksScreen() {
               </Text>
             </View>
           </View>
+
+          {/* 오늘 5분 목표 SVG 원형 프로그레스 링 */}
+          <DailyGoalRing
+            todaySeconds={displayTodaySec}
+            streakDays={displayStreak}
+          />
 
           {/* 최근 7일 연속 출석 기록 */}
           <View style={styles.streakWeekBox}>
@@ -381,7 +414,59 @@ export default function BookmarksScreen() {
           </View>
         </View>
 
-        {/* 3. 저장한 단어 · 발음기호 섹션 */}
+        {/* 3. 오늘 다시 꺼낼 단어 (간격 반복) */}
+        {dueWords.length > 0 && (
+          <View style={styles.dueCard}>
+            <View style={styles.dueHeaderRow}>
+              <Sparkle size={18} color={COLORS.accent} weight="fill" />
+              <Text style={styles.dueTitle} maxFontSizeMultiplier={1.35}>
+                오늘 다시 꺼낼 단어
+              </Text>
+              <View style={styles.dueBadge}>
+                <Text style={styles.dueBadgeText} maxFontSizeMultiplier={1.2}>
+                  {dueWords.length}개
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.dueSub} maxFontSizeMultiplier={1.35}>
+              며칠 뒤 다시 꺼내서 떠올리면 훨씬 오래 기억돼요
+            </Text>
+            <View style={styles.dueChipRow}>
+              {dueWords.slice(0, 5).map((w) => (
+                <View key={w.id} style={styles.dueChip}>
+                  <Text style={styles.dueChipText} maxFontSizeMultiplier={1.2}>
+                    {w.word}
+                  </Text>
+                </View>
+              ))}
+              {dueWords.length > 5 && (
+                <View style={styles.dueChip}>
+                  <Text style={styles.dueChipText} maxFontSizeMultiplier={1.2}>
+                    +{dueWords.length - 5}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Pressable
+              onPress={() => {
+                triggerLightHaptic();
+                stop();
+                setFilter('words');
+                setWordViewMode('deck');
+              }}
+              style={({ pressed }) => [styles.dueStartBtn, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel="카드 복습 시작하기"
+            >
+              <ArrowsClockwise size={18} color={COLORS.white} />
+              <Text style={styles.dueStartBtnText} maxFontSizeMultiplier={1.25}>
+                카드 복습 시작
+              </Text>
+            </Pressable>
+          </View>
+        )}
+
+        {/* 4. 저장한 단어 · 발음기호 섹션 */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryHeaderRow}>
             <View style={styles.summaryTitleRow}>
@@ -395,7 +480,7 @@ export default function BookmarksScreen() {
               />
             </View>
             <View style={styles.countBadge}>
-              <Heart size={18} color={COLORS.primary} weight="fill" />
+              <Heart size={18} color="#FF3B30" weight="fill" />
               <Text style={styles.countBadgeText} maxFontSizeMultiplier={1.3}>
                 {totalCount}개
               </Text>
@@ -478,7 +563,7 @@ export default function BookmarksScreen() {
         {!isHydrated ? null : totalCount === 0 ? (
           <View style={styles.emptyCard}>
             <View style={styles.emptyIconCircle}>
-              <Heart size={38} color={COLORS.primary} />
+              <Heart size={38} color="#FF3B30" />
             </View>
             <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
               아직 저장한 항목이 없어요
@@ -548,13 +633,70 @@ export default function BookmarksScreen() {
             {/* 저장한 단어 섹션 */}
             {showWordsSection ? (
               <View style={styles.listStack}>
-                {filter === 'all' ? (
+                <View style={styles.wordSectionHeaderRow}>
                   <Text style={styles.sectionHeading} maxFontSizeMultiplier={1.35}>
                     저장한 영단어 ({filteredWords.length})
                   </Text>
-                ) : null}
+                  <View style={styles.viewModeSwitch}>
+                    <Pressable
+                      onPress={() => {
+                        triggerLightHaptic();
+                        setWordViewMode('list');
+                      }}
+                      style={({ pressed }) => [
+                        styles.viewModePill,
+                        wordViewMode === 'list' && styles.viewModePillActive,
+                        pressed && styles.pressed,
+                      ]}
+                      accessibilityRole="tab"
+                      accessibilityState={{ selected: wordViewMode === 'list' }}
+                    >
+                      <Text
+                        style={[
+                          styles.viewModeText,
+                          wordViewMode === 'list' && styles.viewModeTextActive,
+                        ]}
+                        maxFontSizeMultiplier={1.2}
+                      >
+                        목록
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => {
+                        triggerLightHaptic();
+                        stop();
+                        setWordViewMode('deck');
+                      }}
+                      style={({ pressed }) => [
+                        styles.viewModePill,
+                        wordViewMode === 'deck' && styles.viewModePillDeckActive,
+                        pressed && styles.pressed,
+                      ]}
+                      accessibilityRole="tab"
+                      accessibilityState={{ selected: wordViewMode === 'deck' }}
+                    >
+                      <Text
+                        style={[
+                          styles.viewModeText,
+                          wordViewMode === 'deck' && styles.viewModeTextActive,
+                        ]}
+                        maxFontSizeMultiplier={1.2}
+                      >
+                        카드 복습
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
 
-                {filteredWords.map((item) => {
+                {wordViewMode === 'deck' ? (
+                  <BookmarkFlipDeck
+                    key={filteredWords.map((w) => w.id).join('|')}
+                    words={filteredWords}
+                    showKoHint={shouldShowKoHint}
+                    onOpenInReader={handleOpenInReader}
+                    onReviewWord={handleReviewWord}
+                  />
+                ) : filteredWords.map((item) => {
                   const normalKey = `bm:${item.id}:normal`;
                   const slowKey = `bm:${item.id}:slow`;
                   const isNormalPlaying = activeKey === normalKey;
@@ -596,6 +738,27 @@ export default function BookmarksScreen() {
                               ? `  ·  ${item.koPronunciation}`
                               : ''}
                           </Text>
+                          {(() => {
+                            const meta = getReviewStatusMeta(
+                              wordReviews[normalizeReviewWordKey(item.word)],
+                              todayKey
+                            );
+                            return (
+                              <View style={[
+                                styles.reviewBadge,
+                                meta.isMastered && styles.reviewBadgeMastered,
+                                meta.isDue && styles.reviewBadgeDue,
+                              ]}>
+                                <Text style={[
+                                  styles.reviewBadgeText,
+                                  meta.isMastered && styles.reviewBadgeTextMastered,
+                                  meta.isDue && styles.reviewBadgeTextDue,
+                                ]} maxFontSizeMultiplier={1.2}>
+                                  {meta.label}
+                                </Text>
+                              </View>
+                            );
+                          })()}
                         </Pressable>
 
                         <Pressable
@@ -610,7 +773,7 @@ export default function BookmarksScreen() {
                           accessibilityRole="button"
                           accessibilityLabel={`${item.word} 저장 해제`}
                         >
-                          <Heart size={22} color={COLORS.primary} weight="fill" />
+                          <Heart size={22} color="#FF3B30" weight="fill" />
                         </Pressable>
                       </View>
 
@@ -750,7 +913,7 @@ export default function BookmarksScreen() {
                         accessibilityRole="button"
                         accessibilityLabel={`${sym.ipa} 저장 해제`}
                       >
-                        <Heart size={22} color={COLORS.primary} weight="fill" />
+                        <Heart size={22} color="#FF3B30" weight="fill" />
                       </Pressable>
                     </View>
                   );
@@ -777,15 +940,15 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   scrollContent: {
-    padding: SPACING.md,
-    paddingBottom: SPACING.xl * 2,
-    gap: SPACING.md,
+    padding: SPACING.sm,
+    paddingBottom: LAYOUT.floatingTabClearance,
+    gap: SPACING.sm,
   },
   profileCard: {
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.card,
-    padding: SPACING.lg,
-    gap: SPACING.md,
+    padding: SPACING.md,
+    gap: SPACING.sm,
     ...SHADOW.card,
   },
   profileTopRow: {
@@ -797,14 +960,14 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.successSoft,
+    backgroundColor: COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInitialText: {
     fontSize: 22,
     fontWeight: '700',
-    color: COLORS.successText,
+    color: COLORS.text,
   },
   profileInfoCol: {
     flex: 1,
@@ -882,8 +1045,8 @@ const styles = StyleSheet.create({
   statsCard: {
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.card,
-    padding: SPACING.lg,
-    gap: SPACING.md,
+    padding: SPACING.md,
+    gap: SPACING.sm,
     ...SHADOW.card,
   },
   statsHeaderRow: {
@@ -896,7 +1059,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: COLORS.successSoft,
+    backgroundColor: COLORS.surface,
     paddingHorizontal: 11,
     paddingVertical: 5,
     borderRadius: RADIUS.pill,
@@ -905,12 +1068,12 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.success,
+    backgroundColor: COLORS.primary,
   },
   liveTrackingText: {
     fontSize: 13,
     fontWeight: '500',
-    color: COLORS.successText,
+    color: COLORS.textSecondary,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -925,13 +1088,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   statTileStreak: {
-    backgroundColor: COLORS.accentSoft,
+    backgroundColor: COLORS.background,
   },
   statTileToday: {
-    backgroundColor: COLORS.tint,
+    backgroundColor: COLORS.background,
   },
   statTileTotal: {
-    backgroundColor: COLORS.purpleSoft,
+    backgroundColor: COLORS.background,
   },
   statTileTop: {
     flexDirection: 'row',
@@ -941,17 +1104,17 @@ const styles = StyleSheet.create({
   statLabelStreak: {
     fontSize: 14,
     fontWeight: '500',
-    color: COLORS.accentText,
+    color: COLORS.textSecondary,
   },
   statLabelToday: {
     fontSize: 14,
     fontWeight: '500',
-    color: COLORS.primary,
+    color: COLORS.textSecondary,
   },
   statLabelTotal: {
     fontSize: 14,
     fontWeight: '500',
-    color: COLORS.purpleText,
+    color: COLORS.textSecondary,
   },
   statValue: {
     fontSize: 24,
@@ -1026,8 +1189,8 @@ const styles = StyleSheet.create({
   summaryCard: {
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.card,
-    padding: SPACING.lg,
-    gap: SPACING.md,
+    padding: SPACING.md,
+    gap: SPACING.sm,
     ...SHADOW.card,
   },
   summaryHeaderRow: {
@@ -1344,7 +1507,7 @@ const styles = StyleSheet.create({
     ...SHADOW.card,
   },
   symbolCardLearned: {
-    backgroundColor: COLORS.successSoft,
+    backgroundColor: COLORS.card,
   },
   symbolMainPressable: {
     flex: 1,
@@ -1390,6 +1553,130 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.body,
     fontWeight: '400',
     color: COLORS.text,
+  },
+  wordSectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  viewModeSwitch: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.pill,
+    padding: 3,
+    gap: 3,
+    ...SHADOW.card,
+  },
+  viewModePill: {
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    borderRadius: RADIUS.pill,
+  },
+  viewModePillActive: {
+    backgroundColor: COLORS.text,
+  },
+  viewModePillDeckActive: {
+    backgroundColor: COLORS.primary,
+  },
+  viewModeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+  },
+  viewModeTextActive: {
+    color: COLORS.white,
+  },
+  dueCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.card,
+    padding: SPACING.md,
+    gap: SPACING.sm,
+    ...SHADOW.card,
+  },
+  dueHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dueTitle: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.sectionTitle,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  dueBadge: {
+    backgroundColor: COLORS.accentSoft,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  dueBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.accentText,
+  },
+  dueSub: {
+    fontSize: TYPOGRAPHY.body,
+    color: COLORS.textMuted,
+    lineHeight: 20,
+  },
+  dueChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  dueChip: {
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  dueChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  dueStartBtn: {
+    minHeight: TOUCH.recommendedHeight,
+    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.accent,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  dueStartBtnText: {
+    fontSize: TYPOGRAPHY.body,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  reviewBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginTop: 2,
+  },
+  reviewBadgeMastered: {
+    backgroundColor: COLORS.successSoft,
+  },
+  reviewBadgeDue: {
+    backgroundColor: COLORS.accentSoft,
+  },
+  reviewBadgeText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: COLORS.textMuted,
+  },
+  reviewBadgeTextMastered: {
+    color: COLORS.successText,
+    fontWeight: '700',
+  },
+  reviewBadgeTextDue: {
+    color: COLORS.accentText,
+    fontWeight: '700',
   },
   pressed: {
     opacity: 0.82,

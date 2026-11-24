@@ -3,6 +3,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { InfoTipBox, InfoTipButton } from '../../components/InfoTip';
+import { MinimalPairTrainer } from '../../components/MinimalPairTrainer';
 import { SymbolDetailSheet } from '../../components/SymbolDetailSheet';
 import {
   CORE_IPA_SYMBOLS,
@@ -12,7 +13,7 @@ import {
 } from '../../data/categories';
 import { useSpeechAudio } from '../../hooks/useSpeechAudio';
 import { useLearningStore } from '../../store/useLearningStore';
-import { COLORS, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
+import { COLORS, LAYOUT, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
 import type { IpaSymbol } from '../../types/learning';
 
 type SymbolViewMode = 'all' | 'core';
@@ -22,24 +23,24 @@ const CATEGORY_ACCENTS: Record<
   { soft: string; text: string; solid: string }
 > = {
   basic_vowels: {
-    soft: COLORS.tint,
-    text: COLORS.primaryDark,
-    solid: COLORS.primary,
+    soft: COLORS.surface,
+    text: COLORS.text,
+    solid: COLORS.text,
   },
   diphthongs: {
-    soft: COLORS.tealSoft,
-    text: COLORS.tealText,
-    solid: COLORS.teal,
+    soft: COLORS.surface,
+    text: COLORS.text,
+    solid: COLORS.text,
   },
   key_consonants: {
-    soft: COLORS.purpleSoft,
-    text: COLORS.purpleText,
-    solid: COLORS.purple,
+    soft: COLORS.surface,
+    text: COLORS.text,
+    solid: COLORS.text,
   },
   basic_consonants: {
-    soft: COLORS.successSoft,
-    text: COLORS.successText,
-    solid: COLORS.success,
+    soft: COLORS.surface,
+    text: COLORS.text,
+    solid: COLORS.text,
   },
 };
 
@@ -199,6 +200,9 @@ export default function IpaSymbolsScreen() {
           </View>
         </View>
 
+        {/* 헷갈리는 소리 A/B 비교 & 3초 귀 트임 퀴즈 */}
+        <MinimalPairTrainer />
+
         {/* 카테고리별 발음기호 Bento 섹션 */}
         {visibleCategories.map(({ category, symbols }, index) => {
           const learnedInCategory = symbols.filter((s) =>
@@ -320,13 +324,8 @@ export default function IpaSymbolsScreen() {
                               <CheckCircle
                                 size={18}
                                 color={COLORS.success}
+                                weight="fill"
                               />
-                              <Text
-                                style={styles.doneTagText}
-                                maxFontSizeMultiplier={1.25}
-                              >
-                                익힘
-                              </Text>
                             </View>
                           ) : null}
                         </View>
@@ -339,43 +338,36 @@ export default function IpaSymbolsScreen() {
                       >
                         {symbol.koHint}
                       </Text>
-                      <Text
-                        style={styles.symbolExamplePreview}
-                        numberOfLines={1}
-                        maxFontSizeMultiplier={1.4}
-                      >
-                        {symbol.titleKo}
-                      </Text>
-
-                      {/* 빠른 소리 듣기 버튼 (카드 열지 않고 바로 발음 재생) */}
-                      <Pressable
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          void playNormal(previewSound, { key: quickPlayKey });
-                        }}
-                        style={({ pressed }) => [
-                          styles.quickPlayBtn,
-                          isQuickPlaying && styles.quickPlayBtnActive,
-                          pressed && styles.pressed,
-                        ]}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${symbol.ipa} 소리 바로 듣기`}
-                      >
-                        {isQuickPlaying ? (
-                          <SpeakerHigh size={16} color={COLORS.white} />
-                        ) : (
-                          <SpeakerLow size={16} color={accent.text} />
-                        )}
+                      <View style={styles.symbolCardBottomRow}>
                         <Text
-                          style={[
-                            styles.quickPlayBtnText,
-                            { color: isQuickPlaying ? COLORS.white : accent.text },
-                          ]}
-                          maxFontSizeMultiplier={1.25}
+                          style={styles.symbolExamplePreview}
+                          numberOfLines={1}
+                          maxFontSizeMultiplier={1.4}
                         >
-                          {isQuickPlaying ? '재생 중' : '소리 듣기'}
+                          {symbol.titleKo}
                         </Text>
-                      </Pressable>
+
+                        {/* 빠른 소리 듣기 아이콘 버튼 */}
+                        <Pressable
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            void playNormal(previewSound, { key: quickPlayKey });
+                          }}
+                          style={({ pressed }) => [
+                            styles.quickPlayBtn,
+                            isQuickPlaying && styles.quickPlayBtnActive,
+                            pressed && styles.pressed,
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${symbol.ipa} 소리 바로 듣기`}
+                        >
+                          {isQuickPlaying ? (
+                            <SpeakerHigh size={18} color={COLORS.white} weight="fill" />
+                          ) : (
+                            <SpeakerLow size={18} color={accent.text} />
+                          )}
+                        </Pressable>
+                      </View>
                     </Pressable>
                   );
                 })}
@@ -400,15 +392,15 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   scrollContent: {
-    padding: SPACING.md,
-    paddingBottom: SPACING.xl * 2,
-    gap: SPACING.lg,
+    padding: SPACING.sm,
+    paddingBottom: LAYOUT.floatingTabClearance,
+    gap: SPACING.sm,
   },
   welcomeBanner: {
     backgroundColor: COLORS.indigoSoft,
     borderRadius: RADIUS.card,
-    padding: SPACING.lg,
-    gap: SPACING.sm,
+    padding: SPACING.md,
+    gap: SPACING.xs,
     ...SHADOW.card,
   },
   welcomeHeader: {
@@ -507,15 +499,15 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   percentPill: {
-    backgroundColor: COLORS.successSoft,
+    backgroundColor: COLORS.surface,
     borderRadius: RADIUS.pill,
     paddingHorizontal: 14,
     paddingVertical: 6,
   },
   percentPillText: {
     fontSize: TYPOGRAPHY.bodyLarge,
-    fontWeight: '500',
-    color: COLORS.successText,
+    fontWeight: '700',
+    color: COLORS.text,
   },
   progressTrack: {
     height: 10,
@@ -525,7 +517,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: COLORS.success,
+    backgroundColor: COLORS.primary,
     borderRadius: RADIUS.pill,
   },
   categorySection: {
@@ -594,7 +586,7 @@ const styles = StyleSheet.create({
     ...SHADOW.card,
   },
   symbolCardLearned: {
-    backgroundColor: COLORS.successSoft,
+    backgroundColor: COLORS.card,
   },
   symbolCardTop: {
     flexDirection: 'row',
@@ -625,25 +617,23 @@ const styles = StyleSheet.create({
     color: COLORS.goldText,
   },
   doneTag: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-    backgroundColor: COLORS.card,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: RADIUS.pill,
-  },
-  doneTagText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: COLORS.successText,
+    justifyContent: 'center',
   },
   symbolKoHint: {
     fontSize: TYPOGRAPHY.body,
     fontWeight: '500',
     color: COLORS.text,
   },
+  symbolCardBottomRow: {
+    marginTop: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
   symbolExamplePreview: {
+    flex: 1,
     fontSize: TYPOGRAPHY.body,
     color: COLORS.textMuted,
     fontWeight: '400',
@@ -652,23 +642,15 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.tint,
   },
   quickPlayBtn: {
-    marginTop: 4,
-    minHeight: 36,
+    width: 36,
+    height: 36,
     borderRadius: RADIUS.pill,
     backgroundColor: COLORS.background,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
   },
   quickPlayBtnActive: {
     backgroundColor: COLORS.primary,
-  },
-  quickPlayBtnText: {
-    fontSize: 15,
-    fontWeight: '500',
   },
   pressed: {
     opacity: 0.82,

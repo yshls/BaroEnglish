@@ -1,7 +1,8 @@
 import { ArrowsClockwise, CheckCircle, Gauge, Heart, Smiley, Sparkle, SpeakerHigh, SpeakerLow, X } from './PlumpIcons';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Modal,
   Pressable,
   ScrollView,
@@ -13,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSpeechAudio } from '../hooks/useSpeechAudio';
 import { fetchSymbolExamplesByLevel } from '../services/wordApi';
 import { useLearningStore } from '../store/useLearningStore';
-import { COLORS, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../theme/tokens';
+import { COLORS, LAYOUT, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../theme/tokens';
 import { InfoTipBox, InfoTipButton } from './InfoTip';
 import type {
   ExampleDifficultyLevel,
@@ -27,9 +28,9 @@ const DIFFICULTY_TABS: {
   titleLabel: string;
   activeBg: string;
 }[] = [
-  { id: 'beginner', label: '초급', titleLabel: '초급', activeBg: COLORS.success },
-  { id: 'intermediate', label: '중급', titleLabel: '중급', activeBg: COLORS.accent },
-  { id: 'advanced', label: '고급', titleLabel: '고급', activeBg: COLORS.purple },
+  { id: 'beginner', label: '초급', titleLabel: '초급', activeBg: COLORS.text },
+  { id: 'intermediate', label: '중급', titleLabel: '중급', activeBg: COLORS.text },
+  { id: 'advanced', label: '고급', titleLabel: '고급', activeBg: COLORS.text },
 ];
 
 interface SymbolDetailSheetProps {
@@ -144,6 +145,12 @@ export function SymbolDetailSheet({
   const toggleSymbolBookmark = useLearningStore(
     (state) => state.toggleSymbolBookmark
   );
+
+  const [heartScale] = useState(() => new Animated.Value(1));
+  const triggerHeartPop = useCallback(() => {
+    heartScale.setValue(0.6);
+    Animated.spring(heartScale, { toValue: 1, stiffness: 300, damping: 10, mass: 0.6, useNativeDriver: true }).start();
+  }, [heartScale]);
 
   const [difficulty, setDifficulty] = useState<ExampleDifficultyLevel>('beginner');
   const [refreshSeed, setRefreshSeed] = useState(0);
@@ -276,7 +283,10 @@ export function SymbolDetailSheet({
 
             <View style={styles.headerActions}>
               <Pressable
-                onPress={() => toggleSymbolBookmark(activeSymbol.id)}
+                onPress={() => {
+                  if (!isBookmarked) triggerHeartPop();
+                  toggleSymbolBookmark(activeSymbol.id);
+                }}
                 style={({ pressed }) => [
                   styles.bookmarkIconBtn,
                   isBookmarked && styles.bookmarkIconBtnActive,
@@ -290,11 +300,13 @@ export function SymbolDetailSheet({
                     : `${activeSymbol.ipa} 저장`
                 }
               >
-                <Heart
-                  size={24}
-                  color={isBookmarked ? COLORS.primary : COLORS.textMuted}
-                  weight={isBookmarked ? 'fill' : 'regular'}
-                />
+                <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+                  <Heart
+                    size={24}
+                    color={isBookmarked ? '#FF3B30' : COLORS.textMuted}
+                    weight={isBookmarked ? 'fill' : 'regular'}
+                  />
+                </Animated.View>
               </Pressable>
 
               <Pressable
@@ -579,6 +591,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sheetContainer: {
+    width: '100%',
+    maxWidth: LAYOUT.mobileFrameMaxWidth,
+    alignSelf: 'center',
     backgroundColor: COLORS.background,
     borderTopLeftRadius: 26,
     borderTopRightRadius: 26,

@@ -41,147 +41,135 @@ export const FONTS = {
 // ============================================================
 
 export const PALETTE = {
-  // Playful Coral
-  // 브랜드 · 친근함 · 첫 도전
+  // Persimmon — 감귤빛 브랜드 주황
   brand: {
-    100: '#FFF0F0',
-    200: '#FFDADA',
-    300: '#FFB8B7',
-    400: '#FF8584',
-    500: '#FF4C4B',
-    600: '#E63837',
-    700: '#C92625',
+    100: '#FFF2E9',
+    200: '#FFDDC7',
+    300: '#FFC09B',
+    400: '#FF965C',
+    500: '#F56823',
+    600: '#DB4F10',
+    700: '#B53D0A',
   },
 
-  // Clear Sky
-  // 정보 · 이해 · 학습
+  // Ocean Blue — 선명한 파란색
   blue: {
-    100: '#EFF6FF',
-    200: '#DBEAFF',
-    300: '#B2D3FF',
-    400: '#80B6FF',
-    500: '#4D96FF',
-    600: '#3075DE',
-    700: '#245AB5',
+    100: '#EDF6FF',
+    200: '#D4E9FF',
+    300: '#A8D2FF',
+    400: '#65AEFA',
+    500: '#2584E9',
+    600: '#1568C9',
+    700: '#104EA2',
   },
 
-  // Fresh Green
-  // 성장 · 성공 · 성취
+  // Fresh Leaf — 생기 있는 초록색
   green: {
-    100: '#E8FFF3',
-    200: '#C5F9DF',
-    300: '#8EF0BE',
-    400: '#43DC96',
-    500: '#00B368',
-    600: '#009457',
-    700: '#007A47',
+    100: '#EBFCF0',
+    200: '#CDF5D9',
+    300: '#9AEAB2',
+    400: '#55D982',
+    500: '#20B856',
+    600: '#119440',
+    700: '#087333',
   },
 
-  // Fresh Mint
-  // 천천히 듣기 · 편안함
+  // Tropical Jade — 선명한 청록색
   teal: {
-    100: '#E8FCF9',
-    200: '#C8F7F0',
-    300: '#96EEE2',
-    400: '#55DECE',
-    500: '#20C4B5',
-    600: '#009F92',
-    700: '#007D74',
+    100: '#E5FBF7',
+    200: '#C2F5EB',
+    300: '#89EBDD',
+    400: '#43D8C6',
+    500: '#00B4A0',
+    600: '#009183',
+    700: '#007065',
   },
 
-  // Happy Sunshine
-  // 즐거움 · 보상 · 북마크
+  // Sunshine — 순수하고 밝은 노란색
   amber: {
-    100: '#FFFBEA',
-    200: '#FFF4C7',
-    300: '#FFEA91',
-    400: '#FFDF5C',
-    500: '#FFD43B',
-    600: '#DBAD16',
-    700: '#A67B00',
+    100: '#FFFBE5',
+    200: '#FFF3B3',
+    300: '#FFEA75',
+    400: '#FFDF38',
+    500: '#FFD000',
+    600: '#DBAD00',
+    700: '#927000',
   },
 
-  // Sweet Tangerine
-  // 강세 · 리듬 · 동기부여
+  // Golden Orange — 황금빛 오렌지
   orange: {
-    100: '#FFF4E9',
-    200: '#FFE5CC',
-    300: '#FFD0A3',
-    400: '#FFB570',
-    500: '#FF983D',
-    600: '#E57920',
-    700: '#B8590C',
-    vividText: '#A84D08',
+    100: '#FFF6E5',
+    200: '#FFE9BD',
+    300: '#FFD487',
+    400: '#FFBB40',
+    500: '#FF9F00',
+    600: '#DC8100',
+    700: '#AD6000',
+    vividText: '#995000',
   },
 
-  // Lovely Lavender
-  // 따라 말하기 · 창의성 · AI
+  // Grape — 선명한 포도빛 보라색
   purple: {
-    100: '#F6F1FF',
-    200: '#EDE3FF',
-    300: '#D9C8FF',
-    400: '#BDA5FF',
-    500: '#9B7BF7',
-    600: '#805BDF',
-    700: '#6542BA',
+    100: '#F7EFFF',
+    200: '#EDDDFF',
+    300: '#D9BBFF',
+    400: '#BE8CF7',
+    500: '#9854E8',
+    600: '#7E37CD',
+    700: '#6224A8',
   },
 
-  // Bright Periwinkle
-  // 예문 · 단어 뜻 · 집중
+  // Iris — 푸른빛 보라색
   indigo: {
-    100: '#F0F2FF',
-    200: '#E0E5FF',
-    300: '#C2CBFF',
-    400: '#939FFF',
-    500: '#6374F5',
-    600: '#4859D9',
-    700: '#3646B5',
+    100: '#EFF0FF',
+    200: '#DFE2FF',
+    300: '#BEC4FF',
+    400: '#8D96FA',
+    500: '#545FE7',
+    600: '#3D47C9',
+    700: '#2E37A8',
   },
 
-  // Peachy Pink
-  // 공감 · 격려 · 녹음 강조
+  // Raspberry — 생기 있는 핑크색
   rose: {
-    100: '#FFF1F7',
-    200: '#FFE1ED',
-    300: '#FFC8DE',
-    400: '#FFACCB',
-    500: '#FF91BA',
-    600: '#E86B9B',
-    700: '#BA4677',
+    100: '#FFF0F7',
+    200: '#FFDBED',
+    300: '#FFB8DA',
+    400: '#FF88BF',
+    500: '#F552A0',
+    600: '#DA3284',
+    700: '#AB2466',
   },
 
-  // Clear Red
-  // 오류 · 교정 · 주의
+  // True Red — 분홍빛 없는 선명한 빨간색
   red: {
-    100: '#FFF1F1',
-    200: '#FFDCDC',
-    300: '#FFB6B6',
-    400: '#FF8181',
-    500: '#F04444',
-    600: '#D52D2D',
-    700: '#B51E1E',
+    100: '#FFF0F0',
+    200: '#FFD6D6',
+    300: '#FFABAB',
+    400: '#F76D6D',
+    500: '#E52525',
+    600: '#C91818',
+    700: '#A51010',
   },
 
-  // Clean Light Gray Neutral
-  // 깔끔한 라이트 그레이 배경·보더 계열
+  // Warm Neutral — 따뜻한 크림과 뉴트럴
   gray: {
+    50: '#FFFCF6', // 웜 화이트 (가장 밝은 뉴트럴)
     100: '#F5F6F8',
-    200: '#ECEEF2',
-    300: '#E1E4EA',
-    400: '#C9CDD6',
-    500: '#6B707A',
-    600: '#4E525A',
-    700: '#2D2C2B',
+    200: '#F7F3EB',
+    300: '#EAE5DC',
+    400: '#D4CEC3',
+    500: '#736E65',
+    600: '#514C44',
+    700: '#2D2924',
   },
 
-  // Absolute Colors
   common: {
     white: '#FFFFFF',
     black: '#000000',
     transparent: 'transparent',
   },
 } as const;
-
 // ============================================================
 // 03. SEMANTIC COLORS
 // ============================================================
@@ -236,15 +224,15 @@ export const COLORS = {
   actionSecondaryPressed: PALETTE.brand[200],
 
   // ----------------------------------------------------------
-  // Accent — 강세 · 리듬 · 중급 난이도
+  // Accent — 강세 · 리듬 (브랜드 코랄 단일 포인트 통일)
   // ----------------------------------------------------------
 
-  accent: PALETTE.orange[500],
-  accentText: PALETTE.orange.vividText,
-  accentSoft: PALETTE.orange[100],
+  accent: PALETTE.brand[500],
+  accentText: PALETTE.brand[700],
+  accentSoft: PALETTE.brand[100],
 
   // ----------------------------------------------------------
-  // Success — 정답 · 익힘 · 초급
+  // Success — 정답 · 완료 체크 (최소 시맨틱 용도)
   // ----------------------------------------------------------
 
   success: PALETTE.green[500],
@@ -252,39 +240,39 @@ export const COLORS = {
   successSoft: PALETTE.green[100],
 
   // ----------------------------------------------------------
-  // Teal — 천천히 듣기 · 0.6x
+  // Teal — 천천히 듣기 · 보조 버튼
   // ----------------------------------------------------------
 
-  teal: PALETTE.teal[500],
+  teal: PALETTE.teal[600],
   tealText: PALETTE.teal[700],
   tealSoft: PALETTE.teal[100],
 
   // ----------------------------------------------------------
-  // Gold — 북마크 · 즐겨찾기 · 보상
+  // Gold — 핵심 태그 · 배지 · 북마크
   // ----------------------------------------------------------
 
   gold: PALETTE.amber[500],
-  goldText: '#805C00',
+  goldText: PALETTE.amber[700],
   goldSoft: PALETTE.amber[100],
 
   // ----------------------------------------------------------
-  // Purple — 따라 말하기 · 빠르게 듣기
+  // Purple — 따라 말하기 · IPA · 빠르게 듣기
   // ----------------------------------------------------------
 
-  purple: PALETTE.purple[500],
+  purple: PALETTE.purple[600],
   purpleText: PALETTE.purple[700],
   purpleSoft: PALETTE.purple[100],
 
   // ----------------------------------------------------------
-  // Indigo — 예문 · 단어 뜻 · 추천
+  // Indigo — 예문 · 단어 뜻 · 추천 칩
   // ----------------------------------------------------------
 
-  indigo: PALETTE.indigo[500],
+  indigo: PALETTE.indigo[600],
   indigoText: PALETTE.indigo[700],
   indigoSoft: PALETTE.indigo[100],
 
   // ----------------------------------------------------------
-  // Rose — 녹음 강조 · 공감
+  // Rose — 녹음 활성 · 주의
   // ----------------------------------------------------------
 
   rose: PALETTE.rose[500],
@@ -304,7 +292,7 @@ export const COLORS = {
   // ----------------------------------------------------------
 
   warning: PALETTE.amber[500],
-  warningText: '#805C00',
+  warningText: PALETTE.amber[700],
   warningSoft: PALETTE.amber[100],
 
   // ----------------------------------------------------------
@@ -338,7 +326,7 @@ export const COLORS = {
   textInverse: PALETTE.common.white,
 
   placeholder: PALETTE.gray[500],
-  link: PALETTE.blue[700],
+  link: PALETTE.gray[700],
 
   // ----------------------------------------------------------
   // Common
@@ -923,6 +911,7 @@ export const MOTION = {
 
   scale: {
     pressed: 0.97,
+    deepPress: 0.93, // 쫀득한 깊은 눌림 (버튼·칩 기본)
     normal: 1,
     emphasis: 1.05,
   },
@@ -979,10 +968,12 @@ export const LAYOUT = {
   itemGap: SPACING.sm,
 
   contentMaxWidth: 640,
+  mobileFrameMaxWidth: 520,
   tabletMaxWidth: 960,
 
   headerHeight: 64,
   bottomBarHeight: TOUCH.tabBarHeight,
+  floatingTabClearance: 104,
 } as const;
 
 // ============================================================

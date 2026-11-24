@@ -69,7 +69,8 @@ export interface UsePronunciationPracticeOptions {
   onStopNative: () => void;
 }
 
-const MAX_RECORD_MS = 4800;
+const MAX_WORD_RECORD_MS = 4800;
+const MAX_SENTENCE_RECORD_MS = 8500;
 
 function pickBestWebAudioMime(): string | undefined {
   if (typeof MediaRecorder === 'undefined' || !MediaRecorder.isTypeSupported) {
@@ -91,6 +92,8 @@ export function usePronunciationPractice({
   onStopNative,
 }: UsePronunciationPracticeOptions) {
   const normalizedWord = targetWord.trim().toLowerCase();
+  const isSentenceTarget = normalizedWord.split(/\s+/).filter(Boolean).length >= 3;
+  const maxRecordMs = isSentenceTarget ? MAX_SENTENCE_RECORD_MS : MAX_WORD_RECORD_MS;
 
   // 네이티브(iOS/Android) 임시 녹음기 — 앱 내 영구 저장 없이 세션 중 임시 캐시만 사용
   const nativeRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
@@ -98,6 +101,7 @@ export function usePronunciationPractice({
   const [isRecording, setIsRecording] = useState(false);
   const [isPlayingUser, setIsPlayingUser] = useState(false);
   const [isComparing, setIsComparing] = useState(false);
+  const [comparePhase, setComparePhase] = useState<'idle' | 'native' | 'user'>('idle');
   const [micLevel, setMicLevel] = useState(0);
   const [session, setSession] = useState<PracticeSessionState>({
     wordKey: normalizedWord,
@@ -166,6 +170,7 @@ export function usePronunciationPractice({
     if (mountedRef.current) {
       setIsPlayingUser(false);
       setIsComparing(false);
+      setComparePhase('idle');
     }
   }, []);
 
@@ -561,7 +566,7 @@ export function usePronunciationPractice({
         setIsRecording(true);
         autoStopTimerRef.current = setTimeout(() => {
           void stopRecording();
-        }, MAX_RECORD_MS);
+        }, maxRecordMs);
       } catch {
         teardownWebCapture();
         if (mountedRef.current) {
@@ -610,10 +615,9 @@ export function usePronunciationPractice({
         setMicLevel(0.45);
       }
 
-      // 네이티브에서는 4.5초 후 자동 종료
       autoStopTimerRef.current = setTimeout(() => {
         void stopRecording();
-      }, MAX_RECORD_MS);
+      }, maxRecordMs);
     } catch {
       if (mountedRef.current) {
         setIsRecording(false);
@@ -629,6 +633,7 @@ export function usePronunciationPractice({
     }
   }, [
     clearTimers,
+    maxRecordMs,
     nativeRecorder,
     normalizedWord,
     onStopNative,
@@ -659,6 +664,7 @@ export function usePronunciationPractice({
           if (mountedRef.current) {
             setIsPlayingUser(false);
             setIsComparing(false);
+            setComparePhase('idle');
           }
         };
         audio.onerror = () => {
@@ -668,6 +674,7 @@ export function usePronunciationPractice({
           if (mountedRef.current) {
             setIsPlayingUser(false);
             setIsComparing(false);
+            setComparePhase('idle');
           }
         };
         await audio.play();
@@ -675,6 +682,7 @@ export function usePronunciationPractice({
         if (mountedRef.current) {
           setIsPlayingUser(false);
           setIsComparing(false);
+          setComparePhase('idle');
         }
       }
       return;
@@ -705,6 +713,7 @@ export function usePronunciationPractice({
           if (mountedRef.current) {
             setIsPlayingUser(false);
             setIsComparing(false);
+            setComparePhase('idle');
           }
         }
       });
@@ -714,6 +723,7 @@ export function usePronunciationPractice({
       if (mountedRef.current) {
         setIsPlayingUser(false);
         setIsComparing(false);
+        setComparePhase('idle');
       }
     }
   }, [normalizedWord, onStopNative, session.recordingUri, session.wordKey, stopUserPlayback]);
@@ -725,12 +735,14 @@ export function usePronunciationPractice({
 
     stopUserPlayback();
     setIsComparing(true);
+    setComparePhase('native');
     void onPlayNative();
 
     const delayMs = Math.min(2200, Math.max(1250, 900 + Math.max(1, syllableCount) * 260));
     compareTimerRef.current = setTimeout(() => {
       compareTimerRef.current = null;
       if (!mountedRef.current) return;
+      setComparePhase('user');
       void playUserRecording();
     }, delayMs);
   }, [
@@ -747,6 +759,7 @@ export function usePronunciationPractice({
     disposeAll();
     setIsRecording(false);
     setMicLevel(0);
+    setComparePhase('idle');
     setSession({
       wordKey: normalizedWord,
       recordingUri: null,
@@ -762,6 +775,7 @@ export function usePronunciationPractice({
     isRecording,
     isPlayingUser,
     isComparing,
+    comparePhase,
     micLevel,
     hasRecording: isCurrentWordSession && Boolean(session.recordingUri),
     evaluation: isCurrentWordSession ? session.evaluation : null,

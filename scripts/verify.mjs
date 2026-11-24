@@ -81,14 +81,13 @@ const tokensPath = path.join(root, 'src', 'theme', 'tokens.ts');
 if (fs.existsSync(tokensPath)) {
   const tokensText = fs.readFileSync(tokensPath, 'utf8');
   const requiredTokens = [
-    '#F5F6F8',
+    '#FFFCF6',
     '#FFFFFF',
-    '#E1E4EA',
-    '#FF4C4B',
-    '#C92625',
-    '#FFF0F0',
-    '#FF983D',
-    '#2D2C2B',
+    '#EAE5DC',
+    '#F56823',
+    '#B53D0A',
+    '#FFF2E9',
+    '#2D2924',
     'SPOKAHANSANSNEO',
   ];
   const missingTokens = requiredTokens.filter(
@@ -97,7 +96,7 @@ if (fs.existsSync(tokensPath)) {
   if (missingTokens.length > 0) {
     fail('Design Tokens', `Missing required tokens: ${missingTokens.join(', ')}`);
   } else {
-    pass('Design Tokens', 'baro #FF4C4B light-gray brand palette & SpokaHanSansNeo font tokens verified');
+    pass('Design Tokens', 'baro #F56823 warm-neutral brand palette & SpokaHanSansNeo font tokens verified');
   }
 }
 

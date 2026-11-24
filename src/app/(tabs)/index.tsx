@@ -3,6 +3,7 @@ import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -14,6 +15,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { HorizontalChipScroll } from '../../components/HorizontalChipScroll';
 import { InfoTipBox, InfoTipButton } from '../../components/InfoTip';
 import { PronunciationPracticeCard } from '../../components/PronunciationPracticeCard';
 import { RhythmBlocks } from '../../components/RhythmBlocks';
@@ -30,9 +32,12 @@ import {
   translateEnglishSentenceToKorean,
   type RecommendedWordChip,
 } from '../../services/wordApi';
-import { useLearningStore } from '../../store/useLearningStore';
+import {
+  normalizeReviewWordKey,
+  useLearningStore,
+} from '../../store/useLearningStore';
 import { useWordCacheStore } from '../../store/useWordCacheStore';
-import { COLORS, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
+import { COLORS, LAYOUT, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
 import type { CoreWord, IpaSymbol, WordExample } from '../../types/learning';
 
 function formatShortChipMeaning(raw?: string): string {
@@ -70,11 +75,26 @@ export default function WordReaderScreen() {
   const recommendCursorRef = useRef<number | null>(null);
   const seenRecommendRef = useRef<Set<string>>(new Set());
   const mountedRef = useRef(true);
+  const [heartScale] = useState(() => new Animated.Value(1));
+
+  const triggerHeartPop = useCallback(() => {
+    heartScale.setValue(0.6);
+    Animated.spring(heartScale, {
+      toValue: 1,
+      stiffness: 300,
+      damping: 10,
+      mass: 0.6,
+      useNativeDriver: true,
+    }).start();
+  }, [heartScale]);
 
   const showKoPronunciation = useLearningStore((state) => state.showKoPronunciation);
   const learningHasHydrated = useLearningStore((state) => state.hasHydrated);
   const setShowKoPronunciation = useLearningStore(
     (state) => state.setShowKoPronunciation
+  );
+  const recordMasteryMissionComplete = useLearningStore(
+    (state) => state.recordMasteryMissionComplete
   );
 
   const cachedWords = useWordCacheStore((state) => state.cachedWords);
@@ -452,7 +472,7 @@ export default function WordReaderScreen() {
         {/* 심플 검색 Bento 카드 */}
         <View style={styles.searchCard}>
           <View style={styles.searchRow}>
-            <MagnifyingGlass size={22} color={COLORS.primary} />
+            <MagnifyingGlass size={22} color={COLORS.textMuted} />
             <TextInput
               value={query}
               onChangeText={setQuery}
@@ -511,10 +531,7 @@ export default function WordReaderScreen() {
 
           {/* 실시간 영단어 자동완성 후보 */}
           {visibleSuggestions.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
+            <HorizontalChipScroll
               contentContainerStyle={styles.chipsScrollContent}
             >
               {visibleSuggestions.map((sug) => (
@@ -536,7 +553,7 @@ export default function WordReaderScreen() {
                   </Text>
                 </Pressable>
               ))}
-            </ScrollView>
+            </HorizontalChipScroll>
           ) : null}
 
           {/* 추천 / 최근 전환 탭 + 한 줄 가로 스크롤 칩 */}
@@ -613,10 +630,7 @@ export default function WordReaderScreen() {
           </View>
 
           {activeChipTab === 'recent' ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
+            <HorizontalChipScroll
               contentContainerStyle={styles.chipsScrollContent}
             >
               {recentWordItems.map((item) => {
@@ -657,12 +671,9 @@ export default function WordReaderScreen() {
                   </Pressable>
                 );
               })}
-            </ScrollView>
+            </HorizontalChipScroll>
           ) : recommendedChips.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
+            <HorizontalChipScroll
               contentContainerStyle={styles.chipsScrollContent}
             >
               {recommendedChips.map((chip) => {
@@ -711,7 +722,7 @@ export default function WordReaderScreen() {
                   </Pressable>
                 );
               })}
-            </ScrollView>
+            </HorizontalChipScroll>
           ) : isLoadingChips ? (
             <View style={styles.chipsLoadingRow}>
               <ActivityIndicator size="small" color={COLORS.indigo} />
@@ -846,7 +857,7 @@ export default function WordReaderScreen() {
                     <View style={styles.nativeAudioBadge}>
                       <Microphone
                         size={16}
-                        color={COLORS.successText}
+                        color={COLORS.textSecondary}
                       />
                       <Text
                         style={styles.nativeAudioBadgeText}
@@ -859,7 +870,10 @@ export default function WordReaderScreen() {
                 </View>
 
                 <Pressable
-                  onPress={() => toggleBookmark(displayedWord)}
+                  onPress={() => {
+                    if (!isDisplayedWordBookmarked) triggerHeartPop();
+                    toggleBookmark(displayedWord);
+                  }}
                   style={({ pressed }) => [
                     styles.bookmarkToggleBtn,
                     isDisplayedWordBookmarked && styles.bookmarkToggleBtnActive,
@@ -873,11 +887,13 @@ export default function WordReaderScreen() {
                       : `${displayedWord.word} 저장`
                   }
                 >
-                  <Heart
-                    size={24}
-                    color={isDisplayedWordBookmarked ? COLORS.primary : COLORS.textMuted}
-                    weight={isDisplayedWordBookmarked ? 'fill' : 'regular'}
-                  />
+                  <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+                    <Heart
+                      size={24}
+                      color={isDisplayedWordBookmarked ? '#FF3B30' : COLORS.textMuted}
+                      weight={isDisplayedWordBookmarked ? 'fill' : 'regular'}
+                    />
+                  </Animated.View>
                 </Pressable>
               </View>
 
@@ -912,7 +928,7 @@ export default function WordReaderScreen() {
                 >
                   <View style={styles.toggleTextGroup}>
                     <Text style={styles.toggleLabel} maxFontSizeMultiplier={1.4}>
-                      한글 발음 힌트 보기
+                      한글 발음 힌트
                     </Text>
                     {showKoPronunciation ? (
                       <Text
@@ -926,28 +942,20 @@ export default function WordReaderScreen() {
                         style={styles.koHiddenText}
                         maxFontSizeMultiplier={1.4}
                       >
-                        꺼짐 (발음기호와 소리에 집중해요)
+                        발음기호와 소리에 집중해요
                       </Text>
                     )}
                   </View>
-                  <View style={styles.switchColumn}>
-                    <Switch
-                      value={showKoPronunciation}
-                      onValueChange={setShowKoPronunciation}
-                      trackColor={{
-                        false: COLORS.border,
-                        true: COLORS.teal,
-                      }}
-                      thumbColor={COLORS.white}
-                      accessibilityLabel="한글 발음 힌트 표시 켜기 끄기"
-                    />
-                    <Text
-                      style={styles.switchStateText}
-                      maxFontSizeMultiplier={1.3}
-                    >
-                      {showKoPronunciation ? '켜짐' : '꺼짐'}
-                    </Text>
-                  </View>
+                  <Switch
+                    value={showKoPronunciation}
+                    onValueChange={setShowKoPronunciation}
+                    trackColor={{
+                      false: COLORS.border,
+                      true: COLORS.primary,
+                    }}
+                    thumbColor={COLORS.white}
+                    accessibilityLabel="한글 발음 힌트 표시"
+                  />
                 </Pressable>
               ) : null}
 
@@ -1028,6 +1036,14 @@ export default function WordReaderScreen() {
               <RhythmBlocks
                 syllables={displayedWord.syllables}
                 showKoHint={learningHasHydrated ? showKoPronunciation : true}
+                word={displayedWord.word}
+                onPlayWord={() =>
+                  playNormal(displayedWord.word, {
+                    audioAsset: displayedWord.audioAsset,
+                    audioUrl: displayedWord.audioUrl,
+                    key: normalKey,
+                  })
+                }
               />
             </View>
 
@@ -1044,6 +1060,13 @@ export default function WordReaderScreen() {
                 })
               }
               onStopNative={stop}
+              koPronunciation={displayedWord.koPronunciation}
+              exampleSentence={displayedExamples[0]?.en}
+              onMasteryComplete={() =>
+                recordMasteryMissionComplete(
+                  normalizeReviewWordKey(displayedWord.word)
+                )
+              }
             />
 
             {/* 관련 생활 예문 카드 (Tatoeba · Wiktionary 상업용 무료 API) */}
@@ -1097,7 +1120,7 @@ export default function WordReaderScreen() {
                       ]}
                       maxFontSizeMultiplier={1.25}
                     >
-                      {showExampleKo ? '뜻 숨기기' : '뜻 보기'}
+                      뜻
                     </Text>
                   </Pressable>
                 </View>
@@ -1382,15 +1405,15 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   scrollContent: {
-    padding: SPACING.md,
-    paddingBottom: SPACING.xl * 2,
-    gap: SPACING.md,
+    padding: SPACING.sm,
+    paddingBottom: LAYOUT.floatingTabClearance,
+    gap: SPACING.sm,
   },
   searchCard: {
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.card,
-    padding: SPACING.md,
-    gap: 10,
+    padding: SPACING.sm,
+    gap: 8,
     ...SHADOW.card,
   },
   searchRow: {
@@ -1470,10 +1493,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   chipTabPillRecommendActive: {
-    backgroundColor: COLORS.indigoSoft,
+    backgroundColor: COLORS.surface,
   },
   chipTabPillRecentActive: {
-    backgroundColor: COLORS.tint,
+    backgroundColor: COLORS.surface,
   },
   chipTabText: {
     fontSize: 16,
@@ -1482,11 +1505,11 @@ const styles = StyleSheet.create({
   },
   chipTabTextRecommendActive: {
     fontWeight: '700',
-    color: COLORS.indigoText,
+    color: COLORS.text,
   },
   chipTabTextRecentActive: {
     fontWeight: '700',
-    color: COLORS.primaryDark,
+    color: COLORS.text,
   },
   suggestionChip: {
     minHeight: TOUCH.minTarget,
@@ -1533,13 +1556,13 @@ const styles = StyleSheet.create({
     color: COLORS.primaryDark,
   },
   levelDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: COLORS.success,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.borderStrong,
   },
   levelDotMid: {
-    backgroundColor: COLORS.accent,
+    backgroundColor: COLORS.textMuted,
   },
   refreshChipsBtn: {
     minHeight: 40,
@@ -1593,7 +1616,7 @@ const styles = StyleSheet.create({
   loadingTitle: {
     fontSize: TYPOGRAPHY.bodyLarge,
     fontWeight: '700',
-    color: COLORS.primaryDark,
+    color: COLORS.text,
     textAlign: 'center',
   },
   loadingSub: {
@@ -1642,8 +1665,8 @@ const styles = StyleSheet.create({
   wordHeroCard: {
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.card,
-    padding: SPACING.lg,
-    gap: SPACING.md,
+    padding: SPACING.md,
+    gap: SPACING.sm,
     ...SHADOW.card,
   },
   heroTopBar: {
@@ -1694,7 +1717,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   nativeAudioBadge: {
-    backgroundColor: COLORS.successSoft,
+    backgroundColor: COLORS.background,
     borderRadius: RADIUS.pill,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -1705,7 +1728,7 @@ const styles = StyleSheet.create({
   nativeAudioBadgeText: {
     fontSize: 12,
     fontWeight: '500',
-    color: COLORS.successText,
+    color: COLORS.textSecondary,
   },
   wordHero: {
     fontSize: TYPOGRAPHY.wordHero,
@@ -1715,7 +1738,7 @@ const styles = StyleSheet.create({
   wordMeaning: {
     fontSize: TYPOGRAPHY.sectionTitle,
     fontWeight: '700',
-    color: COLORS.primaryDark,
+    color: COLORS.textSecondary,
   },
   ipaPill: {
     backgroundColor: COLORS.purpleSoft,
@@ -1754,15 +1777,6 @@ const styles = StyleSheet.create({
   koHiddenText: {
     fontSize: TYPOGRAPHY.body,
     color: COLORS.textMuted,
-  },
-  switchColumn: {
-    alignItems: 'center',
-    gap: 2,
-  },
-  switchStateText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: COLORS.tealText,
   },
   audioButtonsRow: {
     flexDirection: 'row',
@@ -1814,7 +1828,7 @@ const styles = StyleSheet.create({
   sectionCard: {
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.card,
-    padding: SPACING.lg,
+    padding: SPACING.md,
     gap: SPACING.sm,
     ...SHADOW.card,
   },
