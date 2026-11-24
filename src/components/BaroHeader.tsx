@@ -1,4 +1,4 @@
-import { IconBookmark, IconBookmarkFilled, IconSearch } from '@tabler/icons-react-native';
+import { IconSearch, IconUser, IconUserFilled } from '@tabler/icons-react-native';
 import {
   Pressable,
   StyleSheet,
@@ -7,7 +7,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLearningStore } from '../store/useLearningStore';
-import { useWordCacheStore } from '../store/useWordCacheStore';
 import {
   COLORS,
   FONTS,
@@ -28,7 +27,7 @@ interface TabMeta {
 const TAB_ITEMS: TabMeta[] = [
   { name: 'index', label: '단어 읽기', softBg: COLORS.tint, textColor: COLORS.primary },
   { name: 'shorts', label: '발음 쇼츠', softBg: COLORS.roseSoft, textColor: COLORS.roseText },
-  { name: 'bookmarks', label: '북마크', softBg: COLORS.goldSoft, textColor: COLORS.goldText },
+  { name: 'bookmarks', label: '마이페이지', softBg: COLORS.successSoft, textColor: COLORS.successText },
   { name: 'symbols', label: '발음기호', softBg: COLORS.purpleSoft, textColor: COLORS.purpleText },
 ];
 
@@ -39,17 +38,16 @@ interface BaroHeaderProps {
 
 export function BaroHeader({ activeRouteName, onNavigateTab }: BaroHeaderProps) {
   const insets = useSafeAreaInsets();
+  const nickname = useLearningStore((state) => state.nickname);
+  const currentStreakDays = useLearningStore((state) => state.currentStreakDays);
 
-  const wordBookmarkCount = useWordCacheStore((state) =>
-    Array.isArray(state.bookmarkedWordKeys) ? state.bookmarkedWordKeys.length : 0
-  );
-  const symbolBookmarkCount = useLearningStore((state) =>
-    Array.isArray(state.bookmarkedSymbolIds) ? state.bookmarkedSymbolIds.length : 0
-  );
-
-  const totalBookmarkCount = wordBookmarkCount + symbolBookmarkCount;
   const activeTab =
     TAB_ITEMS.find((item) => item.name === activeRouteName) ?? TAB_ITEMS[0];
+  const displayLabel = nickname.trim()
+    ? nickname.trim()
+    : currentStreakDays > 0
+      ? `${currentStreakDays}일 연속`
+      : '마이';
 
   return (
     <View style={[styles.wrapper, { paddingTop: insets.top }]}>
@@ -112,26 +110,25 @@ export function BaroHeader({ activeRouteName, onNavigateTab }: BaroHeaderProps) 
             onPress={() => onNavigateTab('bookmarks')}
             hitSlop={6}
             accessibilityRole="button"
-            accessibilityLabel={`북마크 ${totalBookmarkCount}개 보기`}
+            accessibilityLabel="마이페이지로 이동"
           >
             {activeTab.name === 'bookmarks' ? (
-              <IconBookmarkFilled size={18} color={COLORS.white} />
+              <IconUserFilled size={17} color={COLORS.white} />
             ) : (
-              <IconBookmark size={18} color={COLORS.goldText} />
+              <IconUser size={17} color={COLORS.successText} />
             )}
-            {totalBookmarkCount > 0 ? (
-              <Text
-                style={[
-                  styles.bookmarkActionCount,
-                  activeTab.name === 'bookmarks'
-                    ? styles.bookmarkActionCountActive
-                    : null,
-                ]}
-                maxFontSizeMultiplier={1.2}
-              >
-                {totalBookmarkCount}
-              </Text>
-            ) : null}
+            <Text
+              style={[
+                styles.bookmarkActionCount,
+                activeTab.name === 'bookmarks'
+                  ? styles.bookmarkActionCountActive
+                  : null,
+              ]}
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.15}
+            >
+              {displayLabel}
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -199,26 +196,29 @@ const styles = StyleSheet.create({
   },
   bookmarkActionBtn: {
     minWidth: 38,
+    maxWidth: 128,
     height: 38,
-    paddingHorizontal: 11,
+    paddingHorizontal: 12,
     borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.goldSoft,
+    backgroundColor: COLORS.successSoft,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
   },
   bookmarkActionBtnActive: {
-    backgroundColor: COLORS.gold,
+    backgroundColor: COLORS.success,
   },
   bookmarkActionCount: {
     fontFamily: FONTS.family,
     fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.goldText,
+    fontWeight: '500',
+    color: COLORS.successText,
+    flexShrink: 1,
   },
   bookmarkActionCountActive: {
     color: COLORS.white,
+    fontWeight: '700',
   },
   pressed: {
     opacity: 0.78,

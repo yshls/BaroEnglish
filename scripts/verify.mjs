@@ -76,20 +76,19 @@ if (fs.existsSync(path.join(root, 'tsconfig.json')) && fs.existsSync(path.join(r
   pass('TypeScript (tsc --noEmit)', 'skipped (project not yet installed)');
 }
 
-// Gate 3: Design Tokens check (#FF4C4B brand main palette + Spoqa Han Sans Neo font)
+// Gate 3: Design Tokens check (baro Headspace-inspired warm palette + Spoqa Han Sans Neo font)
 const tokensPath = path.join(root, 'src', 'theme', 'tokens.ts');
 if (fs.existsSync(tokensPath)) {
   const tokensText = fs.readFileSync(tokensPath, 'utf8');
   const requiredTokens = [
-    '#F8F9FA',
+    '#F9F4F2',
     '#FFFFFF',
-    '#E9ECEF',
-    '#FF4C4B',
-    '#C92423',
-    '#FFF0F0',
-    '#E85C00',
-    '#B54400',
-    '#191F28',
+    '#E2DED9',
+    '#0061EF',
+    '#0000DB',
+    '#E6F0FF',
+    '#D99000',
+    '#2D2C2B',
     'SPOKAHANSANSNEO',
   ];
   const missingTokens = requiredTokens.filter(
@@ -98,7 +97,7 @@ if (fs.existsSync(tokensPath)) {
   if (missingTokens.length > 0) {
     fail('Design Tokens', `Missing required tokens: ${missingTokens.join(', ')}`);
   } else {
-    pass('Design Tokens', '#FF4C4B brand main palette & SpokaHanSansNeo font tokens verified');
+    pass('Design Tokens', 'baro warm brand palette & SpokaHanSansNeo font tokens verified');
   }
 }
 

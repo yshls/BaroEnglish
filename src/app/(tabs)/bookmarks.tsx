@@ -1,4 +1,22 @@
-import { IconBook2, IconBookmark, IconBookmarkFilled, IconChevronRight, IconCircleCheck, IconCircleX, IconGauge, IconPlayerPlay, IconSearch, IconVolume, IconVolume2 } from '@tabler/icons-react-native';
+import {
+  IconBook2,
+  IconBookmark,
+  IconBookmarkFilled,
+  IconChartBar,
+  IconCheck,
+  IconChevronRight,
+  IconCircleCheck,
+  IconCircleX,
+  IconClock,
+  IconFlameFilled,
+  IconGauge,
+  IconPencil,
+  IconPlayerPlay,
+  IconSearch,
+  IconUser,
+  IconVolume,
+  IconVolume2,
+} from '@tabler/icons-react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
@@ -12,7 +30,12 @@ import {
 import { SymbolDetailSheet } from '../../components/SymbolDetailSheet';
 import { IPA_SYMBOL_BY_ID } from '../../data/categories';
 import { useSpeechAudio } from '../../hooks/useSpeechAudio';
-import { useLearningStore } from '../../store/useLearningStore';
+import {
+  formatStudyDuration,
+  getLocalDateKey,
+  getRecentWeekDays,
+  useLearningStore,
+} from '../../store/useLearningStore';
 import { useWordCacheStore } from '../../store/useWordCacheStore';
 import { COLORS, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
 import type { CoreWord, IpaSymbol } from '../../types/learning';
@@ -23,6 +46,8 @@ export default function BookmarksScreen() {
   const [filter, setFilter] = useState<BookmarkFilter>('all');
   const [filterText, setFilterText] = useState('');
   const [activeSymbol, setActiveSymbol] = useState<IpaSymbol | null>(null);
+  const [isEditingNickname, setIsEditingNickname] = useState(false);
+  const [nicknameDraft, setNicknameDraft] = useState('');
   const navSeqRef = useRef(0);
 
   const cachedWords = useWordCacheStore((state) => state.cachedWords);
@@ -34,16 +59,28 @@ export default function BookmarksScreen() {
   const bookmarkedSymbolIds = useLearningStore((state) => state.bookmarkedSymbolIds);
   const toggleSymbolBookmark = useLearningStore((state) => state.toggleSymbolBookmark);
   const showKoPronunciation = useLearningStore((state) => state.showKoPronunciation);
+  const nickname = useLearningStore((state) => state.nickname);
+  const setNickname = useLearningStore((state) => state.setNickname);
+  const totalStudySeconds = useLearningStore((state) => state.totalStudySeconds);
+  const todayDateKey = useLearningStore((state) => state.todayDateKey);
+  const todayStudySeconds = useLearningStore((state) => state.todayStudySeconds);
+  const currentStreakDays = useLearningStore((state) => state.currentStreakDays);
+  const longestStreakDays = useLearningStore((state) => state.longestStreakDays);
+  const activeDateHistory = useLearningStore((state) => state.activeDateHistory);
+  const recordAppVisit = useLearningStore((state) => state.recordAppVisit);
   const learningHasHydrated = useLearningStore((state) => state.hasHydrated);
 
   const { playNormal, playSlow, stop, activeKey } = useSpeechAudio();
 
   useFocusEffect(
     useCallback(() => {
+      if (learningHasHydrated) {
+        recordAppVisit();
+      }
       return () => {
         stop();
       };
-    }, [stop])
+    }, [learningHasHydrated, recordAppVisit, stop])
   );
 
   const bookmarkedWords = useMemo(() => {
@@ -91,9 +128,36 @@ export default function BookmarksScreen() {
     });
   };
 
+  const handleStartEditNickname = () => {
+    setNicknameDraft(nickname);
+    setIsEditingNickname(true);
+  };
+
+  const handleSaveNickname = () => {
+    setNickname(nicknameDraft);
+    setIsEditingNickname(false);
+  };
+
   const isHydrated = cacheHasHydrated && learningHasHydrated;
   const totalCount = bookmarkedWords.length + bookmarkedSymbols.length;
   const shouldShowKoHint = learningHasHydrated ? showKoPronunciation : true;
+
+  const todayKey = getLocalDateKey();
+  const displayNickname = nickname.trim() || '학습자';
+  const avatarInitial = nickname.trim().slice(0, 1);
+  const displayStreak = Math.max(learningHasHydrated ? currentStreakDays : 1, 1);
+  const displayLongest = Math.max(longestStreakDays, displayStreak);
+  const displayTodaySec = todayDateKey === todayKey ? todayStudySeconds : 0;
+  const safeHistory = useMemo(
+    () => (Array.isArray(activeDateHistory) ? activeDateHistory : []),
+    [activeDateHistory]
+  );
+  const recentWeek = useMemo(() => getRecentWeekDays(7), []);
+  const activeDateSet = useMemo(() => new Set(safeHistory), [safeHistory]);
+  const weekCheckedCount = recentWeek.filter(
+    (d) => d.isToday || activeDateSet.has(d.key)
+  ).length;
+  const totalActiveDays = Math.max(safeHistory.length, 1);
 
   const showWordsSection =
     (filter === 'all' || filter === 'words') && filteredWords.length > 0;
@@ -108,7 +172,215 @@ export default function BookmarksScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* 상단 요약 + 전체/단어/발음기호 필터 탭 */}
+        {/* 1. 마이 프로필 & 닉네임 설정 카드 */}
+        <View style={styles.profileCard}>
+          <View style={styles.profileTopRow}>
+            <View style={styles.avatarCircle}>
+              {avatarInitial ? (
+                <Text style={styles.avatarInitialText} maxFontSizeMultiplier={1.2}>
+                  {avatarInitial}
+                </Text>
+              ) : (
+                <IconUser size={26} color={COLORS.successText} />
+              )}
+            </View>
+
+            <View style={styles.profileInfoCol}>
+              <Text style={styles.profileGreeting} maxFontSizeMultiplier={1.35}>
+                {displayNickname}님
+              </Text>
+              <Text style={styles.profileSub} maxFontSizeMultiplier={1.35}>
+                {displayStreak >= 2
+                  ? `${displayStreak}일 연속으로 바로영어와 함께하는 중이에요`
+                  : '오늘도 바로영어 학습을 시작했어요'}
+              </Text>
+            </View>
+
+            {!isEditingNickname ? (
+              <Pressable
+                onPress={handleStartEditNickname}
+                style={({ pressed }) => [
+                  styles.editNicknameBtn,
+                  pressed && styles.pressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="닉네임 설정 및 변경"
+              >
+                <IconPencil size={16} color={COLORS.textMuted} />
+                <Text style={styles.editNicknameBtnText} maxFontSizeMultiplier={1.2}>
+                  {nickname.trim() ? '변경' : '닉네임'}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+
+          {isEditingNickname ? (
+            <View style={styles.nicknameEditorBox}>
+              <TextInput
+                value={nicknameDraft}
+                onChangeText={setNicknameDraft}
+                placeholder="닉네임을 입력하세요 (최대 16자)"
+                placeholderTextColor={COLORS.textMuted}
+                style={styles.nicknameInput}
+                maxLength={16}
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={handleSaveNickname}
+                accessibilityLabel="닉네임 입력"
+              />
+              <View style={styles.nicknameEditorActions}>
+                <Pressable
+                  onPress={() => setIsEditingNickname(false)}
+                  style={({ pressed }) => [
+                    styles.nicknameCancelBtn,
+                    pressed && styles.pressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="닉네임 수정 취소"
+                >
+                  <Text style={styles.nicknameCancelText} maxFontSizeMultiplier={1.25}>
+                    취소
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleSaveNickname}
+                  style={({ pressed }) => [
+                    styles.nicknameSaveBtn,
+                    pressed && styles.pressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="닉네임 저장"
+                >
+                  <Text style={styles.nicknameSaveText} maxFontSizeMultiplier={1.25}>
+                    저장하기
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+        </View>
+
+        {/* 2. 학습 통계 & 연속 실행 기록 카드 */}
+        <View style={styles.statsCard}>
+          <View style={styles.statsHeaderRow}>
+            <Text style={styles.summaryTitle} maxFontSizeMultiplier={1.35}>
+              나의 학습 통계
+            </Text>
+            <View style={styles.liveTrackingPill}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveTrackingText} maxFontSizeMultiplier={1.2}>
+                실시간 기록 중
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.statsGrid}>
+            {/* 연속 실행 */}
+            <View style={[styles.statTile, styles.statTileStreak]}>
+              <View style={styles.statTileTop}>
+                <IconFlameFilled size={18} color={COLORS.accent} />
+                <Text style={styles.statLabelStreak} maxFontSizeMultiplier={1.2}>
+                  연속 실행
+                </Text>
+              </View>
+              <Text style={styles.statValue} maxFontSizeMultiplier={1.25}>
+                {displayStreak}일
+              </Text>
+              <Text style={styles.statSub} maxFontSizeMultiplier={1.2}>
+                최고 {displayLongest}일
+              </Text>
+            </View>
+
+            {/* 오늘 이용 시간 */}
+            <View style={[styles.statTile, styles.statTileToday]}>
+              <View style={styles.statTileTop}>
+                <IconClock size={18} color={COLORS.primary} />
+                <Text style={styles.statLabelToday} maxFontSizeMultiplier={1.2}>
+                  오늘 이용
+                </Text>
+              </View>
+              <Text style={styles.statValue} maxFontSizeMultiplier={1.25}>
+                {formatStudyDuration(displayTodaySec)}
+              </Text>
+              <Text style={styles.statSub} maxFontSizeMultiplier={1.2}>
+                오늘 누적
+              </Text>
+            </View>
+
+            {/* 총 누적 이용 시간 */}
+            <View style={[styles.statTile, styles.statTileTotal]}>
+              <View style={styles.statTileTop}>
+                <IconChartBar size={18} color={COLORS.purple} />
+                <Text style={styles.statLabelTotal} maxFontSizeMultiplier={1.2}>
+                  총 이용
+                </Text>
+              </View>
+              <Text style={styles.statValue} maxFontSizeMultiplier={1.25}>
+                {formatStudyDuration(totalStudySeconds)}
+              </Text>
+              <Text style={styles.statSub} maxFontSizeMultiplier={1.2}>
+                누적 {totalActiveDays}일 출석
+              </Text>
+            </View>
+          </View>
+
+          {/* 최근 7일 연속 출석 기록 */}
+          <View style={styles.streakWeekBox}>
+            <View style={styles.streakWeekHeader}>
+              <Text style={styles.streakWeekTitle} maxFontSizeMultiplier={1.25}>
+                최근 7일 연속 실행 기록
+              </Text>
+              <Text style={styles.streakWeekCount} maxFontSizeMultiplier={1.2}>
+                {weekCheckedCount}/7일
+              </Text>
+            </View>
+
+            <View style={styles.streakWeekRow}>
+              {recentWeek.map((day) => {
+                const isDone = day.isToday || activeDateSet.has(day.key);
+                return (
+                  <View key={day.key} style={styles.streakDayCol}>
+                    <Text
+                      style={[
+                        styles.streakWeekdayLabel,
+                        day.isToday && styles.streakWeekdayToday,
+                      ]}
+                      maxFontSizeMultiplier={1.2}
+                    >
+                      {day.isToday ? '오늘' : day.weekdayKo}
+                    </Text>
+                    <View
+                      style={[
+                        styles.streakDayCircle,
+                        isDone &&
+                          (day.isToday
+                            ? styles.streakDayCircleToday
+                            : styles.streakDayCircleDone),
+                      ]}
+                    >
+                      {isDone ? (
+                        day.isToday ? (
+                          <IconFlameFilled size={17} color={COLORS.white} />
+                        ) : (
+                          <IconCheck size={17} color={COLORS.white} />
+                        )
+                      ) : (
+                        <Text
+                          style={styles.streakDayNumText}
+                          maxFontSizeMultiplier={1.15}
+                        >
+                          {day.dayNum}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+
+        {/* 3. 내 북마크 섹션 */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryHeaderRow}>
             <View style={styles.summaryTitleCol}>
@@ -499,6 +771,248 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
     paddingBottom: SPACING.xl * 2,
     gap: SPACING.md,
+  },
+  profileCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.card,
+    padding: SPACING.lg,
+    gap: SPACING.md,
+    ...SHADOW.card,
+  },
+  profileTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+  },
+  avatarCircle: {
+    width: 54,
+    height: 54,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.successSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitialText: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.successText,
+  },
+  profileInfoCol: {
+    flex: 1,
+    gap: 3,
+  },
+  profileGreeting: {
+    fontSize: TYPOGRAPHY.sectionTitle,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  profileSub: {
+    fontSize: 15,
+    fontWeight: '400',
+    color: COLORS.textMuted,
+    lineHeight: 22,
+  },
+  editNicknameBtn: {
+    minHeight: 42,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.background,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  editNicknameBtnText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: COLORS.textMuted,
+  },
+  nicknameEditorBox: {
+    gap: SPACING.sm,
+  },
+  nicknameInput: {
+    minHeight: TOUCH.minTarget,
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: TYPOGRAPHY.body,
+    fontWeight: '500',
+    color: COLORS.text,
+  },
+  nicknameEditorActions: {
+    flexDirection: 'row',
+    gap: SPACING.xs,
+  },
+  nicknameCancelBtn: {
+    flex: 1,
+    minHeight: TOUCH.minTarget,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nicknameCancelText: {
+    fontSize: TYPOGRAPHY.body,
+    fontWeight: '500',
+    color: COLORS.textMuted,
+  },
+  nicknameSaveBtn: {
+    flex: 2,
+    minHeight: TOUCH.minTarget,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nicknameSaveText: {
+    fontSize: TYPOGRAPHY.body,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  statsCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.card,
+    padding: SPACING.lg,
+    gap: SPACING.md,
+    ...SHADOW.card,
+  },
+  statsHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
+  },
+  liveTrackingPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORS.successSoft,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    borderRadius: RADIUS.pill,
+  },
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.success,
+  },
+  liveTrackingText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: COLORS.successText,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
+  },
+  statTile: {
+    flexGrow: 1,
+    flexBasis: 100,
+    borderRadius: RADIUS.lg,
+    padding: 14,
+    gap: 6,
+  },
+  statTileStreak: {
+    backgroundColor: COLORS.accentSoft,
+  },
+  statTileToday: {
+    backgroundColor: COLORS.tint,
+  },
+  statTileTotal: {
+    backgroundColor: COLORS.purpleSoft,
+  },
+  statTileTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  statLabelStreak: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.accentText,
+  },
+  statLabelToday: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.primary,
+  },
+  statLabelTotal: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.purpleText,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  statSub: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: COLORS.textMuted,
+  },
+  streakWeekBox: {
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    gap: SPACING.sm,
+  },
+  streakWeekHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  streakWeekTitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: COLORS.text,
+  },
+  streakWeekCount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.successText,
+  },
+  streakWeekRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 4,
+  },
+  streakDayCol: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+  },
+  streakWeekdayLabel: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: COLORS.textMuted,
+  },
+  streakWeekdayToday: {
+    fontWeight: '700',
+    color: COLORS.accentText,
+  },
+  streakDayCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  streakDayCircleDone: {
+    backgroundColor: COLORS.success,
+  },
+  streakDayCircleToday: {
+    backgroundColor: COLORS.accent,
+  },
+  streakDayNumText: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: COLORS.textMuted,
   },
   summaryCard: {
     backgroundColor: COLORS.card,

@@ -1,4 +1,4 @@
-import { IconBook2, IconBookmark, IconBookmarkFilled, IconPlayerPlay, IconPlayerPlayFilled, IconVolume } from '@tabler/icons-react-native';
+import { IconBook2, IconPlayerPlay, IconPlayerPlayFilled, IconUser, IconUserFilled, IconVolume } from '@tabler/icons-react-native';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BaroHeader, type BaroTabName } from '../../components/BaroHeader';
@@ -79,21 +79,21 @@ export default function TabLayout() {
       <Tabs.Screen
         name="bookmarks"
         options={{
-          title: '북마크',
-          tabBarLabel: '북마크',
-          tabBarActiveTintColor: COLORS.gold,
+          title: '마이페이지',
+          tabBarLabel: '마이페이지',
+          tabBarActiveTintColor: COLORS.success,
           tabBarBadge: totalBookmarkCount > 0 ? totalBookmarkCount : undefined,
           tabBarBadgeStyle: {
-            backgroundColor: COLORS.gold,
+            backgroundColor: COLORS.success,
             color: COLORS.white,
             fontSize: 12,
             fontWeight: '700',
           },
           tabBarIcon: ({ focused }) =>
             focused ? (
-              <IconBookmarkFilled size={25} color={COLORS.gold} />
+              <IconUserFilled size={25} color={COLORS.success} />
             ) : (
-              <IconBookmark size={25} color={COLORS.textMuted} strokeWidth={1.5} />
+              <IconUser size={25} color={COLORS.textMuted} strokeWidth={1.5} />
             ),
         }}
       />

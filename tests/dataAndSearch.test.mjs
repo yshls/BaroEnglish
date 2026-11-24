@@ -248,3 +248,25 @@ test('UX polish: seamless inline example sentences, intact full word in symbol s
   assert.ok(sheetSrc.includes('splitWordBlock'), 'SymbolDetailSheet must render intact full word above syllable breakdown');
   assert.ok(parserSrc.includes('shouldUseShortIInsteadOfSchwa'), 'phoneticsParser must normalize CMUdict AH0 weak-vowel merger');
 });
+
+test('My Page (bookmarks tab) provides nickname setting, usage time stats, consecutive streak tracking, and bookmarks below', () => {
+  const storeSrc = fs.readFileSync(path.join(root, 'src/store/useLearningStore.ts'), 'utf8');
+  const trackerSrc = fs.readFileSync(path.join(root, 'src/hooks/useStudyTracker.ts'), 'utf8');
+  const rootLayoutSrc = fs.readFileSync(path.join(root, 'src/app/_layout.tsx'), 'utf8');
+  const myPageSrc = fs.readFileSync(path.join(root, 'src/app/(tabs)/bookmarks.tsx'), 'utf8');
+
+  assert.ok(storeSrc.includes('setNickname'), 'useLearningStore must expose setNickname');
+  assert.ok(storeSrc.includes('addStudySeconds'), 'useLearningStore must expose addStudySeconds');
+  assert.ok(storeSrc.includes('recordAppVisit'), 'useLearningStore must expose recordAppVisit');
+  assert.ok(storeSrc.includes('currentStreakDays'), 'useLearningStore must persist currentStreakDays');
+  assert.ok(trackerSrc.includes('AppState.addEventListener'), 'useStudyTracker must handle foreground/background');
+  assert.ok(rootLayoutSrc.includes('useStudyTracker'), 'RootLayout must mount useStudyTracker');
+  assert.ok(myPageSrc.includes('나의 학습 통계'), 'My Page must render study statistics section');
+  assert.ok(myPageSrc.includes('연속 실행'), 'My Page must render consecutive streak metric');
+  assert.ok(myPageSrc.includes('내가 저장한 북마크'), 'My Page must render bookmarks below stats');
+  assert.ok(
+    myPageSrc.indexOf('나의 학습 통계') < myPageSrc.indexOf('내가 저장한 북마크'),
+    'Stats and streak section must appear above bookmarks'
+  );
+});
+
