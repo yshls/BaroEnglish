@@ -11,7 +11,7 @@ import {
 } from '../../data/categories';
 import { useSpeechAudio } from '../../hooks/useSpeechAudio';
 import { useLearningStore } from '../../store/useLearningStore';
-import { COLORS, RADIUS, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
+import { COLORS, FONTS, RADIUS, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
 import type { IpaSymbol } from '../../types/learning';
 
 export default function IpaSymbolsScreen() {
@@ -253,6 +253,7 @@ const styles = StyleSheet.create({
   },
   welcomeTitle: {
     flex: 1,
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.bodyLarge,
     fontWeight: '800',
     color: COLORS.primaryDark,
@@ -265,6 +266,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   welcomeBody: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     lineHeight: 28,
     color: COLORS.text,
@@ -289,11 +291,13 @@ const styles = StyleSheet.create({
     minWidth: 180,
   },
   summaryLabel: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '600',
     color: COLORS.textMuted,
   },
   summaryCount: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.screenTitle,
     fontWeight: '800',
     color: COLORS.text,
@@ -306,6 +310,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   percentPillText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.bodyLarge,
     fontWeight: '800',
     color: COLORS.primaryDark,
@@ -339,11 +344,13 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   categoryStep: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.sectionTitle,
     fontWeight: '800',
     color: COLORS.text,
   },
   categorySubtitle: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     color: COLORS.textMuted,
   },
@@ -356,6 +363,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   categoryProgressText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '700',
     color: COLORS.primaryDark,
@@ -391,6 +399,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   symbolIpa: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.word,
     fontWeight: '800',
     color: COLORS.primaryDark,
@@ -401,11 +410,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   symbolKoHint: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '700',
     color: COLORS.text,
   },
   symbolExamplePreview: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     color: COLORS.textMuted,
     fontWeight: '500',

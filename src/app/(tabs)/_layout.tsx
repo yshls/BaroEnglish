@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
+import { COLORS, FONTS, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
@@ -15,6 +15,7 @@ export default function TabLayout() {
         },
         headerShadowVisible: false,
         headerTitleStyle: {
+          fontFamily: FONTS.family,
           fontSize: TYPOGRAPHY.sectionTitle,
           fontWeight: '700',
           color: COLORS.text,
@@ -30,6 +31,7 @@ export default function TabLayout() {
           paddingBottom: bottomPadding,
         },
         tabBarLabelStyle: {
+          fontFamily: FONTS.family,
           fontSize: 16,
           fontWeight: '700',
           marginTop: 2,

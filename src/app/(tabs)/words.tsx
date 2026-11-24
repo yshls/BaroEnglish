@@ -29,7 +29,7 @@ import {
   STARTER_SEARCH_CHIPS,
   useWordCacheStore,
 } from '../../store/useWordCacheStore';
-import { COLORS, RADIUS, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
+import { COLORS, FONTS, RADIUS, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
 import type { CoreWord, IpaSymbol } from '../../types/learning';
 
 const GENTLE = LayoutAnimation.Presets.easeInEaseOut;
@@ -797,6 +797,7 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   searchLabel: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.bodyLarge,
     fontWeight: '800',
     color: COLORS.text,
@@ -814,6 +815,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.bodyLarge,
     color: COLORS.text,
     paddingVertical: 10,
@@ -839,6 +841,7 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
   searchSubmitBtnText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.bodyLarge,
     fontWeight: '800',
     color: COLORS.white,
@@ -848,6 +851,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chipsLabel: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '700',
     color: COLORS.textMuted,
@@ -868,6 +872,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   suggestionChipText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '800',
     color: COLORS.accentText,
@@ -888,6 +893,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   wordChipText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '700',
     color: COLORS.text,
@@ -905,12 +911,14 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   loadingTitle: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.bodyLarge,
     fontWeight: '800',
     color: COLORS.primaryDark,
     textAlign: 'center',
   },
   loadingSub: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     color: COLORS.textMuted,
     textAlign: 'center',
@@ -931,11 +939,13 @@ const styles = StyleSheet.create({
   },
   fallbackTitle: {
     flex: 1,
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.sectionTitle,
     fontWeight: '800',
     color: COLORS.accentText,
   },
   fallbackBody: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     lineHeight: 28,
     color: COLORS.text,
@@ -951,6 +961,7 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
   },
   koreanOnlyNoticeText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     lineHeight: 26,
     fontWeight: '600',
@@ -1011,6 +1022,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   posBadgeText: {
+    fontFamily: FONTS.family,
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.textMuted,
@@ -1025,16 +1037,19 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   nativeAudioBadgeText: {
+    fontFamily: FONTS.family,
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.primaryDark,
   },
   wordHero: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.wordHero,
     fontWeight: '800',
     color: COLORS.text,
   },
   wordMeaning: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.sectionTitle,
     fontWeight: '700',
     color: COLORS.primaryDark,
@@ -1048,6 +1063,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary,
   },
   ipaPillText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.ipa,
     fontWeight: '800',
     color: COLORS.primaryDark,
@@ -1068,11 +1084,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   toggleLabel: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '700',
     color: COLORS.textMuted,
   },
   koPronunciationText: {
+    fontFamily: FONTS.family,
     fontSize: 24,
     fontWeight: '800',
     color: COLORS.text,
@@ -1101,6 +1119,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryDark,
   },
   primaryBtnText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '800',
     color: COLORS.white,
@@ -1123,6 +1142,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.accent,
   },
   slowBtnText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '800',
     color: COLORS.primaryDark,
@@ -1136,11 +1156,13 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   sectionTitle: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.sectionTitle,
     fontWeight: '800',
     color: COLORS.text,
   },
   exampleSentence: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.bodyLarge,
     lineHeight: 30,
     fontWeight: '600',
@@ -1172,11 +1194,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   symbolBacktrackIpa: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.ipa,
     fontWeight: '800',
     color: COLORS.primaryDark,
   },
   symbolBacktrackHint: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '700',
     color: COLORS.text,
@@ -1187,6 +1211,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   attributionText: {
+    fontFamily: FONTS.family,
     fontSize: 16,
     color: COLORS.textMuted,
     textAlign: 'center',

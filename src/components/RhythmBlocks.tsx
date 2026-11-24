@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../theme/tokens';
+import { COLORS, FONTS, RADIUS, SPACING, TYPOGRAPHY } from '../theme/tokens';
 import type { SyllableItem } from '../types/learning';
 
 interface RhythmBlocksProps {
@@ -145,6 +145,7 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
   },
   rhythmBarLabel: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '700',
     color: COLORS.text,
@@ -155,14 +156,17 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   dotPrimary: {
+    fontFamily: FONTS.family,
     fontSize: 26,
     color: COLORS.accentText, // #B45309 — #F7F5F0 배경 대비 4.5:1+ 고대비
   },
   dotSecondary: {
+    fontFamily: FONTS.family,
     fontSize: 20,
     color: COLORS.primary,
   },
   dotNormal: {
+    fontFamily: FONTS.family,
     fontSize: 16,
     color: COLORS.textMuted,
   },
@@ -213,6 +217,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   primaryTagText: {
+    fontFamily: FONTS.family,
     fontSize: 16,
     fontWeight: '800',
     color: COLORS.white,
@@ -227,16 +232,19 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   secondaryTagText: {
+    fontFamily: FONTS.family,
     fontSize: 15,
     fontWeight: '700',
     color: COLORS.primaryDark,
   },
   normalDotSmall: {
+    fontFamily: FONTS.family,
     fontSize: 15,
     color: COLORS.textMuted,
     marginBottom: 2,
   },
   syllableText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.syllableNormal,
     fontWeight: '800',
     color: COLORS.text,
@@ -250,6 +258,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   syllableIpa: {
+    fontFamily: FONTS.family,
     fontSize: 18,
     fontWeight: '600',
     color: COLORS.textMuted,
@@ -260,6 +269,7 @@ const styles = StyleSheet.create({
     color: COLORS.accentText,
   },
   syllableKoHint: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '700',
     color: COLORS.text,
@@ -280,6 +290,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   schwaBadgeText: {
+    fontFamily: FONTS.family,
     fontSize: 16,
     fontWeight: '700',
     color: COLORS.textMuted,

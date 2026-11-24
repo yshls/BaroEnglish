@@ -1,7 +1,16 @@
-/**
- * 바로영어 (baro-english) 시니어 친화 디자인 토큰
- * SPEC.md Section 2 기준 (50대 영어 왕초보 맞춤형)
- */
+import { Platform } from 'react-native';
+
+
+
+
+export const FONT_FAMILY_NAME = 'SpokaHanSansNeo';
+
+export const FONTS = {
+  family:
+    Platform.select({
+      web: `'${FONT_FAMILY_NAME}', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`,
+      default: FONT_FAMILY_NAME,
+    }) ?? FONT_FAMILY_NAME,
 
 export const PALETTE = {
   blue: {

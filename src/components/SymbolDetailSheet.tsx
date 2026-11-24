@@ -12,7 +12,7 @@ import { Tap } from './Tap';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSpeechAudio } from '../hooks/useSpeechAudio';
 import { useLearningStore } from '../store/useLearningStore';
-import { COLORS, RADIUS, SPACING, TOUCH, TYPOGRAPHY } from '../theme/tokens';
+import { COLORS, FONTS, RADIUS, SPACING, TOUCH, TYPOGRAPHY } from '../theme/tokens';
 import type { IpaSymbol } from '../types/learning';
 
 interface SymbolDetailSheetProps {
@@ -311,16 +311,19 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   contextBadgeText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '700',
     color: COLORS.primaryDark,
   },
   ipaHero: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.wordHero,
     fontWeight: '800',
     color: COLORS.primaryDark,
   },
   titleKo: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.sectionTitle,
     fontWeight: '700',
     color: COLORS.text,
@@ -365,11 +368,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   guideLabel: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.bodyLarge,
     fontWeight: '700',
     color: COLORS.primaryDark,
   },
   guideBody: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.bodyLarge,
     lineHeight: 30,
     color: COLORS.text,
@@ -387,11 +392,13 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
   },
   hintPillLabel: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '600',
     color: COLORS.primaryDark,
   },
   hintPillValue: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.bodyLarge,
     fontWeight: '800',
     color: COLORS.primaryDark,
@@ -400,6 +407,7 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   sectionTitle: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.bodyLarge,
     fontWeight: '700',
     color: COLORS.text,
@@ -423,11 +431,13 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   exampleWord: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.ipa,
     fontWeight: '800',
     color: COLORS.text,
   },
   exampleMeta: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     color: COLORS.textMuted,
     fontWeight: '600',
@@ -454,6 +464,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryDark,
   },
   playBtnPrimaryText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '700',
     color: COLORS.white,
@@ -478,6 +489,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.accent,
   },
   playBtnSlowText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '700',
     color: COLORS.primaryDark,
@@ -504,6 +516,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary,
   },
   learnedButtonText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.bodyLarge,
     fontWeight: '800',
   },

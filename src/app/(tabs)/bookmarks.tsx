@@ -13,7 +13,7 @@ import { IPA_SYMBOL_BY_ID } from '../../data/categories';
 import { useSpeechAudio } from '../../hooks/useSpeechAudio';
 import { useLearningStore } from '../../store/useLearningStore';
 import { useWordCacheStore } from '../../store/useWordCacheStore';
-import { COLORS, RADIUS, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
+import { COLORS, FONTS, RADIUS, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
 import type { CoreWord, IpaSymbol } from '../../types/learning';
 
 type BookmarkFilter = 'all' | 'words' | 'symbols';
@@ -430,6 +430,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary,
   },
   filterPillText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '700',
     color: COLORS.text,
@@ -455,12 +456,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyTitle: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.sectionTitle,
     fontWeight: '800',
     color: COLORS.text,
     textAlign: 'center',
   },
   emptyBody: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     lineHeight: 28,
     color: COLORS.textMuted,
@@ -477,6 +480,7 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   sectionTitle: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.sectionTitle,
     fontWeight: '800',
     color: COLORS.text,
@@ -508,11 +512,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   wordText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.word,
     fontWeight: '800',
     color: COLORS.text,
   },
   meaningText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.bodyLarge,
     fontWeight: '700',
     color: COLORS.primaryDark,
@@ -525,11 +531,13 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   ipaText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '700',
     color: COLORS.primary,
   },
   koPronText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '600',
     color: COLORS.textMuted,
@@ -568,6 +576,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryDark,
   },
   primaryBtnText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '800',
     color: COLORS.white,
@@ -590,6 +599,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.accent,
   },
   slowBtnText: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '800',
     color: COLORS.primaryDark,
@@ -624,6 +634,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   symbolIpa: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.word,
     fontWeight: '800',
     color: COLORS.primaryDark,
@@ -634,11 +645,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   symbolKoHint: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     fontWeight: '700',
     color: COLORS.text,
   },
   symbolExample: {
+    fontFamily: FONTS.family,
     fontSize: TYPOGRAPHY.body,
     color: COLORS.textMuted,
     fontWeight: '500',
