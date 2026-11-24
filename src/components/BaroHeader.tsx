@@ -1,4 +1,4 @@
-import { MagnifyingGlass, User } from './PlumpIcons';
+import { Fire, MagnifyingGlass } from './PlumpIcons';
 import {
   Pressable,
   StyleSheet,
@@ -24,16 +24,10 @@ interface BaroHeaderProps {
 
 export function BaroHeader({ activeRouteName, onNavigateTab }: BaroHeaderProps) {
   const insets = useSafeAreaInsets();
-  const nickname = useLearningStore((state) => state.nickname);
   const currentStreakDays = useLearningStore((state) => state.currentStreakDays);
 
   const isIndexTab = activeRouteName === 'index' || !activeRouteName;
-  const isMyPageTab = activeRouteName === 'bookmarks';
-  const displayLabel = nickname.trim()
-    ? nickname.trim()
-    : currentStreakDays > 0
-      ? `${currentStreakDays}일 연속`
-      : '마이';
+  const hasStreak = currentStreakDays > 0;
 
   return (
     <View style={[styles.wrapper, { paddingTop: insets.top }]}>
@@ -51,7 +45,7 @@ export function BaroHeader({ activeRouteName, onNavigateTab }: BaroHeaderProps) 
           </Text>
         </Pressable>
 
-        {/* 우측: 빠른 액션 */}
+        {/* 우측: 빠른 검색 + 연속 학습 일수 */}
         <View style={styles.rightGroup}>
           {!isIndexTab ? (
             <Pressable
@@ -68,33 +62,27 @@ export function BaroHeader({ activeRouteName, onNavigateTab }: BaroHeaderProps) 
             </Pressable>
           ) : null}
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.bookmarkActionBtn,
-              isMyPageTab ? styles.bookmarkActionBtnActive : null,
-              pressed && styles.pressed,
-            ]}
-            onPress={() => onNavigateTab('bookmarks')}
-            hitSlop={6}
-            accessibilityRole="button"
-            accessibilityLabel="마이페이지로 이동"
+          <View
+            style={styles.streakBadge}
+            accessible
+            accessibilityLabel={`연속 학습 ${currentStreakDays}일`}
           >
-            <User
-              size={17}
-              color={isMyPageTab ? COLORS.white : COLORS.text}
-              weight={isMyPageTab ? 'fill' : 'regular'}
+            <Fire
+              size={16}
+              color={hasStreak ? COLORS.primary : COLORS.textMuted}
+              weight={hasStreak ? 'fill' : 'regular'}
             />
             <Text
               style={[
-                styles.bookmarkActionCount,
-                isMyPageTab ? styles.bookmarkActionCountActive : null,
+                styles.streakText,
+                !hasStreak && styles.streakTextMuted,
               ]}
               numberOfLines={1}
               maxFontSizeMultiplier={1.15}
             >
-              {displayLabel}
+              {`${currentStreakDays}일`}
             </Text>
-          </Pressable>
+          </View>
         </View>
       </View>
     </View>
@@ -143,31 +131,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bookmarkActionBtn: {
-    minWidth: 38,
-    maxWidth: 128,
-    height: 38,
-    paddingHorizontal: 12,
+  streakBadge: {
+    height: 36,
+    paddingHorizontal: 11,
     borderRadius: RADIUS.pill,
     backgroundColor: COLORS.surface,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
+    gap: 4,
   },
-  bookmarkActionBtnActive: {
-    backgroundColor: COLORS.text,
-  },
-  bookmarkActionCount: {
+  streakText: {
     fontFamily: FONTS.family,
     fontSize: 14,
-    fontWeight: '500',
-    color: COLORS.text,
-    flexShrink: 1,
-  },
-  bookmarkActionCountActive: {
-    color: COLORS.white,
     fontWeight: '700',
+    color: COLORS.text,
+  },
+  streakTextMuted: {
+    fontWeight: '500',
+    color: COLORS.textMuted,
   },
   pressed: {
     opacity: 0.78,
