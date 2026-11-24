@@ -1,6 +1,5 @@
 import { Fire, MagnifyingGlass } from './PlumpIcons';
 import {
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -13,6 +12,7 @@ import {
   SHADOW,
   SPACING,
 } from '../theme/tokens';
+import { Tap } from './Tap';
 
 export type BaroTabName = 'index' | 'shorts' | 'symbols' | 'bookmarks';
 
@@ -37,8 +37,9 @@ export function BaroHeader({ activeRouteName, onNavigateTab }: BaroHeaderProps) 
     <View style={[styles.wrapper, { paddingTop: insets.top }]}>
       <View style={styles.inner}>
         {/* 좌측: baro 브랜드 워드마크 로고 */}
-        <Pressable
-          style={({ pressed }) => [styles.brandButton, pressed && styles.pressed]}
+        <Tap
+          feel="snappy"
+          style={styles.brandButton}
           onPress={() => onNavigateTab('index')}
           hitSlop={6}
           accessibilityRole="button"
@@ -47,23 +48,21 @@ export function BaroHeader({ activeRouteName, onNavigateTab }: BaroHeaderProps) 
           <Text style={styles.brandText} maxFontSizeMultiplier={1.2}>
             baro
           </Text>
-        </Pressable>
+        </Tap>
 
         {/* 우측: 빠른 검색 + 연속 학습 일수 */}
         <View style={styles.rightGroup}>
           {!isIndexTab ? (
-            <Pressable
-              style={({ pressed }) => [
-                styles.iconActionBtn,
-                pressed && styles.pressed,
-              ]}
+            <Tap
+              feel="snappy"
+              style={styles.iconActionBtn}
               onPress={() => onNavigateTab('index')}
               hitSlop={6}
               accessibilityRole="button"
               accessibilityLabel="단어 검색으로 이동"
             >
               <MagnifyingGlass size={19} color={COLORS.text} />
-            </Pressable>
+            </Tap>
           ) : null}
 
           <View
@@ -153,8 +152,5 @@ const styles = StyleSheet.create({
   streakTextMuted: {
     fontWeight: '500',
     color: COLORS.textMuted,
-  },
-  pressed: {
-    opacity: 0.78,
   },
 });

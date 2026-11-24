@@ -8,7 +8,6 @@ import {
 } from 'react';
 import {
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   View,
@@ -20,6 +19,7 @@ import {
 } from 'react-native';
 import { COLORS, RADIUS, SHADOW } from '../theme/tokens';
 import { CaretRight } from './PlumpIcons';
+import { Tap } from './Tap';
 
 interface HorizontalChipScrollProps {
   children: ReactNode;
@@ -185,35 +185,31 @@ export function HorizontalChipScroll({
       </ScrollView>
 
       {canScrollLeft ? (
-        <Pressable
+        <Tap
+          feel="snappy"
+          pressedScale={0.88}
           onPress={() => scrollByStep('left')}
-          style={({ pressed }) => [
-            styles.navBtn,
-            styles.navBtnLeft,
-            pressed && styles.pressed,
-          ]}
+          style={[styles.navBtn, styles.navBtnLeft]}
           accessibilityRole="button"
           accessibilityLabel="이전 칩 보기"
         >
           <View style={styles.leftIconFlip}>
             <CaretRight size={16} color={COLORS.text} weight="bold" />
           </View>
-        </Pressable>
+        </Tap>
       ) : null}
 
       {canScrollRight ? (
-        <Pressable
+        <Tap
+          feel="snappy"
+          pressedScale={0.88}
           onPress={() => scrollByStep('right')}
-          style={({ pressed }) => [
-            styles.navBtn,
-            styles.navBtnRight,
-            pressed && styles.pressed,
-          ]}
+          style={[styles.navBtn, styles.navBtnRight]}
           accessibilityRole="button"
           accessibilityLabel="다음 칩 더 보기"
         >
           <CaretRight size={16} color={COLORS.text} weight="bold" />
-        </Pressable>
+        </Tap>
       ) : null}
     </View>
   );
@@ -255,9 +251,5 @@ const styles = StyleSheet.create({
   },
   leftIconFlip: {
     transform: [{ rotate: '180deg' }],
-  },
-  pressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.94 }],
   },
 });

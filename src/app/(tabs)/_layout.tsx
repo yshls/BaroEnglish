@@ -26,6 +26,15 @@ export default function TabLayout() {
         />
       )}
       screenOptions={{
+        animation: 'shift',
+        transitionSpec: {
+          animation: 'spring',
+          config: {
+            stiffness: 320,
+            damping: 28,
+            mass: 0.8,
+          },
+        },
         header: ({ navigation, route }) => (
           <BaroHeader
             activeRouteName={route.name}

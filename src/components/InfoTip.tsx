@@ -2,13 +2,14 @@ import type { ReactNode } from 'react';
 import {
   LayoutAnimation,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { Info, X } from './PlumpIcons';
 import { COLORS, RADIUS } from '../theme/tokens';
+import { Info, X } from './PlumpIcons';
+import { SpringReveal } from './SpringMotion';
+import { Tap } from './Tap';
 
 function animateToggle() {
   if (Platform.OS !== 'web') {
@@ -28,17 +29,15 @@ export function InfoTipButton({
   accessibilityLabel = '설명 보기',
 }: InfoTipButtonProps) {
   return (
-    <Pressable
+    <Tap
+      feel="playful"
+      pressedScale={0.88}
       onPress={() => {
         animateToggle();
         onToggle();
       }}
       hitSlop={10}
-      style={({ pressed }) => [
-        styles.button,
-        open && styles.buttonOpen,
-        pressed && styles.pressed,
-      ]}
+      style={[styles.button, open && styles.buttonOpen]}
       accessibilityRole="button"
       accessibilityState={{ expanded: open }}
       accessibilityLabel={open ? `${accessibilityLabel} 닫기` : accessibilityLabel}
@@ -48,7 +47,7 @@ export function InfoTipButton({
         color={open ? COLORS.primary : COLORS.textMuted}
         weight={open ? 'fill' : 'regular'}
       />
-    </Pressable>
+    </Tap>
   );
 }
 
@@ -70,40 +69,44 @@ export function InfoTipBox({
   if (!visible) return null;
 
   return (
-    <View
-      style={[
-        styles.box,
-        variant === 'surface' ? styles.boxSurface : styles.boxSubtle,
-      ]}
-    >
-      <Info
-        size={15}
-        color={COLORS.primaryDark}
-        weight="fill"
-        style={styles.boxIcon}
-      />
-      {children ? (
-        <View style={styles.boxContent}>{children}</View>
-      ) : (
-        <Text style={styles.boxText} maxFontSizeMultiplier={1.4}>
-          {text}
-        </Text>
-      )}
-      {onClose ? (
-        <Pressable
-          onPress={() => {
-            animateToggle();
-            onClose();
-          }}
-          hitSlop={10}
-          style={({ pressed }) => [styles.closeBtn, pressed && styles.pressed]}
-          accessibilityRole="button"
-          accessibilityLabel="설명 닫기"
-        >
-          <X size={13} color={COLORS.textMuted} />
-        </Pressable>
-      ) : null}
-    </View>
+    <SpringReveal distance={-6} initialScale={0.97} feel="snappy">
+      <View
+        style={[
+          styles.box,
+          variant === 'surface' ? styles.boxSurface : styles.boxSubtle,
+        ]}
+      >
+        <Info
+          size={15}
+          color={COLORS.primaryDark}
+          weight="fill"
+          style={styles.boxIcon}
+        />
+        {children ? (
+          <View style={styles.boxContent}>{children}</View>
+        ) : (
+          <Text style={styles.boxText} maxFontSizeMultiplier={1.4}>
+            {text}
+          </Text>
+        )}
+        {onClose ? (
+          <Tap
+            feel="snappy"
+            pressedScale={0.86}
+            onPress={() => {
+              animateToggle();
+              onClose();
+            }}
+            hitSlop={10}
+            style={styles.closeBtn}
+            accessibilityRole="button"
+            accessibilityLabel="설명 닫기"
+          >
+            <X size={13} color={COLORS.textMuted} />
+          </Tap>
+        ) : null}
+      </View>
+    </SpringReveal>
   );
 }
 
@@ -154,8 +157,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
-  },
-  pressed: {
-    opacity: 0.72,
   },
 });

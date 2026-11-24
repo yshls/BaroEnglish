@@ -86,6 +86,9 @@ export function FloatingPillTabBar({
   const [iconScales] = useState<Record<string, Animated.Value>>(() =>
     Object.fromEntries(TAB_ORDER.map((name) => [name, new Animated.Value(1)]))
   );
+  const [pressScales] = useState<Record<string, Animated.Value>>(() =>
+    Object.fromEntries(TAB_ORDER.map((name) => [name, new Animated.Value(1)]))
+  );
   const hasMeasuredRef = useRef(false);
 
   const tabCount = Math.max(1, orderedRoutes.length);
@@ -105,9 +108,9 @@ export function FloatingPillTabBar({
 
     Animated.spring(slideAnim, {
       toValue: targetX,
-      stiffness: 260,
-      damping: 24,
-      mass: 0.85,
+      stiffness: 290,
+      damping: 22,
+      mass: 0.78,
       useNativeDriver: USE_NATIVE_DRIVER,
     }).start();
   }, [activeOrderedIdx, slideAnim, slotWidth]);
@@ -115,14 +118,26 @@ export function FloatingPillTabBar({
   useEffect(() => {
     if (!activeRouteName) return;
     const scale = iconScales[activeRouteName] ?? defaultIconScale;
-    scale.setValue(0.84);
+    scale.setValue(0.82);
     Animated.spring(scale, {
       toValue: 1,
-      friction: 4.5,
-      tension: 180,
+      stiffness: 280,
+      damping: 13,
+      mass: 0.75,
       useNativeDriver: USE_NATIVE_DRIVER,
     }).start();
   }, [activeRouteKey, activeRouteName, defaultIconScale, iconScales]);
+
+  const animateTabPress = (name: string, toValue: number) => {
+    const pressScale = pressScales[name] ?? defaultIconScale;
+    Animated.spring(pressScale, {
+      toValue,
+      stiffness: toValue < 1 ? 480 : 280,
+      damping: toValue < 1 ? 26 : 15,
+      mass: 0.7,
+      useNativeDriver: USE_NATIVE_DRIVER,
+    }).start();
+  };
 
   const handleBarLayout = (e: LayoutChangeEvent) => {
     const nextWidth = e.nativeEvent.layout.width;
@@ -186,6 +201,7 @@ export function FloatingPillTabBar({
           const showBadge = route.name === 'bookmarks' && bookmarkCount > 0;
           const badgeText = bookmarkCount > 99 ? '99+' : String(bookmarkCount);
           const iconScale = iconScales[route.name] ?? defaultIconScale;
+          const pressScale = pressScales[route.name] ?? defaultIconScale;
 
           return (
             <Pressable
@@ -195,32 +211,37 @@ export function FloatingPillTabBar({
               accessibilityLabel={options?.tabBarAccessibilityLabel ?? label}
               onPress={onPress}
               onLongPress={onLongPress}
-              style={({ pressed }) => [
+              onPressIn={() => animateTabPress(route.name, 0.91)}
+              onPressOut={() => animateTabPress(route.name, 1)}
+              style={[
                 styles.tabItem,
                 slotWidth <= 0 && isFocused && styles.tabItemActive,
-                pressed && styles.tabItemPressed,
               ]}
             >
               <Animated.View
-                style={[styles.iconWrap, { transform: [{ scale: iconScale }] }]}
+                style={[styles.tabItemInner, { transform: [{ scale: pressScale }] }]}
               >
-                {renderTabIcon(route.name, isFocused)}
-                {showBadge ? (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText} allowFontScaling={false}>
-                      {badgeText}
-                    </Text>
-                  </View>
-                ) : null}
+                <Animated.View
+                  style={[styles.iconWrap, { transform: [{ scale: iconScale }] }]}
+                >
+                  {renderTabIcon(route.name, isFocused)}
+                  {showBadge ? (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText} allowFontScaling={false}>
+                        {badgeText}
+                      </Text>
+                    </View>
+                  ) : null}
+                </Animated.View>
+                <Text
+                  style={[styles.tabLabel, isFocused && styles.tabLabelActive]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  allowFontScaling={true}
+                >
+                  {label}
+                </Text>
               </Animated.View>
-              <Text
-                style={[styles.tabLabel, isFocused && styles.tabLabelActive]}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-                allowFontScaling={true}
-              >
-                {label}
-              </Text>
             </Pressable>
           );
         })}
@@ -275,9 +296,10 @@ const styles = StyleSheet.create({
   tabItemActive: {
     backgroundColor: COLORS.surface,
   },
-  tabItemPressed: {
-    backgroundColor: COLORS.background,
-    transform: [{ scale: 0.96 }],
+  tabItemInner: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
   },
   iconWrap: {
     position: 'relative',
