@@ -6,14 +6,22 @@ import { AccessibilityInfo, Platform } from 'react-native';
  * true일 때는 스프링 바운스·슬라이드를 생략하고 즉시 상태만 반영합니다.
  */
 export function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
+  const [reduced, setReduced] = useState(() => {
+    if (
+      Platform.OS === 'web' &&
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function'
+    ) {
+      return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }
+    return false;
+  });
 
   useEffect(() => {
     let mounted = true;
 
     if (Platform.OS === 'web' && typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
       const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-      setReduced(mq.matches);
       const onChange = (event: MediaQueryListEvent) => {
         if (mounted) setReduced(event.matches);
       };

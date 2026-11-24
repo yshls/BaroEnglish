@@ -122,6 +122,7 @@ interface SpringSheetProps {
   dismissLabel?: string;
   sheetStyle?: StyleProp<ViewStyle>;
   maxWidth?: number;
+  statusBarTranslucent?: boolean;
 }
 
 const SHEET_HIDDEN_Y = 56;
@@ -137,7 +138,8 @@ export function SpringSheet({
   children,
   dismissLabel = '창 닫기',
   sheetStyle,
-  maxWidth = LAYOUT.contentMaxWidth,
+  maxWidth = LAYOUT.mobileFrameMaxWidth,
+  statusBarTranslucent = true,
 }: SpringSheetProps) {
   const reducedMotion = useReducedMotion();
   const [rendered, setRendered] = useState(visible);
@@ -145,10 +147,15 @@ export function SpringSheet({
   const [sheetY] = useState(() => new Animated.Value(visible ? 0 : SHEET_HIDDEN_Y));
   const [sheetScale] = useState(() => new Animated.Value(visible ? 1 : 0.97));
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   if (visible && !rendered) {
     setRendered(true);
+  } else if (!visible && rendered && reducedMotion) {
+    setRendered(false);
   }
 
   useEffect(() => {
@@ -193,7 +200,6 @@ export function SpringSheet({
     }
 
     if (reducedMotion) {
-      setRendered(false);
       return;
     }
 
@@ -249,7 +255,7 @@ export function SpringSheet({
       visible={rendered}
       animationType="none"
       transparent
-      statusBarTranslucent
+      statusBarTranslucent={statusBarTranslucent}
       onRequestClose={onClose}
     >
       <View style={styles.root}>
@@ -290,7 +296,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     backgroundColor: 'rgba(17, 24, 39, 0.45)',
   },
   backdropDismiss: {

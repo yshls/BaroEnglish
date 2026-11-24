@@ -3,9 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
-  Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,6 +15,8 @@ import { fetchSymbolExamplesByLevel } from '../services/wordApi';
 import { useLearningStore } from '../store/useLearningStore';
 import { COLORS, LAYOUT, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../theme/tokens';
 import { InfoTipBox, InfoTipButton } from './InfoTip';
+import { SpringReveal, SpringSheet } from './SpringMotion';
+import { Tap } from './Tap';
 import type {
   ExampleDifficultyLevel,
   IpaSymbol,
@@ -251,216 +251,207 @@ export function SymbolDetailSheet({
   };
 
   return (
-    <Modal
+    <SpringSheet
       visible={visible}
-      animationType="slide"
-      transparent
+      onClose={handleClose}
+      dismissLabel="창 닫기"
       statusBarTranslucent
-      onRequestClose={handleClose}
+      sheetStyle={[
+        styles.sheetContainer,
+        { paddingBottom: Math.max(insets.bottom, SPACING.md) },
+      ]}
     >
-      <View style={styles.backdrop}>
-        <Pressable
-          style={styles.backdropDismiss}
-          onPress={handleClose}
-          accessibilityLabel="창 닫기"
-        />
-        <View
-          style={[
-            styles.sheetContainer,
-            { paddingBottom: Math.max(insets.bottom, SPACING.md) },
-          ]}
-        >
-          <View style={styles.handleBar} />
+      <View style={styles.handleBar} />
 
-          {/* 헤더 */}
-          <View style={styles.headerRow}>
-            <View style={styles.headerLeft}>
-              {contextLabel ? (
-                <View style={styles.contextBadge}>
-                  <Text style={styles.contextBadgeText} maxFontSizeMultiplier={1.35}>
-                    {contextLabel}
-                  </Text>
-                </View>
-              ) : null}
-              <Text style={styles.ipaHero} maxFontSizeMultiplier={1.35}>
-                {activeSymbol.ipa}
-              </Text>
-              <Text style={styles.titleKo} maxFontSizeMultiplier={1.4}>
-                {activeSymbol.titleKo}
+      {/* 헤더 */}
+      <View style={styles.headerRow}>
+        <View style={styles.headerLeft}>
+          {contextLabel ? (
+            <View style={styles.contextBadge}>
+              <Text style={styles.contextBadgeText} maxFontSizeMultiplier={1.35}>
+                {contextLabel}
               </Text>
             </View>
+          ) : null}
+          <Text style={styles.ipaHero} maxFontSizeMultiplier={1.35}>
+            {activeSymbol.ipa}
+          </Text>
+          <Text style={styles.titleKo} maxFontSizeMultiplier={1.4}>
+            {activeSymbol.titleKo}
+          </Text>
+        </View>
 
-            <View style={styles.headerActions}>
-              <Pressable
-                onPress={() => {
-                  if (!isBookmarked) triggerHeartPop();
-                  toggleSymbolBookmark(activeSymbol.id);
-                }}
-                style={({ pressed }) => [
-                  styles.bookmarkIconBtn,
-                  isBookmarked && styles.bookmarkIconBtnActive,
-                  pressed && styles.buttonPressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityState={{ selected: isBookmarked }}
-                accessibilityLabel={
-                  isBookmarked
-                    ? `${activeSymbol.ipa} 저장 해제`
-                    : `${activeSymbol.ipa} 저장`
-                }
-              >
-                <Animated.View style={{ transform: [{ scale: heartScale }] }}>
-                  <Heart
-                    size={24}
-                    color={isBookmarked ? '#FF3B30' : COLORS.textMuted}
-                    weight={isBookmarked ? 'fill' : 'regular'}
-                  />
-                </Animated.View>
-              </Pressable>
-
-              <Pressable
-                onPress={handleClose}
-                style={({ pressed }) => [
-                  styles.closeButton,
-                  pressed && styles.buttonPressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel="닫기"
-              >
-                <X size={24} color={COLORS.text} />
-              </Pressable>
-            </View>
-          </View>
-
-          <ScrollView
-            style={styles.scrollBody}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
+        <View style={styles.headerActions}>
+          <Tap
+            feel="playful"
+            onPress={() => {
+              if (!isBookmarked) triggerHeartPop();
+              toggleSymbolBookmark(activeSymbol.id);
+            }}
+            style={[
+              styles.bookmarkIconBtn,
+              isBookmarked && styles.bookmarkIconBtnActive,
+            ]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isBookmarked }}
+            accessibilityLabel={
+              isBookmarked
+                ? `${activeSymbol.ipa} 저장 해제`
+                : `${activeSymbol.ipa} 저장`
+            }
           >
-            {/* 입 모양·혀 위치 안내 카드 */}
-            <View style={styles.guideCard}>
-              <View style={styles.guideHeaderRow}>
-                <Smiley size={24} color={COLORS.teal} />
-                <Text style={styles.guideLabel} maxFontSizeMultiplier={1.4}>
-                  입 모양 · 혀 위치 안내
-                </Text>
-              </View>
-              <Text style={styles.guideBody} maxFontSizeMultiplier={1.5}>
-                {activeSymbol.mouthGuideKo}
-              </Text>
+            <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+              <Heart
+                size={24}
+                color={isBookmarked ? '#FF3B30' : COLORS.textMuted}
+                weight={isBookmarked ? 'fill' : 'regular'}
+              />
+            </Animated.View>
+          </Tap>
 
-              <View style={styles.hintPill}>
-                <Text style={styles.hintPillLabel} maxFontSizeMultiplier={1.4}>
-                  비슷한 한글 소리
-                </Text>
-                <Text style={styles.hintPillValue} maxFontSizeMultiplier={1.4}>
-                  {activeSymbol.koHint}
-                </Text>
-              </View>
-            </View>
+          <Tap
+            feel="snappy"
+            onPress={handleClose}
+            style={styles.closeButton}
+            accessibilityRole="button"
+            accessibilityLabel="닫기"
+          >
+            <X size={24} color={COLORS.text} />
+          </Tap>
+        </View>
+      </View>
 
-            {/* 대표 단어 3개 (초급 / 중급 / 고급 실시간 동적 로드) */}
-            <View style={styles.examplesSection}>
-              <View style={styles.sectionHeaderBlock}>
-                <View style={styles.sectionTitleRow}>
-                  <View style={styles.sectionTitleLeft}>
-                    <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
-                      대표 단어 3개 · {currentTabMeta.titleLabel}
-                    </Text>
-                    <InfoTipButton
-                      open={showExamplesInfo}
-                      onToggle={() => setShowExamplesInfo((prev) => !prev)}
-                      accessibilityLabel="대표 단어 강세 안내 보기"
-                    />
-                  </View>
-                  <Pressable
-                    onPress={handleRefreshExamples}
-                    disabled={isExamplesLoading}
-                    style={({ pressed }) => [
-                      styles.refreshExamplesBtn,
-                      pressed && styles.buttonPressed,
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityLabel="다른 대표 단어 3개 불러오기"
-                  >
-                    <ArrowsClockwise size={18} color={COLORS.indigoText} />
-                    <Text style={styles.refreshExamplesText} maxFontSizeMultiplier={1.3}>
-                      다른 단어
-                    </Text>
-                  </Pressable>
-                </View>
-                <InfoTipBox
-                  visible={showExamplesInfo}
-                  text={
-                    activeSymbol.id === 'sym_schwa'
-                      ? '노란 표시(⬤)를 세게, 회색 표시는 힘 빼고 약하게 읽어 보세요.'
-                      : '노란 표시(⬤) 부분을 세게·또렷하게 발음해 보세요.'
-                  }
-                  variant="surface"
-                  onClose={() => setShowExamplesInfo(false)}
+      <ScrollView
+        style={styles.scrollBody}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* 입 모양·혀 위치 안내 카드 */}
+        <View style={styles.guideCard}>
+          <View style={styles.guideHeaderRow}>
+            <Smiley size={24} color={COLORS.teal} />
+            <Text style={styles.guideLabel} maxFontSizeMultiplier={1.4}>
+              입 모양 · 혀 위치 안내
+            </Text>
+          </View>
+          <Text style={styles.guideBody} maxFontSizeMultiplier={1.5}>
+            {activeSymbol.mouthGuideKo}
+          </Text>
+
+          <View style={styles.hintPill}>
+            <Text style={styles.hintPillLabel} maxFontSizeMultiplier={1.4}>
+              비슷한 한글 소리
+            </Text>
+            <Text style={styles.hintPillValue} maxFontSizeMultiplier={1.4}>
+              {activeSymbol.koHint}
+            </Text>
+          </View>
+        </View>
+
+        {/* 대표 단어 3개 (초급 / 중급 / 고급 실시간 동적 로드) */}
+        <View style={styles.examplesSection}>
+          <View style={styles.sectionHeaderBlock}>
+            <View style={styles.sectionTitleRow}>
+              <View style={styles.sectionTitleLeft}>
+                <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
+                  대표 단어 3개 · {currentTabMeta.titleLabel}
+                </Text>
+                <InfoTipButton
+                  open={showExamplesInfo}
+                  onToggle={() => setShowExamplesInfo((prev) => !prev)}
+                  accessibilityLabel="대표 단어 강세 안내 보기"
                 />
               </View>
+              <Tap
+                feel="playful"
+                onPress={handleRefreshExamples}
+                disabled={isExamplesLoading}
+                style={styles.refreshExamplesBtn}
+                accessibilityRole="button"
+                accessibilityLabel="다른 대표 단어 3개 불러오기"
+              >
+                <ArrowsClockwise size={18} color={COLORS.indigoText} />
+                <Text style={styles.refreshExamplesText} maxFontSizeMultiplier={1.3}>
+                  다른 단어
+                </Text>
+              </Tap>
+            </View>
+            <InfoTipBox
+              visible={showExamplesInfo}
+              text={
+                activeSymbol.id === 'sym_schwa'
+                  ? '노란 표시(⬤)를 세게, 회색 표시는 힘 빼고 약하게 읽어 보세요.'
+                  : '노란 표시(⬤) 부분을 세게·또렷하게 발음해 보세요.'
+              }
+              variant="surface"
+              onClose={() => setShowExamplesInfo(false)}
+            />
+          </View>
 
-              {/* 초급 / 중급 / 고급 난이도 선택 탭 (보더 없는 UI) */}
-              <View style={styles.levelSwitchRow}>
-                {DIFFICULTY_TABS.map((tab) => {
-                  const isActive = difficulty === tab.id;
-                  return (
-                    <Pressable
-                      key={tab.id}
-                      onPress={() => handleSelectDifficulty(tab.id)}
-                      style={({ pressed }) => [
-                        styles.levelSwitchBtn,
-                        isActive && { backgroundColor: tab.activeBg },
-                        pressed && styles.buttonPressed,
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: isActive }}
-                      accessibilityLabel={`${tab.label} 단어 3개 보기`}
-                    >
-                      <Text
-                        style={[
-                          styles.levelSwitchText,
-                          isActive && styles.levelSwitchTextActive,
-                        ]}
-                        maxFontSizeMultiplier={1.3}
-                      >
-                        {tab.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+          {/* 초급 / 중급 / 고급 난이도 선택 탭 (보더 없는 UI) */}
+          <View style={styles.levelSwitchRow}>
+            {DIFFICULTY_TABS.map((tab) => {
+              const isActive = difficulty === tab.id;
+              return (
+                <Tap
+                  key={tab.id}
+                  feel="playful"
+                  onPress={() => handleSelectDifficulty(tab.id)}
+                  style={[
+                    styles.levelSwitchBtn,
+                    isActive && { backgroundColor: tab.activeBg },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isActive }}
+                  accessibilityLabel={`${tab.label} 단어 3개 보기`}
+                >
+                  <Text
+                    style={[
+                      styles.levelSwitchText,
+                      isActive && styles.levelSwitchTextActive,
+                    ]}
+                    maxFontSizeMultiplier={1.3}
+                  >
+                    {tab.label}
+                  </Text>
+                </Tap>
+              );
+            })}
+          </View>
+
+          <View style={styles.exampleList}>
+            {isExamplesLoading ? (
+              <View style={styles.examplesLoadingCard}>
+                <ActivityIndicator size="small" color={currentTabMeta.activeBg} />
+                <Text style={styles.examplesLoadingText} maxFontSizeMultiplier={1.4}>
+                  {activeSymbol.ipa} 소리가 들어간 {currentTabMeta.titleLabel} 단어를 찾고 있어요...
+                </Text>
               </View>
-
-              <View style={styles.exampleList}>
-                {isExamplesLoading ? (
-                  <View style={styles.examplesLoadingCard}>
-                    <ActivityIndicator size="small" color={currentTabMeta.activeBg} />
-                    <Text style={styles.examplesLoadingText} maxFontSizeMultiplier={1.4}>
-                      {activeSymbol.ipa} 소리가 들어간 {currentTabMeta.titleLabel} 단어를 찾고 있어요...
-                    </Text>
-                  </View>
-                ) : hasLoadError || levelExamples.length === 0 ? (
-                  <View style={styles.examplesLoadingCard}>
-                    <Text style={styles.examplesLoadingText} maxFontSizeMultiplier={1.4}>
-                      단어를 불러오지 못했어요. 인터넷 연결을 확인한 뒤 다시 눌러 주세요.
-                    </Text>
-                    <Pressable
-                      onPress={handleRefreshExamples}
-                      style={({ pressed }) => [
-                        styles.retryBtn,
-                        pressed && styles.buttonPressed,
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityLabel="다시 불러오기"
-                    >
-                      <Text style={styles.retryBtnText} maxFontSizeMultiplier={1.3}>
-                        다시 불러오기
-                      </Text>
-                    </Pressable>
-                  </View>
-                ) : (
-                  levelExamples.map((ex) => {
+            ) : hasLoadError || levelExamples.length === 0 ? (
+              <View style={styles.examplesLoadingCard}>
+                <Text style={styles.examplesLoadingText} maxFontSizeMultiplier={1.4}>
+                  단어를 불러오지 못했어요. 인터넷 연결을 확인한 뒤 다시 눌러 주세요.
+                </Text>
+                <Tap
+                  feel="snappy"
+                  onPress={handleRefreshExamples}
+                  style={styles.retryBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="다시 불러오기"
+                >
+                  <Text style={styles.retryBtnText} maxFontSizeMultiplier={1.3}>
+                    다시 불러오기
+                  </Text>
+                </Tap>
+              </View>
+            ) : (
+              <SpringReveal
+                triggerKey={`${activeSymbol.id}:${difficulty}:${refreshSeed}`}
+                distance={10}
+                feel="gentle"
+                style={styles.exampleList}
+              >
+                {levelExamples.map((ex) => {
                   const normalKey = `sym:${activeSymbol.id}:${difficulty}:${ex.word}:normal`;
                   const slowKey = `sym:${activeSymbol.id}:${difficulty}:${ex.word}:slow`;
                   const isNormalPlaying = activeKey === normalKey;
@@ -474,7 +465,10 @@ export function SymbolDetailSheet({
                         (isNormalPlaying || isSlowPlaying) && styles.exampleCardActive,
                       ]}
                     >
-                      <Pressable
+                      <Tap
+                        feel="gentle"
+                        pressedScale={0.985}
+                        hoverLift={false}
                         style={styles.exampleInfoArea}
                         onPress={() => playNormal(ex.word, { key: normalKey })}
                         accessibilityRole="button"
@@ -496,15 +490,15 @@ export function SymbolDetailSheet({
                             </Text>
                           </View>
                         ) : null}
-                      </Pressable>
+                      </Tap>
 
                       <View style={styles.exampleButtons}>
-                        <Pressable
+                        <Tap
+                          feel="snappy"
                           onPress={() => playNormal(ex.word, { key: normalKey })}
-                          style={({ pressed }) => [
+                          style={[
                             styles.playBtnPrimary,
                             isNormalPlaying && styles.playBtnPrimaryActive,
-                            pressed && styles.buttonPressed,
                           ]}
                           accessibilityRole="button"
                           accessibilityLabel={`${ex.word} 소리 듣기`}
@@ -520,14 +514,14 @@ export function SymbolDetailSheet({
                           >
                             {isNormalPlaying ? '재생 중' : '듣기'}
                           </Text>
-                        </Pressable>
+                        </Tap>
 
-                        <Pressable
+                        <Tap
+                          feel="snappy"
                           onPress={() => playSlow(ex.word, { key: slowKey })}
-                          style={({ pressed }) => [
+                          style={[
                             styles.playBtnSlow,
                             isSlowPlaying && styles.playBtnSlowActive,
-                            pressed && styles.buttonPressed,
                           ]}
                           accessibilityRole="button"
                           accessibilityLabel={`${ex.word} 천천히 듣기`}
@@ -545,48 +539,47 @@ export function SymbolDetailSheet({
                           >
                             {isSlowPlaying ? '천천히 중' : '천천히'}
                           </Text>
-                        </Pressable>
+                        </Tap>
                       </View>
                     </View>
                   );
-                })
-                )}
-              </View>
-            </View>
-          </ScrollView>
-
-          {/* 하단 익혔어요 버튼 */}
-          <View style={styles.footer}>
-            <Pressable
-              onPress={() => toggleSymbolLearned(activeSymbol.id)}
-              style={({ pressed }) => [
-                styles.learnedButton,
-                isLearned ? styles.learnedButtonDone : styles.learnedButtonTodo,
-                pressed && styles.buttonPressed,
-              ]}
-              accessibilityRole="button"
-              accessibilityState={{ checked: isLearned }}
-              accessibilityLabel={isLearned ? '익힘 완료 해제하기' : '익혔어요 완료 체크'}
-            >
-              <CheckCircle
-                size={26}
-                color={isLearned ? COLORS.successText : COLORS.white}
-                weight={isLearned ? 'fill' : 'regular'}
-              />
-              <Text
-                style={[
-                  styles.learnedButtonText,
-                  isLearned ? styles.learnedButtonTextDone : styles.learnedButtonTextTodo,
-                ]}
-                maxFontSizeMultiplier={1.35}
-              >
-                {isLearned ? '익힘 완료 (눌러서 해제)' : '익혔어요 (완료 체크)'}
-              </Text>
-            </Pressable>
+                })}
+              </SpringReveal>
+            )}
           </View>
         </View>
+      </ScrollView>
+
+      {/* 하단 익혔어요 버튼 */}
+      <View style={styles.footer}>
+        <Tap
+          feel="playful"
+          onPress={() => toggleSymbolLearned(activeSymbol.id)}
+          style={[
+            styles.learnedButton,
+            isLearned ? styles.learnedButtonDone : styles.learnedButtonTodo,
+          ]}
+          accessibilityRole="button"
+          accessibilityState={{ checked: isLearned }}
+          accessibilityLabel={isLearned ? '익힘 완료 해제하기' : '익혔어요 완료 체크'}
+        >
+          <CheckCircle
+            size={26}
+            color={isLearned ? COLORS.successText : COLORS.white}
+            weight={isLearned ? 'fill' : 'regular'}
+          />
+          <Text
+            style={[
+              styles.learnedButtonText,
+              isLearned ? styles.learnedButtonTextDone : styles.learnedButtonTextTodo,
+            ]}
+            maxFontSizeMultiplier={1.35}
+          >
+            {isLearned ? '익힘 완료 (눌러서 해제)' : '익혔어요 (완료 체크)'}
+          </Text>
+        </Tap>
       </View>
-    </Modal>
+    </SpringSheet>
   );
 }
 

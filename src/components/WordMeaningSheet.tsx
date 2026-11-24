@@ -2,8 +2,6 @@ import { ArrowRight, BookOpen, Gauge, SpeakerHigh, SpeakerLow, X } from './Plump
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -17,6 +15,8 @@ import {
 } from '../services/wordApi';
 import { useWordCacheStore } from '../store/useWordCacheStore';
 import { COLORS, LAYOUT, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../theme/tokens';
+import { SpringSheet } from './SpringMotion';
+import { Tap } from './Tap';
 
 interface WordMeaningSheetProps {
   word: string | null;
@@ -128,177 +128,161 @@ export function WordMeaningSheet({
   };
 
   return (
-    <Modal
+    <SpringSheet
       visible={visible}
-      animationType="slide"
-      transparent
+      onClose={handleClose}
+      dismissLabel="단어 뜻 창 닫기"
       statusBarTranslucent
-      onRequestClose={handleClose}
+      sheetStyle={[
+        styles.sheetContainer,
+        { paddingBottom: Math.max(insets.bottom, SPACING.md) },
+      ]}
     >
-      <View style={styles.backdrop}>
-        <Pressable
-          style={styles.backdropDismiss}
-          onPress={handleClose}
-          accessibilityLabel="단어 뜻 창 닫기"
-        />
+      <View style={styles.handleBar} />
 
-        <View
-          style={[
-            styles.sheetContainer,
-            { paddingBottom: Math.max(insets.bottom, SPACING.md) },
-          ]}
-        >
-          <View style={styles.handleBar} />
-
-          {/* 상단 헤더 */}
-          <View style={styles.headerRow}>
-            <View style={styles.badgeGroup}>
-              <View style={styles.contextBadge}>
-                <BookOpen size={16} color={COLORS.indigoText} />
-                <Text style={styles.contextBadgeText} maxFontSizeMultiplier={1.3}>
-                  예문 속 단어 뜻
-                </Text>
-              </View>
-              {resolvedInfo?.partOfSpeech ? (
-                <View style={styles.posBadge}>
-                  <Text style={styles.posBadgeText} maxFontSizeMultiplier={1.3}>
-                    {resolvedInfo.partOfSpeech}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-
-            <Pressable
-              onPress={handleClose}
-              style={({ pressed }) => [
-                styles.closeButton,
-                pressed && styles.pressed,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel="닫기"
-            >
-              <X size={22} color={COLORS.text} />
-            </Pressable>
+      {/* 상단 헤더 */}
+      <View style={styles.headerRow}>
+        <View style={styles.badgeGroup}>
+          <View style={styles.contextBadge}>
+            <BookOpen size={16} color={COLORS.indigoText} />
+            <Text style={styles.contextBadgeText} maxFontSizeMultiplier={1.3}>
+              예문 속 단어 뜻
+            </Text>
           </View>
-
-          {/* 단어 & 발음기호 */}
-          <View style={styles.wordCard}>
-            <View style={styles.wordHeaderRow}>
-              <Text style={styles.wordHero} maxFontSizeMultiplier={1.35}>
-                {resolvedInfo?.word ?? cleanWord}
+          {resolvedInfo?.partOfSpeech ? (
+            <View style={styles.posBadge}>
+              <Text style={styles.posBadgeText} maxFontSizeMultiplier={1.3}>
+                {resolvedInfo.partOfSpeech}
               </Text>
-              {resolvedInfo?.ipa ? (
-                <View style={styles.ipaPill}>
-                  <Text style={styles.ipaPillText} maxFontSizeMultiplier={1.3}>
-                    {resolvedInfo.ipa}
-                  </Text>
-                </View>
-              ) : null}
             </View>
-
-            {isLoading ? (
-              <View style={styles.loadingRow}>
-                <ActivityIndicator size="small" color={COLORS.indigo} />
-                <Text style={styles.loadingText} maxFontSizeMultiplier={1.4}>
-                  뜻과 발음을 찾고 있어요...
-                </Text>
-              </View>
-            ) : isFailed ? (
-              <Text style={styles.errorText} maxFontSizeMultiplier={1.45}>
-                사전 뜻을 찾지 못했어요. 아래 버튼으로 소리만 먼저 들어볼 수 있어요.
-              </Text>
-            ) : (
-              <View style={styles.meaningBlock}>
-                <Text style={styles.meaningText} maxFontSizeMultiplier={1.45}>
-                  {resolvedInfo?.meaningKo}
-                </Text>
-                {resolvedInfo?.koPronunciation ? (
-                  <View style={styles.koHintPill}>
-                    <Text style={styles.koHintLabel} maxFontSizeMultiplier={1.35}>
-                      한글 발음 힌트
-                    </Text>
-                    <Text style={styles.koHintValue} maxFontSizeMultiplier={1.35}>
-                      {resolvedInfo.koPronunciation}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-            )}
-
-            {/* 소리 듣기 버튼 */}
-            <View style={styles.audioRow}>
-              <Pressable
-                onPress={() =>
-                  void playNormal(cleanWord, {
-                    key: normalKey,
-                    audioUrl: resolvedInfo?.audioUrl,
-                  })
-                }
-                style={({ pressed }) => [
-                  styles.playBtnPrimary,
-                  isNormalPlaying && styles.playBtnPrimaryActive,
-                  pressed && styles.pressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={`${cleanWord} 보통 속도 듣기`}
-              >
-                {isNormalPlaying ? (
-                  <SpeakerHigh size={22} color={COLORS.white} />
-                ) : (
-                  <SpeakerLow size={22} color={COLORS.white} />
-                )}
-                <Text style={styles.playBtnPrimaryText} maxFontSizeMultiplier={1.3}>
-                  {isNormalPlaying ? '재생 중...' : '듣기 (1.0x)'}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => void playSlow(cleanWord, { key: slowKey })}
-                style={({ pressed }) => [
-                  styles.playBtnSlow,
-                  isSlowPlaying && styles.playBtnSlowActive,
-                  pressed && styles.pressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={`${cleanWord} 천천히 듣기`}
-              >
-                <Gauge
-                  size={22}
-                  color={isSlowPlaying ? COLORS.white : COLORS.tealText}
-                />
-                <Text
-                  style={[
-                    styles.playBtnSlowText,
-                    isSlowPlaying && styles.playBtnPrimaryText,
-                  ]}
-                  maxFontSizeMultiplier={1.3}
-                >
-                  {isSlowPlaying ? '천천히 중...' : '천천히 (0.6x)'}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-
-          {/* 이 단어 자세히 공부하기 버튼 */}
-          {canOpenFull ? (
-            <Pressable
-              onPress={handleOpenFull}
-              style={({ pressed }) => [
-                styles.fullStudyBtn,
-                pressed && styles.pressed,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel={`${cleanWord} 강세 리듬과 예문 자세히 보기`}
-            >
-              <Text style={styles.fullStudyBtnText} maxFontSizeMultiplier={1.35}>
-                &apos;{cleanWord}&apos; 강세 · 예문 자세히 공부하기
-              </Text>
-              <ArrowRight size={20} color={COLORS.indigoText} />
-            </Pressable>
           ) : null}
         </View>
+
+        <Tap
+          feel="snappy"
+          onPress={handleClose}
+          style={styles.closeButton}
+          accessibilityRole="button"
+          accessibilityLabel="닫기"
+        >
+          <X size={22} color={COLORS.text} />
+        </Tap>
       </View>
-    </Modal>
+
+      {/* 단어 & 발음기호 */}
+      <View style={styles.wordCard}>
+        <View style={styles.wordHeaderRow}>
+          <Text style={styles.wordHero} maxFontSizeMultiplier={1.35}>
+            {resolvedInfo?.word ?? cleanWord}
+          </Text>
+          {resolvedInfo?.ipa ? (
+            <View style={styles.ipaPill}>
+              <Text style={styles.ipaPillText} maxFontSizeMultiplier={1.3}>
+                {resolvedInfo.ipa}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        {isLoading ? (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color={COLORS.indigo} />
+            <Text style={styles.loadingText} maxFontSizeMultiplier={1.4}>
+              뜻과 발음을 찾고 있어요...
+            </Text>
+          </View>
+        ) : isFailed ? (
+          <Text style={styles.errorText} maxFontSizeMultiplier={1.45}>
+            사전 뜻을 찾지 못했어요. 아래 버튼으로 소리만 먼저 들어볼 수 있어요.
+          </Text>
+        ) : (
+          <View style={styles.meaningBlock}>
+            <Text style={styles.meaningText} maxFontSizeMultiplier={1.45}>
+              {resolvedInfo?.meaningKo}
+            </Text>
+            {resolvedInfo?.koPronunciation ? (
+              <View style={styles.koHintPill}>
+                <Text style={styles.koHintLabel} maxFontSizeMultiplier={1.35}>
+                  한글 발음 힌트
+                </Text>
+                <Text style={styles.koHintValue} maxFontSizeMultiplier={1.35}>
+                  {resolvedInfo.koPronunciation}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        )}
+
+        {/* 소리 듣기 버튼 */}
+        <View style={styles.audioRow}>
+          <Tap
+            feel="snappy"
+            onPress={() =>
+              void playNormal(cleanWord, {
+                key: normalKey,
+                audioUrl: resolvedInfo?.audioUrl,
+              })
+            }
+            style={[
+              styles.playBtnPrimary,
+              isNormalPlaying && styles.playBtnPrimaryActive,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={`${cleanWord} 보통 속도 듣기`}
+          >
+            {isNormalPlaying ? (
+              <SpeakerHigh size={22} color={COLORS.white} />
+            ) : (
+              <SpeakerLow size={22} color={COLORS.white} />
+            )}
+            <Text style={styles.playBtnPrimaryText} maxFontSizeMultiplier={1.3}>
+              {isNormalPlaying ? '재생 중...' : '듣기 (1.0x)'}
+            </Text>
+          </Tap>
+
+          <Tap
+            feel="snappy"
+            onPress={() => void playSlow(cleanWord, { key: slowKey })}
+            style={[
+              styles.playBtnSlow,
+              isSlowPlaying && styles.playBtnSlowActive,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={`${cleanWord} 천천히 듣기`}
+          >
+            <Gauge
+              size={22}
+              color={isSlowPlaying ? COLORS.white : COLORS.tealText}
+            />
+            <Text
+              style={[
+                styles.playBtnSlowText,
+                isSlowPlaying && styles.playBtnPrimaryText,
+              ]}
+              maxFontSizeMultiplier={1.3}
+            >
+              {isSlowPlaying ? '천천히 중...' : '천천히 (0.6x)'}
+            </Text>
+          </Tap>
+        </View>
+      </View>
+
+      {/* 이 단어 자세히 공부하기 버튼 */}
+      {canOpenFull ? (
+        <Tap
+          feel="playful"
+          onPress={handleOpenFull}
+          style={styles.fullStudyBtn}
+          accessibilityRole="button"
+          accessibilityLabel={`${cleanWord} 강세 리듬과 예문 자세히 보기`}
+        >
+          <Text style={styles.fullStudyBtnText} maxFontSizeMultiplier={1.35}>
+            &apos;{cleanWord}&apos; 강세 · 예문 자세히 공부하기
+          </Text>
+          <ArrowRight size={20} color={COLORS.indigoText} />
+        </Tap>
+      ) : null}
+    </SpringSheet>
   );
 }
 
