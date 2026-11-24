@@ -5,8 +5,8 @@ import {
   ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
+  LayoutAnimation,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Switch,
@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { RhythmBlocks } from '../../components/RhythmBlocks';
 import { SymbolDetailSheet } from '../../components/SymbolDetailSheet';
+import { Tap } from '../../components/Tap';
 import { IPA_SYMBOL_BY_ID } from '../../data/categories';
 import { useSpeechAudio } from '../../hooks/useSpeechAudio';
 import {
@@ -30,6 +31,8 @@ import {
 } from '../../store/useWordCacheStore';
 import { COLORS, FONTS, RADIUS, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
 import type { CoreWord, IpaSymbol } from '../../types/learning';
+
+const GENTLE = LayoutAnimation.Presets.easeInEaseOut;
 
 export default function WordReaderScreen() {
   const [query, setQuery] = useState('');
@@ -90,6 +93,7 @@ export default function WordReaderScreen() {
       // 1) 로컬 AsyncStorage 캐시 먼저 확인 (0ms 즉시 표시 & 오프라인 지원)
       const cached = findCachedByQuery(trimmed);
       if (cached) {
+        LayoutAnimation.configureNext(GENTLE);
         setIsLoading(false);
         setSelectedWord(cached);
         if (!options?.keepInput) setQuery('');
@@ -97,11 +101,13 @@ export default function WordReaderScreen() {
       }
 
       // 2) 상업용 무료 API 멀티 조회 (try/catch/finally로 로딩 고착 차단)
+      LayoutAnimation.configureNext(GENTLE);
       setIsLoading(true);
       try {
         const result = await lookupWordFromApis(trimmed);
         if (requestSeqRef.current !== seq) return;
 
+        LayoutAnimation.configureNext(GENTLE);
         if (result.word) {
           saveWord(result.word);
           setSelectedWord(result.word);
@@ -114,7 +120,12 @@ export default function WordReaderScreen() {
         }
       } catch {
         if (requestSeqRef.current !== seq) return;
+
+        LayoutAnimation.configureNext(GENTLE);
+        setDisplayedWord(null);
+
         setSelectedWord(null);
+
         setFailedQuery(trimmed);
         setFailedErrorType('network');
         setFallbackSuggestions([]);
@@ -193,6 +204,7 @@ export default function WordReaderScreen() {
       try {
         const list = await fetchWordSuggestions(trimmed, 6);
         if (!cancelled) {
+          LayoutAnimation.configureNext(GENTLE);
           setSuggestions(list);
         }
       } catch {
@@ -211,6 +223,7 @@ export default function WordReaderScreen() {
   const handleSelectCachedWord = (item: CoreWord) => {
     stop();
     requestSeqRef.current += 1;
+    LayoutAnimation.configureNext(GENTLE);
     setIsLoading(false);
     setFailedQuery(null);
     setFailedErrorType(null);
@@ -264,30 +277,41 @@ export default function WordReaderScreen() {
               accessibilityLabel="영단어 또는 한글 뜻 입력창"
             />
             {query.length > 0 ? (
-              <Pressable
+              <Tap
                 onPress={() => {
                   setQuery('');
                   setSuggestions([]);
                 }}
-                style={({ pressed }) => [
-                  styles.clearBtn,
-                  pressed && styles.pressed,
-                ]}
+                style={styles.clearBtn}
                 accessibilityRole="button"
                 accessibilityLabel="검색어 지우기"
               >
+                <Ionicons name="close-circle" size={20} color={COLORS.text} />
+                <Text style={styles.clearBtnText} maxFontSizeMultiplier={1.3}>
+                  지우기
+                </Text>
+              </Tap>
+
                 <Ionicons name="close-circle" size={24} color={COLORS.textMuted} />
               </Pressable>
+
             ) : null}
           </View>
 
-          <Pressable
+          <Tap
             onPress={() => void executeLookup(query)}
+
+            disabled={!query.trim() || isLoading}
+            style={[
+              styles.searchSubmitBtn,
+              (!query.trim() || isLoading) && styles.searchSubmitBtnDisabled,
+
             disabled={!query.trim() || showLoading}
             style={({ pressed }) => [
               styles.searchSubmitBtn,
               (!query.trim() || showLoading) && styles.searchSubmitBtnDisabled,
               pressed && styles.pressed,
+
             ]}
             accessibilityRole="button"
             accessibilityLabel="단어 찾기"
@@ -296,7 +320,7 @@ export default function WordReaderScreen() {
             <Text style={styles.searchSubmitBtnText} maxFontSizeMultiplier={1.35}>
               {showLoading ? '찾는 중...' : '검색'}
             </Text>
-          </Pressable>
+          </Tap>
 
           {/* 실시간 영단어 자동완성 후보 */}
           {suggestions.length > 0 ? (
@@ -306,13 +330,10 @@ export default function WordReaderScreen() {
               </Text>
               <View style={styles.chipsWrap}>
                 {suggestions.map((sug) => (
-                  <Pressable
+                  <Tap
                     key={sug}
                     onPress={() => void executeLookup(sug)}
-                    style={({ pressed }) => [
-                      styles.suggestionChip,
-                      pressed && styles.pressed,
-                    ]}
+                    style={styles.suggestionChip}
                     accessibilityRole="button"
                     accessibilityLabel={`${sug} 단어 검색`}
                   >
@@ -322,7 +343,7 @@ export default function WordReaderScreen() {
                     >
                       {sug}
                     </Text>
-                  </Pressable>
+                  </Tap>
                 ))}
               </View>
             </View>
@@ -338,13 +359,12 @@ export default function WordReaderScreen() {
                 {recentWordItems.map((item) => {
                   const isSelected = displayedWord?.id === item.id;
                   return (
-                    <Pressable
+                    <Tap
                       key={item.id}
                       onPress={() => handleSelectCachedWord(item)}
-                      style={({ pressed }) => [
+                      style={[
                         styles.wordChip,
                         isSelected && styles.wordChipSelected,
-                        pressed && styles.pressed,
                       ]}
                       accessibilityRole="button"
                       accessibilityLabel={`${item.word} ${item.meaningKo} 선택`}
@@ -358,7 +378,7 @@ export default function WordReaderScreen() {
                       >
                         {item.word} ({item.meaningKo})
                       </Text>
-                    </Pressable>
+                    </Tap>
                   );
                 })}
               </View>
@@ -375,13 +395,12 @@ export default function WordReaderScreen() {
                 const isSelected =
                   displayedWord?.word.toLowerCase() === chip.word.toLowerCase();
                 return (
-                  <Pressable
+                  <Tap
                     key={chip.word}
                     onPress={() => void executeLookup(chip.word)}
-                    style={({ pressed }) => [
+                    style={[
                       styles.wordChip,
                       isSelected && styles.wordChipSelected,
-                      pressed && styles.pressed,
                     ]}
                     accessibilityRole="button"
                     accessibilityLabel={`${chip.word} ${chip.labelKo} 검색`}
@@ -395,7 +414,7 @@ export default function WordReaderScreen() {
                     >
                       {chip.word} ({chip.labelKo})
                     </Text>
-                  </Pressable>
+                  </Tap>
                 );
               })}
             </View>
@@ -437,12 +456,11 @@ export default function WordReaderScreen() {
             </Text>
 
             {/[a-zA-Z]/.test(failedQuery) ? (
-              <Pressable
+              <Tap
                 onPress={() => playSlow(failedQuery, { key: fallbackSlowKey })}
-                style={({ pressed }) => [
+                style={[
                   styles.primaryBtn,
                   isFallbackSlowPlaying && styles.primaryBtnActive,
-                  pressed && styles.pressed,
                 ]}
                 accessibilityRole="button"
                 accessibilityLabel={`${failedQuery} 천천히 소리만 먼저 듣기`}
@@ -453,7 +471,7 @@ export default function WordReaderScreen() {
                     ? '천천히 소리 재생 중...'
                     : '천천히 소리만 먼저 듣기'}
                 </Text>
-              </Pressable>
+              </Tap>
             ) : (
               <View style={styles.koreanOnlyNotice}>
                 <Text
@@ -472,20 +490,17 @@ export default function WordReaderScreen() {
                 </Text>
                 <View style={styles.chipsWrap}>
                   {fallbackSuggestions.map((item) => (
-                    <Pressable
+                    <Tap
                       key={item}
                       onPress={() => void executeLookup(item)}
-                      style={({ pressed }) => [
-                        styles.wordChip,
-                        pressed && styles.pressed,
-                      ]}
+                      style={styles.wordChip}
                       accessibilityRole="button"
                       accessibilityLabel={`${item} 검색`}
                     >
                       <Text style={styles.wordChipText} maxFontSizeMultiplier={1.35}>
                         {item}
                       </Text>
-                    </Pressable>
+                    </Tap>
                   ))}
                 </View>
               </View>
@@ -566,12 +581,9 @@ export default function WordReaderScreen() {
 
               {/* 한글 발음 힌트 토글 (행 전체 터치 지원 + 하이드레이션 후 안정 표시) */}
               {learningHasHydrated ? (
-                <Pressable
+                <Tap
                   onPress={() => setShowKoPronunciation(!showKoPronunciation)}
-                  style={({ pressed }) => [
-                    styles.toggleBox,
-                    pressed && styles.pressed,
-                  ]}
+                  style={styles.toggleBox}
                   accessibilityRole="switch"
                   accessibilityState={{ checked: showKoPronunciation }}
                   accessibilityLabel="한글 발음 힌트 토글"
@@ -589,22 +601,12 @@ export default function WordReaderScreen() {
                       </Text>
                     ) : null}
                   </View>
-                  <Switch
-                    value={showKoPronunciation}
-                    onValueChange={setShowKoPronunciation}
-                    trackColor={{
-                      false: COLORS.border,
-                      true: COLORS.primary,
-                    }}
-                    thumbColor={COLORS.white}
-                    accessibilityLabel="한글 발음 힌트 표시"
-                  />
-                </Pressable>
+                </Tap>
               ) : null}
 
               {/* 보통 속도 / 천천히 듣기 버튼 */}
               <View style={styles.audioButtonsRow}>
-                <Pressable
+                <Tap
                   onPress={() =>
                     playNormal(displayedWord.word, {
                       audioAsset: displayedWord.audioAsset,
@@ -612,11 +614,10 @@ export default function WordReaderScreen() {
                       key: normalKey,
                     })
                   }
-                  style={({ pressed }) => [
+                  style={[
                     styles.primaryBtn,
                     styles.audioBtnFlex,
                     isNormalPlaying && styles.primaryBtnActive,
-                    pressed && styles.pressed,
                   ]}
                   accessibilityRole="button"
                   accessibilityLabel={`${displayedWord.word} 보통 속도 듣기`}
@@ -625,17 +626,16 @@ export default function WordReaderScreen() {
                   <Text style={styles.primaryBtnText} maxFontSizeMultiplier={1.3}>
                     {isNormalPlaying ? '재생 중...' : '보통 속도'}
                   </Text>
-                </Pressable>
+                </Tap>
 
-                <Pressable
+                <Tap
                   onPress={() =>
                     playSlow(displayedWord.word, { key: slowKey })
                   }
-                  style={({ pressed }) => [
+                  style={[
                     styles.slowBtn,
                     styles.audioBtnFlex,
                     isSlowPlaying && styles.slowBtnActive,
-                    pressed && styles.pressed,
                   ]}
                   accessibilityRole="button"
                   accessibilityLabel={`${displayedWord.word} 천천히 듣기`}
@@ -648,7 +648,7 @@ export default function WordReaderScreen() {
                   <Text style={styles.slowBtnText} maxFontSizeMultiplier={1.3}>
                     {isSlowPlaying ? '재생 중...' : '천천히'}
                   </Text>
-                </Pressable>
+                </Tap>
               </View>
             </View>
 
@@ -672,14 +672,13 @@ export default function WordReaderScreen() {
                 <Text style={styles.exampleSentence} maxFontSizeMultiplier={1.45}>
                   &ldquo;{displayedWord.exampleEn}&rdquo;
                 </Text>
-                <Pressable
+                <Tap
                   onPress={() =>
                     playSlow(displayedWord.exampleEn!, { key: exampleKey })
                   }
-                  style={({ pressed }) => [
+                  style={[
                     styles.slowBtn,
                     isExamplePlaying && styles.slowBtnActive,
-                    pressed && styles.pressed,
                   ]}
                   accessibilityRole="button"
                   accessibilityLabel="예문 천천히 듣기"
@@ -692,7 +691,7 @@ export default function WordReaderScreen() {
                   <Text style={styles.slowBtnText} maxFontSizeMultiplier={1.35}>
                     {isExamplePlaying ? '재생 중...' : '천천히 듣기'}
                   </Text>
-                </Pressable>
+                </Tap>
               </View>
             ) : null}
 
@@ -707,13 +706,10 @@ export default function WordReaderScreen() {
                     const sym = IPA_SYMBOL_BY_ID[symbolId];
                     if (!sym) return null;
                     return (
-                      <Pressable
+                      <Tap
                         key={sym.id}
                         onPress={() => setActiveSymbol(sym)}
-                        style={({ pressed }) => [
-                          styles.symbolBacktrackChip,
-                          pressed && styles.pressed,
-                        ]}
+                        style={styles.symbolBacktrackChip}
                         accessibilityRole="button"
                         accessibilityLabel={`${sym.ipa} ${sym.titleKo} 자세히 보기`}
                       >
@@ -736,7 +732,20 @@ export default function WordReaderScreen() {
                         >
                           {sym.koHint}
                         </Text>
-                      </Pressable>
+                        <View style={styles.symbolBacktrackAction}>
+                          <Ionicons
+                            name="help-circle-outline"
+                            size={18}
+                            color={COLORS.primaryDark}
+                          />
+                          <Text
+                            style={styles.symbolBacktrackActionText}
+                            maxFontSizeMultiplier={1.35}
+                          >
+                            읽는 법
+                          </Text>
+                        </View>
+                      </Tap>
                     );
                   })}
                 </View>
@@ -1207,8 +1216,5 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     textAlign: 'center',
     lineHeight: 24,
-  },
-  pressed: {
-    opacity: 0.82,
   },
 });
