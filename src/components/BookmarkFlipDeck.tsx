@@ -87,7 +87,7 @@ export function BookmarkFlipDeck({
   }, [currentWord, flipAnim, isFlipped, isTransitioning]);
 
   const transitionToNext = useCallback(
-    (direction: 'known' | 'again') => {
+    (direction: 'known' | 'again', fromSwipe = false) => {
       if (!currentWord || isTransitioning) return;
       setIsTransitioning(true);
       stop();
@@ -99,7 +99,7 @@ export function BookmarkFlipDeck({
         triggerLightHaptic();
       }
 
-      const exitX = direction === 'known' ? 42 : -42;
+      const exitX = direction === 'known' ? (fromSwipe ? 280 : 42) : fromSwipe ? -280 : -42;
 
       Animated.parallel([
         Animated.timing(slideAnim, {
@@ -113,7 +113,11 @@ export function BookmarkFlipDeck({
           duration: 160,
           useNativeDriver: USE_NATIVE_DRIVER,
         }),
-      ]).start(() => {
+      ]).start(({ finished }) => {
+        if (!finished) {
+          setIsTransitioning(false);
+          return;
+        }
         setIsFlipped(false);
         flipAnim.setValue(0);
 
@@ -127,7 +131,7 @@ export function BookmarkFlipDeck({
           setKnownCount((prev) => prev + 1);
         }
 
-        slideAnim.setValue(-exitX * 0.45);
+        slideAnim.setValue(direction === 'known' ? -24 : 24);
         Animated.parallel([
           Animated.spring(slideAnim, {
             toValue: 0,
@@ -160,20 +164,33 @@ export function BookmarkFlipDeck({
     cardOpacity.setValue(1);
   }, [cardOpacity, flipAnim, slideAnim, stop, words]);
 
+  const handleSwitchDeckMode = useCallback(
+    (nextMode: DeckMode) => {
+      if (nextMode === deckMode) return;
+      triggerLightHaptic();
+      stop();
+      setIsFlipped(false);
+      flipAnim.setValue(0);
+      setDeckMode(nextMode);
+    },
+    [deckMode, flipAnim, stop]
+  );
+
   // 좌우 드래그 스와이프로 넘기기 (오른쪽=알아요, 왼쪽=한 번 더). RN 내장 PanResponder — 의존성 0.
   const panResponder = useMemo(
     () =>
       PanResponder.create({
         onMoveShouldSetPanResponder: (_, g) =>
-          Math.abs(g.dx) > 10 && Math.abs(g.dx) > Math.abs(g.dy) * 1.4,
+          !isTransitioning && Math.abs(g.dx) > 10 && Math.abs(g.dx) > Math.abs(g.dy) * 1.4,
+        onPanResponderTerminationRequest: () => false,
         onPanResponderMove: (_, g) => {
           slideAnim.setValue(g.dx);
         },
         onPanResponderRelease: (_, g) => {
           if (g.dx > 90) {
-            transitionToNext('known');
+            transitionToNext('known', true);
           } else if (g.dx < -90) {
-            transitionToNext('again');
+            transitionToNext('again', true);
           } else {
             Animated.spring(slideAnim, {
               toValue: 0,
@@ -192,7 +209,7 @@ export function BookmarkFlipDeck({
           }).start();
         },
       }),
-    [slideAnim, transitionToNext]
+    [isTransitioning, slideAnim, transitionToNext]
   );
 
   if (words.length === 0) return null;
@@ -238,11 +255,11 @@ export function BookmarkFlipDeck({
     outputRange: ['180deg', '360deg'],
   });
   const frontOpacity = flipAnim.interpolate({
-    inputRange: [0, 0.48, 0.52, 1],
+    inputRange: [0, 0.499, 0.501, 1],
     outputRange: [1, 1, 0, 0],
   });
   const backOpacity = flipAnim.interpolate({
-    inputRange: [0, 0.48, 0.52, 1],
+    inputRange: [0, 0.499, 0.501, 1],
     outputRange: [0, 0, 1, 1],
   });
   const dragRotate = slideAnim.interpolate({
@@ -255,7 +272,7 @@ export function BookmarkFlipDeck({
       {/* 모드 토글: 일반 복습 / 뜻→말하기 */}
       <View style={styles.modeToggleRow}>
         <Pressable
-          onPress={() => { triggerLightHaptic(); setDeckMode('standard'); }}
+          onPress={() => handleSwitchDeckMode('standard')}
           style={[styles.modeTogglePill, !isRecall && styles.modeTogglePillActive]}
           accessibilityRole="tab"
           accessibilityState={{ selected: !isRecall }}
@@ -265,7 +282,7 @@ export function BookmarkFlipDeck({
           </Text>
         </Pressable>
         <Pressable
-          onPress={() => { triggerLightHaptic(); setDeckMode('recall'); }}
+          onPress={() => handleSwitchDeckMode('recall')}
           style={[styles.modeTogglePill, isRecall && styles.modeTogglePillRecallActive]}
           accessibilityRole="tab"
           accessibilityState={{ selected: isRecall }}
@@ -297,6 +314,9 @@ export function BookmarkFlipDeck({
         {...panResponder.panHandlers}
         style={[
           styles.flipStage,
+          Platform.OS === 'web'
+            ? ({ userSelect: 'none' } as unknown as Record<string, unknown>)
+            : undefined,
           {
             opacity: cardOpacity,
             transform: [{ translateX: slideAnim }, { rotate: dragRotate }],
@@ -310,6 +330,7 @@ export function BookmarkFlipDeck({
             styles.cardFace,
             styles.cardFront,
             {
+              zIndex: isFlipped ? 0 : 2,
               opacity: frontOpacity,
               transform: [{ perspective: 1000 }, { rotateY: frontRotate }],
             },
@@ -421,6 +442,7 @@ export function BookmarkFlipDeck({
             styles.cardFace,
             styles.cardBack,
             {
+              zIndex: isFlipped ? 2 : 0,
               opacity: backOpacity,
               transform: [{ perspective: 1000 }, { rotateY: backRotate }],
             },
@@ -678,6 +700,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.card,
     padding: SPACING.lg,
     justifyContent: 'space-between',
+    backfaceVisibility: 'hidden',
     ...SHADOW.card,
   },
   cardFront: {

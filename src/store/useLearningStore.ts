@@ -443,6 +443,60 @@ export const useLearningStore = create<LearningState>()(
         activeDateHistory: state.activeDateHistory,
         wordReviews: state.wordReviews,
       }),
+      merge: (persistedState, currentState) => {
+        const raw =
+          persistedState && typeof persistedState === 'object'
+            ? (persistedState as Partial<LearningState>)
+            : {};
+        const validMode: ShortsMode =
+          raw.shortsMode === 'both' ||
+          raw.shortsMode === 'word' ||
+          raw.shortsMode === 'sentence'
+            ? raw.shortsMode
+            : currentState.shortsMode;
+        const safeNonNeg = (v: unknown, fallback: number) =>
+          typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : fallback;
+        const safeReviews =
+          raw.wordReviews &&
+          typeof raw.wordReviews === 'object' &&
+          !Array.isArray(raw.wordReviews)
+            ? raw.wordReviews
+            : currentState.wordReviews;
+
+        return {
+          ...currentState,
+          learnedSymbolIds: Array.isArray(raw.learnedSymbolIds)
+            ? raw.learnedSymbolIds.filter((x): x is string => typeof x === 'string')
+            : currentState.learnedSymbolIds,
+          bookmarkedSymbolIds: Array.isArray(raw.bookmarkedSymbolIds)
+            ? raw.bookmarkedSymbolIds.filter((x): x is string => typeof x === 'string')
+            : currentState.bookmarkedSymbolIds,
+          showKoPronunciation:
+            typeof raw.showKoPronunciation === 'boolean'
+              ? raw.showKoPronunciation
+              : currentState.showKoPronunciation,
+          hasDismissedWelcomeBanner:
+            typeof raw.hasDismissedWelcomeBanner === 'boolean'
+              ? raw.hasDismissedWelcomeBanner
+              : currentState.hasDismissedWelcomeBanner,
+          shortsMode: validMode,
+          nickname: typeof raw.nickname === 'string' ? raw.nickname : currentState.nickname,
+          totalStudySeconds: safeNonNeg(raw.totalStudySeconds, currentState.totalStudySeconds),
+          todayDateKey:
+            typeof raw.todayDateKey === 'string' ? raw.todayDateKey : currentState.todayDateKey,
+          todayStudySeconds: safeNonNeg(raw.todayStudySeconds, currentState.todayStudySeconds),
+          currentStreakDays: safeNonNeg(raw.currentStreakDays, currentState.currentStreakDays),
+          longestStreakDays: safeNonNeg(raw.longestStreakDays, currentState.longestStreakDays),
+          lastActiveDate:
+            typeof raw.lastActiveDate === 'string' || raw.lastActiveDate === null
+              ? raw.lastActiveDate
+              : currentState.lastActiveDate,
+          activeDateHistory: Array.isArray(raw.activeDateHistory)
+            ? raw.activeDateHistory.filter((x): x is string => typeof x === 'string')
+            : currentState.activeDateHistory,
+          wordReviews: safeReviews,
+        };
+      },
       onRehydrateStorage: () => (_state, error) => {
         if (error) {
           void safeAsyncStorage.removeItem('baro-english-learning-storage-v1');

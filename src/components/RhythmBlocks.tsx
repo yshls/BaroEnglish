@@ -1,4 +1,5 @@
 import { CheckCircle, MusicNote, Play, Sparkle, SpeakerHigh, SpeakerLow } from './PlumpIcons';
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSpeechAudio } from '../hooks/useSpeechAudio';
@@ -45,6 +46,24 @@ export function RhythmBlocks({
   const [wrongIdx, setWrongIdx] = useState<number | null>(null);
   const [correctIdx, setCorrectIdx] = useState<number | null>(null);
   const rhythmSessionRef = useRef(0);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const clearRhythmTimers = useCallback(() => {
+    rhythmSessionRef.current += 1;
+    for (const id of timersRef.current) {
+      clearTimeout(id);
+    }
+    timersRef.current = [];
+  }, []);
+
+  const scheduleTimer = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(() => {
+      timersRef.current = timersRef.current.filter((t) => t !== id);
+      fn();
+    }, ms);
+    timersRef.current.push(id);
+    return id;
+  }, []);
 
   const resetKey = `${word ?? ''}::${syllables.map((s) => `${s.text}:${s.stress}`).join('|')}`;
   const [prevResetKey, setPrevResetKey] = useState(resetKey);
@@ -57,16 +76,28 @@ export function RhythmBlocks({
     setCorrectIdx(null);
   }
 
+  const syllableCount = syllables.length;
   const blockAnims = useMemo<BlockAnim[]>(
     () =>
-      syllables.map(() => ({
+      Array.from({ length: syllableCount }, () => ({
         scale: new Animated.Value(1),
         liftY: new Animated.Value(0),
         shakeX: new Animated.Value(0),
         dotScale: new Animated.Value(1),
       })),
-    [syllables]
+    [syllableCount]
   );
+
+  useEffect(() => {
+    return () => {
+      for (const anim of blockAnims) {
+        anim.scale.stopAnimation();
+        anim.liftY.stopAnimation();
+        anim.shakeX.stopAnimation();
+        anim.dotScale.stopAnimation();
+      }
+    };
+  }, [blockAnims]);
 
   const primaryIndices = useMemo(
     () =>
@@ -84,10 +115,23 @@ export function RhythmBlocks({
     [blockAnims]
   );
 
-  // 단어가 바뀌면 진행 중인 리듬 재생 세션 무효화
+  // 단어 변경·언마운트 시 진행 중인 리듬 타이머 전부 취소
   useEffect(() => {
-    rhythmSessionRef.current += 1;
-  }, [resetKey]);
+    clearRhythmTimers();
+    return () => {
+      clearRhythmTimers();
+    };
+  }, [clearRhythmTimers, resetKey]);
+
+  // 탭 이탈 시 잔여 리듬 타이머·TTS·진동 즉시 중단
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        clearRhythmTimers();
+        setRhythmIndex(null);
+      };
+    }, [clearRhythmTimers])
+  );
 
   const animateBounce = useCallback(
     (idx: number, stress: SyllableItem['stress']) => {
@@ -209,14 +253,15 @@ export function RhythmBlocks({
     }
 
     triggerLightHaptic();
+    clearRhythmTimers();
     setQuizMode(true);
     setQuizState('asking');
     setWrongIdx(null);
     setCorrectIdx(null);
-    setTimeout(() => {
+    scheduleTimer(() => {
       playTargetWord();
     }, 120);
-  }, [playTargetWord, quizMode, stop]);
+  }, [clearRhythmTimers, playTargetWord, quizMode, scheduleTimer, stop]);
 
   const handleRestartQuiz = useCallback(() => {
     triggerLightHaptic();
@@ -240,7 +285,7 @@ export function RhythmBlocks({
 
   const handleSyllableTap = useCallback(
     (syl: SyllableItem, idx: number) => {
-      rhythmSessionRef.current += 1;
+      clearRhythmTimers();
       setRhythmIndex(null);
 
       // 강세 퀴즈 풀이 중이라면 정답 판정 인터랙션 수행
@@ -269,7 +314,7 @@ export function RhythmBlocks({
       animateBounce(idx, syl.stress);
       void playSlow(syl.text, { key: `rhythm:syl:${idx}:${syl.text}` });
     },
-    [animateBounce, animateShake, isQuizHidingStress, playSlow]
+    [animateBounce, animateShake, clearRhythmTimers, isQuizHidingStress, playSlow]
   );
 
   const handleRhythmPlay = useCallback(() => {
@@ -278,7 +323,7 @@ export function RhythmBlocks({
       return;
     }
 
-    rhythmSessionRef.current += 1;
+    clearRhythmTimers();
     const session = rhythmSessionRef.current;
     stop();
 
@@ -287,7 +332,7 @@ export function RhythmBlocks({
     syllables.forEach((syl, idx) => {
       const delay = cumulativeDelay;
 
-      setTimeout(() => {
+      scheduleTimer(() => {
         if (rhythmSessionRef.current !== session) return;
         setRhythmIndex(idx);
         if (syl.stress === 'primary') {
@@ -310,11 +355,11 @@ export function RhythmBlocks({
       cumulativeDelay += duration;
     });
 
-    setTimeout(() => {
+    scheduleTimer(() => {
       if (rhythmSessionRef.current !== session) return;
       setRhythmIndex(null);
     }, cumulativeDelay + 400);
-  }, [animateBounce, isQuizHidingStress, playSlow, playTargetWord, stop, syllables]);
+  }, [animateBounce, clearRhythmTimers, isQuizHidingStress, playSlow, playTargetWord, scheduleTimer, stop, syllables]);
 
   const isRhythmPlaying = rhythmIndex !== null;
 

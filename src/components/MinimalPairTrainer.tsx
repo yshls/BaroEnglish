@@ -6,7 +6,7 @@ import {
   SpeakerHigh,
   SpeakerLow,
 } from './PlumpIcons';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -97,6 +97,20 @@ export function MinimalPairTrainer() {
   const [rightScale] = useState(() => new Animated.Value(1));
   const [leftShake] = useState(() => new Animated.Value(0));
   const [rightShake] = useState(() => new Animated.Value(0));
+  const quizStartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!expanded && quizStartTimerRef.current) {
+      clearTimeout(quizStartTimerRef.current);
+      quizStartTimerRef.current = null;
+    }
+    return () => {
+      if (quizStartTimerRef.current) {
+        clearTimeout(quizStartTimerRef.current);
+        quizStartTimerRef.current = null;
+      }
+    };
+  }, [expanded]);
 
   const activePair = useMemo(
     () => CONFUSING_PAIRS.find((p) => p.id === selectedPairId) ?? CONFUSING_PAIRS[0],
@@ -195,6 +209,10 @@ export function MinimalPairTrainer() {
   }, [activePair.id, leftExample, playWordExample, rightExample]);
 
   const handleSelectPairChip = (pairId: string) => {
+    if (quizStartTimerRef.current) {
+      clearTimeout(quizStartTimerRef.current);
+      quizStartTimerRef.current = null;
+    }
     triggerLightHaptic();
     stop();
     setSelectedPairId(pairId);
@@ -206,6 +224,10 @@ export function MinimalPairTrainer() {
   };
 
   const handleSwitchMode = (nextMode: TrainerMode) => {
+    if (quizStartTimerRef.current) {
+      clearTimeout(quizStartTimerRef.current);
+      quizStartTimerRef.current = null;
+    }
     triggerLightHaptic();
     stop();
     setMode(nextMode);
@@ -214,7 +236,8 @@ export function MinimalPairTrainer() {
       setQuizAnswer(nextAnswer);
       setQuizPicked(null);
       const ex = nextAnswer === 'left' ? leftExample : rightExample;
-      setTimeout(() => {
+      quizStartTimerRef.current = setTimeout(() => {
+        quizStartTimerRef.current = null;
         playWordExample(ex, `pair:quiz:${activePair.id}:${ex.word}`);
       }, 100);
     } else {

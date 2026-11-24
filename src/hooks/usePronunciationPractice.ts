@@ -124,6 +124,7 @@ export function usePronunciationPractice({
   const nativePlayerRef = useRef<AudioPlayer | null>(null);
   const autoStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const compareTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const webEvalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recordStartTimeRef = useRef<number>(0);
   const peakLevelRef = useRef<number>(0);
   const activeRecordingWordRef = useRef<string>(normalizedWord);
@@ -137,6 +138,10 @@ export function usePronunciationPractice({
     if (compareTimerRef.current) {
       clearTimeout(compareTimerRef.current);
       compareTimerRef.current = null;
+    }
+    if (webEvalTimerRef.current) {
+      clearTimeout(webEvalTimerRef.current);
+      webEvalTimerRef.current = null;
     }
     if (webLevelIntervalRef.current) {
       clearInterval(webLevelIntervalRef.current);
@@ -467,7 +472,11 @@ export function usePronunciationPractice({
           webBlobUrlRef.current = blobUrl;
 
           // SpeechRecognition 결과가 늦게 도착할 수 있어 220ms 대기 후 최종 채점
-          setTimeout(() => {
+          if (webEvalTimerRef.current) {
+            clearTimeout(webEvalTimerRef.current);
+          }
+          webEvalTimerRef.current = setTimeout(() => {
+            webEvalTimerRef.current = null;
             if (!mountedRef.current) return;
             const alts = webTranscriptAltsRef.current;
             const hasSpeechApi = Boolean(

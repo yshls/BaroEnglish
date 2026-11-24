@@ -84,7 +84,7 @@ export default function WordReaderScreen() {
       stiffness: 300,
       damping: 10,
       mass: 0.6,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, [heartScale]);
 

@@ -24,7 +24,12 @@ interface BaroHeaderProps {
 
 export function BaroHeader({ activeRouteName, onNavigateTab }: BaroHeaderProps) {
   const insets = useSafeAreaInsets();
-  const currentStreakDays = useLearningStore((state) => state.currentStreakDays);
+  const hasHydrated = useLearningStore((state) => state.hasHydrated);
+  const rawStreakDays = useLearningStore((state) => state.currentStreakDays);
+  const currentStreakDays =
+    typeof rawStreakDays === 'number' && Number.isFinite(rawStreakDays) && rawStreakDays > 0
+      ? Math.floor(rawStreakDays)
+      : 0;
 
   const isIndexTab = activeRouteName === 'index' || !activeRouteName;
   const hasStreak = currentStreakDays > 0;
@@ -63,8 +68,8 @@ export function BaroHeader({ activeRouteName, onNavigateTab }: BaroHeaderProps) 
           ) : null}
 
           <View
-            style={styles.streakBadge}
-            accessible
+            style={[styles.streakBadge, !hasHydrated && styles.streakBadgeHidden]}
+            accessible={hasHydrated}
             accessibilityLabel={`연속 학습 ${currentStreakDays}일`}
           >
             <Fire
@@ -140,6 +145,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
+  },
+  streakBadgeHidden: {
+    opacity: 0,
   },
   streakText: {
     fontFamily: FONTS.family,

@@ -172,7 +172,16 @@ export function HorizontalChipScroll({
         }
         contentContainerStyle={[styles.defaultContent, contentContainerStyle]}
       >
-        {children}
+        {Platform.OS === 'web' ? (
+          <View
+            pointerEvents={isDragging ? 'none' : 'auto'}
+            style={[styles.defaultContent, contentContainerStyle, styles.webDragInner]}
+          >
+            {children}
+          </View>
+        ) : (
+          children
+        )}
       </ScrollView>
 
       {canScrollLeft ? (
@@ -218,6 +227,14 @@ const styles = StyleSheet.create({
   defaultContent: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  webDragInner: {
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    paddingTop: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+    paddingRight: 0,
   },
   navBtn: {
     position: 'absolute',

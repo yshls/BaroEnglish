@@ -1,8 +1,9 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import {
   Animated,
   Platform,
   Pressable,
+  StyleSheet,
   type GestureResponderEvent,
   type PressableProps,
   type StyleProp,
@@ -43,6 +44,22 @@ export function Tap({
   const [opacity] = useState(() => new Animated.Value(MOTION.opacity.visible));
   const spring = MOTION.spring[feel];
 
+  useEffect(() => {
+    if (disabled) {
+      scale.stopAnimation();
+      opacity.stopAnimation();
+      scale.setValue(MOTION.scale.normal);
+      opacity.setValue(MOTION.opacity.visible);
+    }
+  }, [disabled, opacity, scale]);
+
+  useEffect(() => {
+    return () => {
+      scale.stopAnimation();
+      opacity.stopAnimation();
+    };
+  }, [opacity, scale]);
+
   const animateTo = (toScale: number, toOpacity: number) =>
     Animated.parallel([
       // RN Animated.spring는 물리 기반(stiffness/damping/mass) 설정을 그대로 받는다.
@@ -60,6 +77,15 @@ export function Tap({
       }),
     ]).start();
 
+  const flatStyle = StyleSheet.flatten(style);
+  const callerTransform = Array.isArray(flatStyle?.transform)
+    ? flatStyle.transform
+    : [];
+  const animatedOverlay =
+    flatStyle?.opacity === undefined
+      ? { transform: [...callerTransform, { scale }], opacity }
+      : { transform: [...callerTransform, { scale }] };
+
   return (
     <AP
       disabled={disabled}
@@ -74,7 +100,7 @@ export function Tap({
         animateTo(MOTION.scale.normal, MOTION.opacity.visible);
         onPressOut?.(e);
       }}
-      style={[style, { transform: [{ scale }], opacity }]}
+      style={[style, animatedOverlay]}
       {...rest}
     >
       {children}

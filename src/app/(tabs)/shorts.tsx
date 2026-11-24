@@ -122,10 +122,15 @@ export default function PronunciationShortsScreen() {
     };
   }, []);
 
-  // 탭 이탈 시 재생 중인 음성 즉시 중단
+  const [isScreenFocused, setIsScreenFocused] = useState(true);
+  const emptySentenceFetchCountRef = useRef(0);
+
+  // 탭 포커스 추적 + 이탈 시 재생 중인 음성 즉시 중단
   useFocusEffect(
     useCallback(() => {
+      setIsScreenFocused(true);
       return () => {
+        setIsScreenFocused(false);
         stop();
       };
     }, [stop])
@@ -325,6 +330,7 @@ export default function PronunciationShortsScreen() {
       if (nextMode === shortsMode) return;
       triggerLightHaptic();
       stop();
+      emptySentenceFetchCountRef.current = 0;
       setShortsMode(nextMode);
       lastActiveIndexRef.current = 0;
       setActiveIndex(0);
@@ -339,12 +345,37 @@ export default function PronunciationShortsScreen() {
     [feedWords, loadNextBatch, setShortsMode, shortsMode, stop]
   );
 
+  // visibleFeedWords 길이가 줄어들었을 때(예: 하이드레이션 후 문장 모드 전환) 인덱스 클램핑
+  const clampedActiveIndex =
+    visibleFeedWords.length > 0
+      ? Math.min(activeIndex, visibleFeedWords.length - 1)
+      : 0;
+
+  useEffect(() => {
+    if (visibleFeedWords.length > 0) {
+      emptySentenceFetchCountRef.current = 0;
+    }
+    if (lastActiveIndexRef.current !== clampedActiveIndex) {
+      lastActiveIndexRef.current = clampedActiveIndex;
+      if (viewportHeight > 0) {
+        flatListRef.current?.scrollToOffset({
+          offset: clampedActiveIndex * viewportHeight,
+          animated: false,
+        });
+      }
+    }
+  }, [clampedActiveIndex, viewportHeight, visibleFeedWords.length]);
+
   // 현재 카드 기준 남은 카드가 4장 이하이고 로딩 중이 아니면 다음 배치를 자동으로 미리 불러옴
   useEffect(() => {
     if (!didInitRef.current || feedWords.length === 0 || isFetchingMore || feedError) {
       return;
     }
-    if (visibleFeedWords.length - 1 - activeIndex > PREFETCH_AHEAD_THRESHOLD) return;
+    if (shortsMode === 'sentence' && visibleFeedWords.length === 0) {
+      if (emptySentenceFetchCountRef.current >= 2) return;
+      emptySentenceFetchCountRef.current += 1;
+    }
+    if (visibleFeedWords.length - 1 - clampedActiveIndex > PREFETCH_AHEAD_THRESHOLD) return;
 
     let cancelled = false;
     void Promise.resolve().then(() => {
@@ -356,12 +387,21 @@ export default function PronunciationShortsScreen() {
     return () => {
       cancelled = true;
     };
-  }, [activeIndex, feedError, feedWords.length, isFetchingMore, loadNextBatch, visibleFeedWords.length]);
+  }, [clampedActiveIndex, feedError, feedWords.length, isFetchingMore, loadNextBatch, shortsMode, visibleFeedWords.length]);
 
   const handleViewportLayout = useCallback((event: LayoutChangeEvent) => {
     const nextHeight = Math.round(event.nativeEvent.layout.height);
     if (nextHeight > 0) {
-      setViewportHeight((prev) => (Math.abs(prev - nextHeight) > 2 ? nextHeight : prev));
+      setViewportHeight((prev) => {
+        if (Math.abs(prev - nextHeight) <= 2) return prev;
+        if (prev > 0 && lastActiveIndexRef.current > 0) {
+          flatListRef.current?.scrollToOffset({
+            offset: lastActiveIndexRef.current * nextHeight,
+            animated: false,
+          });
+        }
+        return nextHeight;
+      });
     }
   }, []);
 
@@ -408,22 +448,33 @@ export default function PronunciationShortsScreen() {
     [stop, viewportHeight, visibleFeedWords.length]
   );
 
-  // 웹에서 키보드 ↑ / ↓ 방향키로도 릴스처럼 한 장씩 넘기기 지원
+  // 웹에서 키보드 ↑ / ↓ 방향키로도 릴스처럼 한 장씩 넘기기 지원 (포커스된 탭 & 비입력 상태에서만)
   useEffect(() => {
-    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    if (Platform.OS !== 'web' || typeof window === 'undefined' || !isScreenFocused) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (tappedExampleWord !== null || practiceTarget !== null) return;
+      if (typeof document !== 'undefined') {
+        const el = document.activeElement as HTMLElement | null;
+        if (
+          el &&
+          (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
+        ) {
+          return;
+        }
+      }
+      if (tappedExampleWord !== null || practiceTarget !== null || viewportHeight <= 0) return;
       if (event.key === 'ArrowDown') {
         event.preventDefault();
-        if (lastActiveIndexRef.current < visibleFeedWords.length - 1) {
-          scrollToCard(lastActiveIndexRef.current + 1);
+        const cur = Math.min(lastActiveIndexRef.current, Math.max(0, visibleFeedWords.length - 1));
+        if (cur < visibleFeedWords.length - 1) {
+          scrollToCard(cur + 1);
         } else {
           void loadNextBatch(PREFETCH_BATCH_SIZE);
         }
       } else if (event.key === 'ArrowUp') {
         event.preventDefault();
-        if (lastActiveIndexRef.current > 0) {
-          scrollToCard(lastActiveIndexRef.current - 1);
+        const cur = Math.min(lastActiveIndexRef.current, Math.max(0, visibleFeedWords.length - 1));
+        if (cur > 0) {
+          scrollToCard(cur - 1);
         }
       }
     };
@@ -431,7 +482,7 @@ export default function PronunciationShortsScreen() {
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [loadNextBatch, practiceTarget, scrollToCard, tappedExampleWord, visibleFeedWords.length]);
+  }, [isScreenFocused, loadNextBatch, practiceTarget, scrollToCard, tappedExampleWord, viewportHeight, visibleFeedWords.length]);
 
   const ensureExampleTranslation = useCallback(
     async (wordItem: CoreWord, sentence: string) => {
@@ -473,7 +524,7 @@ export default function PronunciationShortsScreen() {
 
   // 현재 보고 있는 쇼츠 카드의 예문에 한글 뜻이 없으면 자동으로 보강
   useEffect(() => {
-    const activeItem = visibleFeedWords[activeIndex];
+    const activeItem = visibleFeedWords[clampedActiveIndex];
     if (!activeItem) return;
     const firstEx = getFirstExample(activeItem);
     if (!firstEx || firstEx.ko || attemptedExampleRef.current.has(firstEx.en)) {
@@ -488,7 +539,7 @@ export default function PronunciationShortsScreen() {
     return () => {
       cancelled = true;
     };
-  }, [activeIndex, ensureExampleTranslation, visibleFeedWords]);
+  }, [clampedActiveIndex, ensureExampleTranslation, visibleFeedWords]);
 
   const studiedCount = Object.keys(studiedIds).length;
   const safeBookmarkKeys = useMemo(
@@ -631,7 +682,10 @@ export default function PronunciationShortsScreen() {
                       sentence={firstExample.en}
                       targetWord={item.word}
                       selectedWord={tappedExampleWord}
-                      onWordPress={(w) => setTappedExampleWord(w)}
+                      onWordPress={(w) => {
+                        lastHeroTapRef.current = { wordId: '', ts: 0 };
+                        setTappedExampleWord(w);
+                      }}
                     />
                   </View>
 
@@ -1369,6 +1423,14 @@ export default function PronunciationShortsScreen() {
           onScrollEndDrag={handleScroll}
           onEndReached={() => void loadNextBatch(PREFETCH_BATCH_SIZE)}
           onEndReachedThreshold={1.5}
+          onScrollToIndexFailed={({ index }) => {
+            if (viewportHeight > 0) {
+              flatListRef.current?.scrollToOffset({
+                offset: index * viewportHeight,
+                animated: true,
+              });
+            }
+          }}
           getItemLayout={
             viewportHeight > 0
               ? (_, idx) => ({

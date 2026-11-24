@@ -1,5 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import type { StateStorage } from 'zustand/middleware';
+
+const isWebSSR = () => Platform.OS === 'web' && typeof window === 'undefined';
 
 /**
  * AsyncStorage 예외·손상 JSON에 안전한 Zustand StateStorage 래퍼.
@@ -8,6 +11,7 @@ import type { StateStorage } from 'zustand/middleware';
  */
 export const safeAsyncStorage: StateStorage = {
   getItem: async (name: string): Promise<string | null> => {
+    if (isWebSSR()) return null;
     try {
       const value = await AsyncStorage.getItem(name);
       if (value === null) return null;
@@ -23,6 +27,7 @@ export const safeAsyncStorage: StateStorage = {
     }
   },
   setItem: async (name: string, value: string): Promise<void> => {
+    if (isWebSSR()) return;
     try {
       await AsyncStorage.setItem(name, value);
     } catch {
@@ -30,6 +35,7 @@ export const safeAsyncStorage: StateStorage = {
     }
   },
   removeItem: async (name: string): Promise<void> => {
+    if (isWebSSR()) return;
     try {
       await AsyncStorage.removeItem(name);
     } catch {
