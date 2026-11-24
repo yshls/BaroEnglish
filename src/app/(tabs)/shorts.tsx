@@ -1,4 +1,4 @@
-import { BookmarkSimple, CloudSlash, Gauge, Lightning, Microphone, SpeakerHigh, SpeakerLow, Sparkle, Translate } from 'phosphor-react-native';
+import { CloudSlash, Gauge, Heart, Lightning, Microphone, Sparkle, SpeakerHigh, SpeakerLow, Translate } from '../../components/PlumpIcons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -14,6 +14,7 @@ import {
   type NativeSyntheticEvent,
   type ViewStyle,
 } from 'react-native';
+import { InfoTipBox, InfoTipButton } from '../../components/InfoTip';
 import { PronunciationPracticeSheet } from '../../components/PronunciationPracticeCard';
 import { TappableExampleSentence } from '../../components/TappableExampleSentence';
 import { WordMeaningSheet } from '../../components/WordMeaningSheet';
@@ -52,6 +53,7 @@ export default function PronunciationShortsScreen() {
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [feedError, setFeedError] = useState(false);
   const [tappedExampleWord, setTappedExampleWord] = useState<string | null>(null);
+  const [openExampleTipId, setOpenExampleTipId] = useState<string | null>(null);
   const [practiceWord, setPracticeWord] = useState<CoreWord | null>(null);
   const [exampleKoMap, setExampleKoMap] = useState<Record<string, string>>({});
   const [translatingExamples, setTranslatingExamples] = useState<Record<string, boolean>>({});
@@ -437,23 +439,14 @@ export default function PronunciationShortsScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: isBookmarked }}
                 accessibilityLabel={
-                  isBookmarked ? `${item.word} 북마크 해제` : `${item.word} 북마크 저장`
+                  isBookmarked ? `${item.word} 저장 해제` : `${item.word} 저장`
                 }
               >
-                <BookmarkSimple
-                  size={20}
-                  color={isBookmarked ? COLORS.goldText : COLORS.textMuted}
+                <Heart
+                  size={22}
+                  color={isBookmarked ? COLORS.primary : COLORS.textMuted}
                   weight={isBookmarked ? 'fill' : 'regular'}
                 />
-                <Text
-                  style={[
-                    styles.bookmarkBtnText,
-                    isBookmarked && styles.bookmarkBtnTextActive,
-                  ]}
-                  maxFontSizeMultiplier={1.25}
-                >
-                  {isBookmarked ? '저장됨' : '북마크'}
-                </Text>
               </Pressable>
             </View>
 
@@ -646,9 +639,20 @@ export default function PronunciationShortsScreen() {
             {firstExample ? (
               <View style={styles.exampleBox}>
                 <View style={styles.exampleTopRow}>
-                  <Text style={styles.exampleLabel} maxFontSizeMultiplier={1.25}>
-                    예문 · 단어 누르면 뜻 보기
-                  </Text>
+                  <View style={styles.exampleLabelRow}>
+                    <Text style={styles.exampleLabel} maxFontSizeMultiplier={1.25}>
+                      예문
+                    </Text>
+                    <InfoTipButton
+                      open={openExampleTipId === item.id}
+                      onToggle={() =>
+                        setOpenExampleTipId((prev) =>
+                          prev === item.id ? null : item.id
+                        )
+                      }
+                      accessibilityLabel="예문 단어 뜻 보기 안내"
+                    />
+                  </View>
                   <View style={styles.exampleMiniAudioRow}>
                     <Pressable
                       onPress={() =>
@@ -700,6 +704,13 @@ export default function PronunciationShortsScreen() {
                     </Pressable>
                   </View>
                 </View>
+
+                <InfoTipBox
+                  visible={openExampleTipId === item.id}
+                  text="문장 속 궁금한 단어를 누르면 뜻과 발음을 바로 볼 수 있어요."
+                  variant="surface"
+                  onClose={() => setOpenExampleTipId(null)}
+                />
 
                 <TappableExampleSentence
                   sentence={firstExample.en}
@@ -773,6 +784,7 @@ export default function PronunciationShortsScreen() {
       feedWords.length,
       isFetchingMore,
       markStudied,
+      openExampleTipId,
       playFast,
       playNormal,
       playSlow,
@@ -1053,39 +1065,28 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   bookmarkBtn: {
-    minHeight: 44,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    width: 44,
+    height: 44,
     borderRadius: RADIUS.pill,
     backgroundColor: COLORS.background,
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    justifyContent: 'center',
   },
   bookmarkBtnActive: {
-    backgroundColor: COLORS.goldSoft,
-  },
-  bookmarkBtnText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: COLORS.textMuted,
-  },
-  bookmarkBtnTextActive: {
-    fontWeight: '700',
-    color: COLORS.goldText,
+    backgroundColor: COLORS.tint,
   },
   heroCenter: {
     alignItems: 'center',
     gap: 10,
   },
   heroWord: {
-    fontSize: 44,
+    fontSize: 32,
     fontWeight: '700',
     color: COLORS.text,
     textAlign: 'center',
   },
   heroMeaning: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: '700',
     color: COLORS.primaryDark,
     textAlign: 'center',
@@ -1095,16 +1096,16 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 8,
   },
   ipaPill: {
     backgroundColor: COLORS.purpleSoft,
     borderRadius: RADIUS.pill,
-    paddingHorizontal: 14,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
   },
   ipaText: {
-    fontSize: 20,
+    fontSize: 15,
     fontWeight: '500',
     color: COLORS.purpleText,
   },
@@ -1124,35 +1125,35 @@ const styles = StyleSheet.create({
   sylChip: {
     backgroundColor: COLORS.background,
     borderRadius: RADIUS.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
   },
   sylChipPrimary: {
     backgroundColor: COLORS.accentSoft,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
   sylChipSecondary: {
     backgroundColor: COLORS.tint,
   },
   sylDot: {
-    fontSize: 11,
+    fontSize: 10,
     color: COLORS.textMuted,
   },
   sylDotPrimary: {
-    fontSize: 14,
+    fontSize: 12,
     color: COLORS.accentText,
   },
   sylText: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '500',
     color: COLORS.text,
   },
   sylTextPrimary: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '700',
     color: COLORS.accentText,
   },
@@ -1264,6 +1265,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
+  },
+  exampleLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   exampleLabel: {
     fontSize: 14,

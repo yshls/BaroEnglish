@@ -1,7 +1,8 @@
-import { CheckCircle, Sparkle, SpeakerHigh, SpeakerLow, X } from 'phosphor-react-native';
+import { CheckCircle, Sparkle, SpeakerHigh, SpeakerLow, X } from '../../components/PlumpIcons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { InfoTipBox, InfoTipButton } from '../../components/InfoTip';
 import { SymbolDetailSheet } from '../../components/SymbolDetailSheet';
 import {
   CORE_IPA_SYMBOLS,
@@ -45,6 +46,7 @@ const CATEGORY_ACCENTS: Record<
 export default function IpaSymbolsScreen() {
   const [viewMode, setViewMode] = useState<SymbolViewMode>('all');
   const [selectedSymbol, setSelectedSymbol] = useState<IpaSymbol | null>(null);
+  const [openCategoryInfoId, setOpenCategoryInfoId] = useState<string | null>(null);
   const { stop, playNormal, activeKey } = useSpeechAudio();
 
   const learnedSymbolIds = useLearningStore((state) => state.learnedSymbolIds);
@@ -116,9 +118,6 @@ export default function IpaSymbolsScreen() {
                 accessibilityLabel="안내 배너 닫기"
               >
                 <X size={20} color={COLORS.indigoText} />
-                <Text style={styles.dismissBtnText} maxFontSizeMultiplier={1.3}>
-                  닫기
-                </Text>
               </Pressable>
             </View>
             <Text style={styles.welcomeBody} maxFontSizeMultiplier={1.5}>
@@ -239,10 +238,16 @@ export default function IpaSymbolsScreen() {
                     <Text style={styles.categoryStep} maxFontSizeMultiplier={1.4}>
                       {category.titleKo}
                     </Text>
+                    <InfoTipButton
+                      open={openCategoryInfoId === category.id}
+                      onToggle={() =>
+                        setOpenCategoryInfoId((prev) =>
+                          prev === category.id ? null : category.id
+                        )
+                      }
+                      accessibilityLabel={`${category.titleKo} 설명 보기`}
+                    />
                   </View>
-                  <Text style={styles.categorySubtitle} maxFontSizeMultiplier={1.45}>
-                    {subtitle}
-                  </Text>
                 </View>
 
                 <View
@@ -262,6 +267,13 @@ export default function IpaSymbolsScreen() {
                   </Text>
                 </View>
               </View>
+
+              <InfoTipBox
+                visible={openCategoryInfoId === category.id}
+                text={subtitle}
+                variant="surface"
+                onClose={() => setOpenCategoryInfoId(null)}
+              />
 
               <View style={styles.grid}>
                 {symbols.map((symbol) => {
@@ -420,22 +432,16 @@ const styles = StyleSheet.create({
     color: COLORS.indigoText,
   },
   dismissBtn: {
-    minHeight: TOUCH.minTarget,
-    paddingHorizontal: 14,
-    borderRadius: RADIUS.md,
+    width: TOUCH.minTarget,
+    height: TOUCH.minTarget,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.card,
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-  },
-  dismissBtnText: {
-    fontSize: TYPOGRAPHY.body,
-    fontWeight: '500',
-    color: COLORS.indigoText,
+    justifyContent: 'center',
   },
   welcomeBody: {
     fontSize: TYPOGRAPHY.body,
-    lineHeight: 28,
+    lineHeight: 21,
     color: COLORS.text,
   },
   modeSwitchContainer: {
@@ -503,8 +509,8 @@ const styles = StyleSheet.create({
   percentPill: {
     backgroundColor: COLORS.successSoft,
     borderRadius: RADIUS.pill,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
   },
   percentPillText: {
     fontSize: TYPOGRAPHY.bodyLarge,
@@ -512,7 +518,7 @@ const styles = StyleSheet.create({
     color: COLORS.successText,
   },
   progressTrack: {
-    height: 12,
+    height: 10,
     borderRadius: RADIUS.pill,
     backgroundColor: COLORS.background,
     overflow: 'hidden',
@@ -545,11 +551,11 @@ const styles = StyleSheet.create({
   },
   categoryStepPill: {
     borderRadius: RADIUS.pill,
-    paddingHorizontal: 10,
+    paddingHorizontal: 9,
     paddingVertical: 3,
   },
   categoryStepPillText: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '500',
   },
   categoryStep: {
@@ -563,8 +569,8 @@ const styles = StyleSheet.create({
   },
   categoryProgressBadge: {
     borderRadius: RADIUS.pill,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
   },
   categoryProgressText: {
     fontSize: TYPOGRAPHY.body,
@@ -579,12 +585,12 @@ const styles = StyleSheet.create({
     flexBasis: '46%',
     flexGrow: 1,
     minWidth: 148,
-    minHeight: 128,
+    minHeight: 112,
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.card,
     padding: SPACING.md,
     justifyContent: 'space-between',
-    gap: 6,
+    gap: 5,
     ...SHADOW.card,
   },
   symbolCardLearned: {
@@ -609,12 +615,12 @@ const styles = StyleSheet.create({
   },
   coreTag: {
     backgroundColor: COLORS.goldSoft,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
     borderRadius: RADIUS.pill,
   },
   coreTagText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
     color: COLORS.goldText,
   },
@@ -623,12 +629,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
     backgroundColor: COLORS.card,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
     borderRadius: RADIUS.pill,
   },
   doneTagText: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '500',
     color: COLORS.successText,
   },

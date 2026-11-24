@@ -1,4 +1,4 @@
-import { ArrowsClockwise, BookmarkSimple, Eye, EyeSlash, Gauge, Info, Lightning, MagnifyingGlass, Microphone, Question, SpeakerHigh, Translate, XCircle } from 'phosphor-react-native';
+import { ArrowsClockwise, Eye, EyeSlash, Gauge, Heart, Info, Lightning, MagnifyingGlass, Microphone, Question, SpeakerHigh, Translate, XCircle } from '../../components/PlumpIcons';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -14,6 +14,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { InfoTipBox, InfoTipButton } from '../../components/InfoTip';
 import { PronunciationPracticeCard } from '../../components/PronunciationPracticeCard';
 import { RhythmBlocks } from '../../components/RhythmBlocks';
 import { SymbolDetailSheet } from '../../components/SymbolDetailSheet';
@@ -50,6 +51,7 @@ export default function WordReaderScreen() {
   const [displayedWord, setDisplayedWord] = useState<CoreWord | null>(null);
   const [activeSymbol, setActiveSymbol] = useState<IpaSymbol | null>(null);
   const [tappedExampleWord, setTappedExampleWord] = useState<string | null>(null);
+  const [openTip, setOpenTip] = useState<'rhythm' | 'examples' | 'symbols' | null>(null);
   const [showExampleKo, setShowExampleKo] = useState(true);
   const [exampleKoMap, setExampleKoMap] = useState<Record<string, string>>({});
   const [translatingExamples, setTranslatingExamples] = useState<Record<string, boolean>>({});
@@ -867,24 +869,15 @@ export default function WordReaderScreen() {
                   accessibilityState={{ selected: isDisplayedWordBookmarked }}
                   accessibilityLabel={
                     isDisplayedWordBookmarked
-                      ? `${displayedWord.word} 북마크 해제`
-                      : `${displayedWord.word} 북마크 저장`
+                      ? `${displayedWord.word} 저장 해제`
+                      : `${displayedWord.word} 저장`
                   }
                 >
-                  <BookmarkSimple
-                    size={22}
-                    color={isDisplayedWordBookmarked ? COLORS.goldText : COLORS.text}
+                  <Heart
+                    size={24}
+                    color={isDisplayedWordBookmarked ? COLORS.primary : COLORS.textMuted}
                     weight={isDisplayedWordBookmarked ? 'fill' : 'regular'}
                   />
-                  <Text
-                    style={[
-                      styles.bookmarkToggleText,
-                      isDisplayedWordBookmarked && styles.bookmarkToggleTextActive,
-                    ]}
-                    maxFontSizeMultiplier={1.3}
-                  >
-                    {isDisplayedWordBookmarked ? '저장됨' : '북마크'}
-                  </Text>
                 </Pressable>
               </View>
 
@@ -1015,13 +1008,23 @@ export default function WordReaderScreen() {
 
             {/* 강세 리듬 블록 카드 */}
             <View style={styles.sectionCard}>
-              <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
-                음절별 강약(강세) 리듬
-              </Text>
-              <Text style={styles.sectionGuide} maxFontSizeMultiplier={1.45}>
-                노란 카드(⬤) 음절은 크고 또렷하게, 나머지 음절은 힘을 빼고 부드럽게
-                읽어 보세요.
-              </Text>
+              <View style={styles.sectionTitleLeft}>
+                <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
+                  음절별 강약(강세) 리듬
+                </Text>
+                <InfoTipButton
+                  open={openTip === 'rhythm'}
+                  onToggle={() =>
+                    setOpenTip((prev) => (prev === 'rhythm' ? null : 'rhythm'))
+                  }
+                  accessibilityLabel="강세 리듬 설명 보기"
+                />
+              </View>
+              <InfoTipBox
+                visible={openTip === 'rhythm'}
+                text="노란 카드(⬤) 음절은 크고 또렷하게, 나머지 음절은 힘을 빼고 부드럽게 읽어 보세요."
+                onClose={() => setOpenTip(null)}
+              />
               <RhythmBlocks
                 syllables={displayedWord.syllables}
                 showKoHint={learningHasHydrated ? showKoPronunciation : true}
@@ -1059,6 +1062,15 @@ export default function WordReaderScreen() {
                         {displayedExamples.length}개
                       </Text>
                     </View>
+                    <InfoTipButton
+                      open={openTip === 'examples'}
+                      onToggle={() =>
+                        setOpenTip((prev) =>
+                          prev === 'examples' ? null : 'examples'
+                        )
+                      }
+                      accessibilityLabel="예문 사용법 보기"
+                    />
                   </View>
 
                   <Pressable
@@ -1089,10 +1101,11 @@ export default function WordReaderScreen() {
                     </Text>
                   </Pressable>
                 </View>
-                <Text style={styles.sectionGuide} maxFontSizeMultiplier={1.45}>
-                  문장 속 궁금한 단어를 누르면 바로 뜻과 발음이 나타나요! 소리로 듣고
-                  따라 읽어 보세요.
-                </Text>
+                <InfoTipBox
+                  visible={openTip === 'examples'}
+                  text="문장 속 궁금한 단어를 누르면 바로 뜻과 발음이 나타나요. 소리로 듣고 따라 읽어 보세요."
+                  onClose={() => setOpenTip(null)}
+                />
 
                 <View style={styles.examplesList}>
                   {displayedExamples.map((ex, idx) => {
@@ -1263,12 +1276,25 @@ export default function WordReaderScreen() {
             {/* 기호 역추적 카드 (Tab 1 바텀시트 연동) */}
             {displayedWord.symbolIds.length > 0 ? (
               <View style={styles.sectionCard}>
-                <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
-                  이 단어의 핵심 발음기호
-                </Text>
-                <Text style={styles.sectionGuide} maxFontSizeMultiplier={1.45}>
-                  기호 버튼을 누르면 입 모양과 소리 내는 법을 바로 확인할 수 있어요.
-                </Text>
+                <View style={styles.sectionTitleLeft}>
+                  <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
+                    이 단어의 핵심 발음기호
+                  </Text>
+                  <InfoTipButton
+                    open={openTip === 'symbols'}
+                    onToggle={() =>
+                      setOpenTip((prev) =>
+                        prev === 'symbols' ? null : 'symbols'
+                      )
+                    }
+                    accessibilityLabel="발음기호 보기 안내"
+                  />
+                </View>
+                <InfoTipBox
+                  visible={openTip === 'symbols'}
+                  text="기호 버튼을 누르면 입 모양과 소리 내는 법을 바로 확인할 수 있어요."
+                  onClose={() => setOpenTip(null)}
+                />
                 <View style={styles.symbolChipsWrap}>
                   {displayedWord.symbolIds.map((symbolId) => {
                     const sym = IPA_SYMBOL_BY_ID[symbolId];
@@ -1574,7 +1600,7 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.body,
     color: COLORS.textMuted,
     textAlign: 'center',
-    lineHeight: 26,
+    lineHeight: 21,
   },
   fallbackCard: {
     backgroundColor: COLORS.card,
@@ -1596,7 +1622,7 @@ const styles = StyleSheet.create({
   },
   fallbackBody: {
     fontSize: TYPOGRAPHY.body,
-    lineHeight: 28,
+    lineHeight: 21,
     color: COLORS.text,
   },
   fallbackSuggestions: {
@@ -1609,7 +1635,7 @@ const styles = StyleSheet.create({
   },
   koreanOnlyNoticeText: {
     fontSize: TYPOGRAPHY.body,
-    lineHeight: 26,
+    lineHeight: 21,
     fontWeight: '400',
     color: COLORS.textMuted,
   },
@@ -1628,25 +1654,15 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   bookmarkToggleBtn: {
-    minHeight: TOUCH.minTarget,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    width: TOUCH.minTarget,
+    height: TOUCH.minTarget,
     borderRadius: RADIUS.pill,
     backgroundColor: COLORS.background,
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
   },
   bookmarkToggleBtnActive: {
-    backgroundColor: COLORS.goldSoft,
-  },
-  bookmarkToggleText: {
-    fontSize: TYPOGRAPHY.body,
-    fontWeight: '500',
-    color: COLORS.text,
-  },
-  bookmarkToggleTextActive: {
-    color: COLORS.goldText,
+    backgroundColor: COLORS.tint,
   },
   wordHeaderRow: {
     flexDirection: 'row',
@@ -1673,21 +1689,21 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   posBadgeText: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '500',
     color: COLORS.textMuted,
   },
   nativeAudioBadge: {
     backgroundColor: COLORS.successSoft,
     borderRadius: RADIUS.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
   nativeAudioBadgeText: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '500',
     color: COLORS.successText,
   },
@@ -1704,8 +1720,8 @@ const styles = StyleSheet.create({
   ipaPill: {
     backgroundColor: COLORS.purpleSoft,
     borderRadius: RADIUS.md,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
   ipaPillText: {
     fontSize: TYPOGRAPHY.ipa,
@@ -1731,7 +1747,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   koPronunciationText: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: '700',
     color: COLORS.text,
   },
@@ -1744,7 +1760,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   switchStateText: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '500',
     color: COLORS.tealText,
   },
@@ -1844,7 +1860,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.indigoSoft,
   },
   exampleKoToggleText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '500',
     color: COLORS.textMuted,
   },
@@ -1854,7 +1870,7 @@ const styles = StyleSheet.create({
   },
   sectionGuide: {
     fontSize: TYPOGRAPHY.body,
-    lineHeight: 26,
+    lineHeight: 21,
     color: COLORS.textMuted,
     marginBottom: 4,
   },
@@ -1869,12 +1885,12 @@ const styles = StyleSheet.create({
   },
   exampleIndexBadge: {
     alignSelf: 'flex-start',
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '500',
     color: COLORS.indigoText,
     backgroundColor: COLORS.indigoSoft,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
+    paddingHorizontal: 9,
+    paddingVertical: 2,
     borderRadius: RADIUS.pill,
     overflow: 'hidden',
   },
@@ -1882,7 +1898,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.md,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 9,
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
@@ -1890,19 +1906,19 @@ const styles = StyleSheet.create({
   exampleKoTag: {
     backgroundColor: COLORS.indigoSoft,
     borderRadius: RADIUS.pill,
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
     paddingVertical: 2,
     marginTop: 2,
   },
   exampleKoTagText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '500',
     color: COLORS.indigoText,
   },
   exampleKoText: {
     flex: 1,
     fontSize: TYPOGRAPHY.body,
-    lineHeight: 26,
+    lineHeight: 21,
     fontWeight: '400',
     color: COLORS.text,
   },
@@ -1913,15 +1929,15 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   exampleKoLoadingText: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '400',
     color: COLORS.textMuted,
   },
   exampleKoRetryBtn: {
     alignSelf: 'flex-start',
-    minHeight: 44,
+    minHeight: 40,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: RADIUS.pill,
     backgroundColor: COLORS.indigoSoft,
     flexDirection: 'row',
@@ -1929,7 +1945,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   exampleKoRetryText: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '500',
     color: COLORS.indigoText,
   },

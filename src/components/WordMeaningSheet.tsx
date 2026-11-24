@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpen, Gauge, SpeakerHigh, SpeakerLow, X } from 'phosphor-react-native';
+import { ArrowRight, BookOpen, Gauge, SpeakerHigh, SpeakerLow, X } from './PlumpIcons';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -178,9 +178,6 @@ export function WordMeaningSheet({
               accessibilityLabel="닫기"
             >
               <X size={22} color={COLORS.text} />
-              <Text style={styles.closeButtonText} maxFontSizeMultiplier={1.3}>
-                닫기
-              </Text>
             </Pressable>
           </View>
 
@@ -352,37 +349,30 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.pill,
   },
   contextBadgeText: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '500',
     color: COLORS.indigoText,
   },
   posBadge: {
     backgroundColor: COLORS.card,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: RADIUS.pill,
     ...SHADOW.card,
   },
   posBadgeText: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '500',
     color: COLORS.textMuted,
   },
   closeButton: {
-    minHeight: TOUCH.minTarget,
-    paddingHorizontal: 14,
-    borderRadius: RADIUS.md,
+    width: TOUCH.minTarget,
+    height: TOUCH.minTarget,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.card,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
     ...SHADOW.card,
-  },
-  closeButtonText: {
-    fontSize: TYPOGRAPHY.body,
-    fontWeight: '500',
-    color: COLORS.text,
   },
   wordCard: {
     backgroundColor: COLORS.card,
@@ -407,7 +397,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.purpleSoft,
     borderRadius: RADIUS.md,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 5,
   },
   ipaPillText: {
     fontSize: TYPOGRAPHY.bodyLarge,
@@ -427,15 +417,15 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: TYPOGRAPHY.body,
-    lineHeight: 26,
+    lineHeight: 21,
     color: COLORS.textMuted,
   },
   meaningBlock: {
     gap: SPACING.sm,
   },
   meaningText: {
-    fontSize: 24,
-    lineHeight: 32,
+    fontSize: 18,
+    lineHeight: 26,
     fontWeight: '700',
     color: COLORS.primaryDark,
   },

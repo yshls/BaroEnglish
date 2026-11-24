@@ -1,8 +1,10 @@
-import { GitDiff, Microphone, ShieldCheck, StopCircle, User, WarningCircle, X } from 'phosphor-react-native';
+import { GitDiff, Microphone, ShieldCheck, StopCircle, User, WarningCircle, X } from './PlumpIcons';
+import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePronunciationPractice } from '../hooks/usePronunciationPractice';
 import { COLORS, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../theme/tokens';
+import { InfoTipBox, InfoTipButton } from './InfoTip';
 
 export interface PronunciationPracticeCardProps {
   word: string;
@@ -24,6 +26,8 @@ export function PronunciationPracticeCard({
   onStopNative,
   embedded = false,
 }: PronunciationPracticeCardProps) {
+  const [showGuide, setShowGuide] = useState(false);
+
   const {
     isRecording,
     isPlayingUser,
@@ -68,11 +72,18 @@ export function PronunciationPracticeCard({
 
   return (
     <View style={[styles.card, embedded && styles.cardEmbedded]}>
-      {/* 상단 제목 + 미저장 안심 배지 */}
+      {/* 상단 제목 + 정보 i 아이콘 + 미저장 안심 배지 */}
       <View style={styles.headerRow}>
-        <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
-          따라 말하며 내 발음 비교
-        </Text>
+        <View style={styles.headerTitleGroup}>
+          <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
+            따라 말하며 내 발음 비교
+          </Text>
+          <InfoTipButton
+            open={showGuide}
+            onToggle={() => setShowGuide((prev) => !prev)}
+            accessibilityLabel="따라 말하기 안내 보기"
+          />
+        </View>
         <View style={styles.privacyPill}>
           <ShieldCheck size={15} color={COLORS.successText} />
           <Text style={styles.privacyPillText} maxFontSizeMultiplier={1.25}>
@@ -81,11 +92,13 @@ export function PronunciationPracticeCard({
         </View>
       </View>
 
-      <Text style={styles.guideText} maxFontSizeMultiplier={1.4}>
-        마이크를 누르고 <Text style={styles.guideWordHighlight}>{word}</Text>
-        {ipa ? ` (${ipa})` : ''}를 말해 보세요. 내 목소리를 바로 들어보고 원어민 발음과
-        얼마나 비슷한지 비교할 수 있어요.
-      </Text>
+      <InfoTipBox visible={showGuide} onClose={() => setShowGuide(false)}>
+        <Text style={styles.guideText} maxFontSizeMultiplier={1.4}>
+          마이크를 누르고 <Text style={styles.guideWordHighlight}>{word}</Text>
+          {ipa ? ` (${ipa})` : ''} 소리를 말해 보세요. 내 목소리를 바로 들어보고 원어민
+          발음과 얼마나 비슷한지 비교할 수 있어요.
+        </Text>
+      </InfoTipBox>
 
       {/* 메인 마이크 시작/중지 버튼 */}
       <Pressable
@@ -362,9 +375,6 @@ export function PronunciationPracticeSheet({
               accessibilityLabel="닫기"
             >
               <X size={22} color={COLORS.text} />
-              <Text style={styles.sheetCloseText} maxFontSizeMultiplier={1.3}>
-                닫기
-              </Text>
             </Pressable>
           </View>
 
@@ -405,6 +415,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
   },
+  headerTitleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
+  },
   sectionTitle: {
     fontSize: TYPOGRAPHY.sectionTitle,
     fontWeight: '700',
@@ -420,14 +436,14 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   privacyPillText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
     color: COLORS.successText,
   },
   guideText: {
-    fontSize: TYPOGRAPHY.body,
-    lineHeight: 26,
-    color: COLORS.textMuted,
+    fontSize: 13,
+    lineHeight: 19,
+    color: COLORS.textSecondary,
   },
   guideWordHighlight: {
     fontWeight: '700',
@@ -518,7 +534,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   heardText: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '400',
     color: COLORS.textMuted,
   },
@@ -528,21 +544,21 @@ const styles = StyleSheet.create({
   },
   scoreBadge: {
     borderRadius: RADIUS.md,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     alignItems: 'center',
-    minWidth: 78,
+    minWidth: 72,
   },
   scoreBadgeLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
   },
   scoreBadgeNumber: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
   },
   progressTrack: {
-    height: 10,
+    height: 8,
     borderRadius: RADIUS.pill,
     backgroundColor: COLORS.card,
     overflow: 'hidden',
@@ -552,8 +568,8 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.pill,
   },
   tipText: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 13,
+    lineHeight: 20,
     fontWeight: '400',
     color: COLORS.textMuted,
   },
@@ -617,19 +633,19 @@ const styles = StyleSheet.create({
   },
   ephemeralNote: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '400',
     color: COLORS.textMuted,
   },
   clearRecordBtn: {
-    minHeight: 36,
+    minHeight: 34,
     paddingHorizontal: 12,
     borderRadius: RADIUS.pill,
     backgroundColor: COLORS.card,
     justifyContent: 'center',
   },
   clearRecordText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
     color: COLORS.textMuted,
   },
@@ -664,23 +680,17 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sheetWordTitle: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '700',
     color: COLORS.text,
   },
   sheetCloseBtn: {
-    minHeight: TOUCH.minTarget,
-    paddingHorizontal: 14,
+    width: TOUCH.minTarget,
+    height: TOUCH.minTarget,
     borderRadius: RADIUS.pill,
     backgroundColor: COLORS.background,
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-  },
-  sheetCloseText: {
-    fontSize: TYPOGRAPHY.body,
-    fontWeight: '500',
-    color: COLORS.text,
+    justifyContent: 'center',
   },
   pressed: {
     opacity: 0.82,

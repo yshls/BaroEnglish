@@ -1,6 +1,5 @@
 import {
   BookOpen,
-  BookmarkSimple,
   CaretRight,
   ChartBar,
   Check,
@@ -8,6 +7,7 @@ import {
   Clock,
   Fire,
   Gauge,
+  Heart,
   MagnifyingGlass,
   PencilSimple,
   Play,
@@ -15,7 +15,7 @@ import {
   SpeakerLow,
   User,
   XCircle,
-} from 'phosphor-react-native';
+} from '../../components/PlumpIcons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
@@ -26,6 +26,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { InfoTipBox, InfoTipButton } from '../../components/InfoTip';
 import { SymbolDetailSheet } from '../../components/SymbolDetailSheet';
 import { IPA_SYMBOL_BY_ID } from '../../data/categories';
 import { useSpeechAudio } from '../../hooks/useSpeechAudio';
@@ -47,6 +48,7 @@ export default function BookmarksScreen() {
   const [activeSymbol, setActiveSymbol] = useState<IpaSymbol | null>(null);
   const [isEditingNickname, setIsEditingNickname] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState('');
+  const [showSavedInfo, setShowSavedInfo] = useState(false);
   const navSeqRef = useRef(0);
 
   const cachedWords = useWordCacheStore((state) => state.cachedWords);
@@ -379,29 +381,37 @@ export default function BookmarksScreen() {
           </View>
         </View>
 
-        {/* 3. 내 북마크 섹션 */}
+        {/* 3. 저장한 단어 · 발음기호 섹션 */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryHeaderRow}>
-            <View style={styles.summaryTitleCol}>
+            <View style={styles.summaryTitleRow}>
               <Text style={styles.summaryTitle} maxFontSizeMultiplier={1.4}>
-                내가 저장한 북마크
+                저장한 단어 · 발음기호
               </Text>
-              <Text style={styles.summarySub} maxFontSizeMultiplier={1.4}>
-                저장한 영단어와 발음기호를 언제든 꺼내 복습하세요.
-              </Text>
+              <InfoTipButton
+                open={showSavedInfo}
+                onToggle={() => setShowSavedInfo((prev) => !prev)}
+                accessibilityLabel="저장한 단어 안내 보기"
+              />
             </View>
             <View style={styles.countBadge}>
-              <BookmarkSimple size={18} color={COLORS.goldText} weight="fill" />
+              <Heart size={18} color={COLORS.primary} weight="fill" />
               <Text style={styles.countBadgeText} maxFontSizeMultiplier={1.3}>
                 {totalCount}개
               </Text>
             </View>
           </View>
 
+          <InfoTipBox
+            visible={showSavedInfo}
+            text="하트를 눌러 저장한 영단어와 발음기호를 언제든 꺼내 복습할 수 있어요."
+            onClose={() => setShowSavedInfo(false)}
+          />
+
           <View style={styles.filterTabsRow}>
             {(
               [
-                { id: 'all', label: `전체 ${totalCount}`, activeBg: COLORS.gold },
+                { id: 'all', label: `전체 ${totalCount}`, activeBg: COLORS.text },
                 { id: 'words', label: `단어 ${bookmarkedWords.length}`, activeBg: COLORS.primary },
                 { id: 'symbols', label: `발음기호 ${bookmarkedSymbols.length}`, activeBg: COLORS.purple },
               ] as const
@@ -468,13 +478,13 @@ export default function BookmarksScreen() {
         {!isHydrated ? null : totalCount === 0 ? (
           <View style={styles.emptyCard}>
             <View style={styles.emptyIconCircle}>
-              <BookmarkSimple size={38} color={COLORS.goldText} />
+              <Heart size={38} color={COLORS.primary} />
             </View>
             <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
-              아직 저장한 북마크가 없어요
+              아직 저장한 항목이 없어요
             </Text>
             <Text style={styles.emptyBody} maxFontSizeMultiplier={1.45}>
-              공부하다가 다시 보고 싶은 단어 또는 발음기호에서 북마크 아이콘을 눌러
+              공부하다가 다시 보고 싶은 단어 또는 발음기호에서 하트를 눌러
               저장해 두세요. 오프라인에서도 바로 꺼내 들을 수 있어요!
             </Text>
             <View style={styles.emptyCtaRow}>
@@ -526,10 +536,10 @@ export default function BookmarksScreen() {
                 pressed && styles.pressed,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="전체 북마크 보기"
+              accessibilityLabel="전체 저장 목록 보기"
             >
               <Text style={styles.emptyResetBtnText} maxFontSizeMultiplier={1.3}>
-                전체 북마크 보기
+                전체 저장 목록 보기
               </Text>
             </Pressable>
           </View>
@@ -598,9 +608,9 @@ export default function BookmarksScreen() {
                             pressed && styles.pressed,
                           ]}
                           accessibilityRole="button"
-                          accessibilityLabel={`${item.word} 북마크 해제`}
+                          accessibilityLabel={`${item.word} 저장 해제`}
                         >
-                          <BookmarkSimple size={22} color={COLORS.goldText} weight="fill" />
+                          <Heart size={22} color={COLORS.primary} weight="fill" />
                         </Pressable>
                       </View>
 
@@ -738,9 +748,9 @@ export default function BookmarksScreen() {
                           pressed && styles.pressed,
                         ]}
                         accessibilityRole="button"
-                        accessibilityLabel={`${sym.ipa} 북마크 해제`}
+                        accessibilityLabel={`${sym.ipa} 저장 해제`}
                       >
-                        <BookmarkSimple size={22} color={COLORS.goldText} weight="fill" />
+                        <Heart size={22} color={COLORS.primary} weight="fill" />
                       </Pressable>
                     </View>
                   );
@@ -755,7 +765,7 @@ export default function BookmarksScreen() {
         symbol={activeSymbol}
         visible={activeSymbol !== null}
         onClose={() => setActiveSymbol(null)}
-        contextLabel="북마크한 발음기호"
+        contextLabel="저장한 발음기호"
       />
     </View>
   );
@@ -1030,6 +1040,12 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
+  summaryTitleRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   summaryTitle: {
     fontSize: TYPOGRAPHY.sectionTitle,
     fontWeight: '700',
@@ -1037,14 +1053,14 @@ const styles = StyleSheet.create({
   },
   summarySub: {
     fontSize: TYPOGRAPHY.body,
-    lineHeight: 26,
+    lineHeight: 21,
     color: COLORS.textMuted,
   },
   countBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: COLORS.goldSoft,
+    backgroundColor: COLORS.tint,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: RADIUS.pill,
@@ -1052,7 +1068,7 @@ const styles = StyleSheet.create({
   countBadgeText: {
     fontSize: TYPOGRAPHY.body,
     fontWeight: '500',
-    color: COLORS.goldText,
+    color: COLORS.primaryDark,
   },
   filterTabsRow: {
     flexDirection: 'row',
@@ -1108,10 +1124,10 @@ const styles = StyleSheet.create({
     ...SHADOW.card,
   },
   emptyIconCircle: {
-    width: 72,
-    height: 72,
+    width: 64,
+    height: 64,
     borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.goldSoft,
+    backgroundColor: COLORS.tint,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1123,7 +1139,7 @@ const styles = StyleSheet.create({
   },
   emptyBody: {
     fontSize: TYPOGRAPHY.body,
-    lineHeight: 28,
+    lineHeight: 21,
     color: COLORS.textMuted,
     textAlign: 'center',
   },
@@ -1172,7 +1188,7 @@ const styles = StyleSheet.create({
     minWidth: 160,
     minHeight: TOUCH.recommendedHeight,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.goldSoft,
+    backgroundColor: COLORS.tint,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1181,7 +1197,7 @@ const styles = StyleSheet.create({
   emptyResetBtnText: {
     fontSize: TYPOGRAPHY.body,
     fontWeight: '500',
-    color: COLORS.goldText,
+    color: COLORS.primaryDark,
   },
   sectionsStack: {
     gap: SPACING.lg,
@@ -1222,7 +1238,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   wordText: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '700',
     color: COLORS.text,
     letterSpacing: 0.2,
@@ -1230,11 +1246,11 @@ const styles = StyleSheet.create({
   posBadge: {
     backgroundColor: COLORS.background,
     borderRadius: RADIUS.pill,
-    paddingHorizontal: 10,
+    paddingHorizontal: 9,
     paddingVertical: 3,
   },
   posBadgeText: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '500',
     color: COLORS.textMuted,
   },
@@ -1249,10 +1265,10 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   removeBookmarkBtn: {
-    minWidth: TOUCH.minTarget,
-    minHeight: TOUCH.minTarget,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.goldSoft,
+    width: TOUCH.minTarget,
+    height: TOUCH.minTarget,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.tint,
     alignItems: 'center',
     justifyContent: 'center',
   },

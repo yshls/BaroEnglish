@@ -7,7 +7,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "backgroundColor": "#F7F5F0",
+    "backgroundColor": "#F5F6F8",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.baroenglish.app"
@@ -15,7 +15,7 @@
     "android": {
       "package": "com.baroenglish.app",
       "adaptiveIcon": {
-        "backgroundColor": "#F7F5F0",
+        "backgroundColor": "#F5F6F8",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"

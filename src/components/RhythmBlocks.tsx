@@ -1,9 +1,10 @@
-import { MusicNote, Play, SpeakerHigh, SpeakerLow } from 'phosphor-react-native';
+import { MusicNote, Play, SpeakerHigh, SpeakerLow } from './PlumpIcons';
 import { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSpeechAudio } from '../hooks/useSpeechAudio';
 import { COLORS, RADIUS, SPACING, TOUCH, TYPOGRAPHY } from '../theme/tokens';
 import type { SyllableItem } from '../types/learning';
+import { InfoTipBox, InfoTipButton } from './InfoTip';
 import { Tap } from './Tap';
 
 interface RhythmBlocksProps {
@@ -14,6 +15,7 @@ interface RhythmBlocksProps {
 export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
   const { playSlow, stop, activeKey } = useSpeechAudio();
   const [rhythmIndex, setRhythmIndex] = useState<number | null>(null);
+  const [showTip, setShowTip] = useState(false);
   const rhythmSessionRef = useRef(0);
 
   const handleSyllableTap = useCallback(
@@ -68,6 +70,11 @@ export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
           <Text style={styles.rhythmBarLabel} maxFontSizeMultiplier={1.4}>
             강약 리듬 박자
           </Text>
+          <InfoTipButton
+            open={showTip}
+            onToggle={() => setShowTip((prev) => !prev)}
+            accessibilityLabel="음절 리듬 사용법 보기"
+          />
           <View style={styles.dotsRow}>
             {syllables.map((syl, idx) => {
               const isPrimary = syl.stress === 'primary';
@@ -127,10 +134,11 @@ export function RhythmBlocks({ syllables, showKoHint }: RhythmBlocksProps) {
         </Pressable>
       </View>
 
-      {/* 탭 안내 */}
-      <Text style={styles.tapHint} maxFontSizeMultiplier={1.4}>
-        각 음절을 눌러 소리를 들어 보세요
-      </Text>
+      <InfoTipBox
+        visible={showTip}
+        text="각 음절 카드를 누르면 해당 음절 소리를 따로 들어볼 수 있어요."
+        onClose={() => setShowTip(false)}
+      />
 
       {/* 음절별 리듬 블록 카드 (터치 인터랙티브) */}
       <View style={styles.blocksRow}>
@@ -277,15 +285,15 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   dotPrimary: {
-    fontSize: 26,
+    fontSize: 20,
     color: COLORS.accentText,
   },
   dotSecondary: {
-    fontSize: 20,
+    fontSize: 16,
     color: COLORS.teal,
   },
   dotNormal: {
-    fontSize: 16,
+    fontSize: 13,
     color: COLORS.textMuted,
   },
   dotActive: {
@@ -305,7 +313,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.accent,
   },
   rhythmPlayBtnText: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '500',
     color: COLORS.accentText,
   },
@@ -313,7 +321,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   tapHint: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '400',
     color: COLORS.textMuted,
     textAlign: 'center',
@@ -326,29 +334,29 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   block: {
-    minWidth: 92,
+    minWidth: 84,
     flexGrow: 1,
     backgroundColor: COLORS.background,
     borderRadius: RADIUS.lg,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
   },
   blockPrimary: {
-    minWidth: 112,
+    minWidth: 96,
     backgroundColor: COLORS.accentSoft,
-    paddingVertical: 18,
-    paddingHorizontal: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
   },
   blockSecondary: {
-    minWidth: 98,
+    minWidth: 88,
     backgroundColor: COLORS.tealSoft,
   },
   blockSchwa: {
-    minWidth: 84,
+    minWidth: 76,
     backgroundColor: COLORS.background,
-    paddingVertical: 10,
+    paddingVertical: 9,
   },
   blockActive: {
     backgroundColor: COLORS.tint,
@@ -356,12 +364,12 @@ const styles = StyleSheet.create({
   primaryTag: {
     backgroundColor: COLORS.accent,
     borderRadius: RADIUS.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    marginBottom: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginBottom: 3,
   },
   primaryTagText: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '700',
     color: COLORS.white,
   },
@@ -370,15 +378,15 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.pill,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    marginBottom: 4,
+    marginBottom: 3,
   },
   secondaryTagText: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '500',
     color: COLORS.tealText,
   },
   normalDotSmall: {
-    fontSize: 15,
+    fontSize: 12,
     color: COLORS.textMuted,
     marginBottom: 2,
   },
@@ -401,12 +409,12 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
   },
   syllableIpa: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '400',
     color: COLORS.textMuted,
   },
   syllableIpaPrimary: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '500',
     color: COLORS.accentText,
   },
@@ -426,10 +434,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.sm,
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 3,
   },
   schwaBadgeText: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '400',
     color: COLORS.textMuted,
     textAlign: 'center',

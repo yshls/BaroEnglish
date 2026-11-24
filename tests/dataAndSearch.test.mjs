@@ -263,10 +263,10 @@ test('My Page (bookmarks tab) provides nickname setting, usage time stats, conse
   assert.ok(rootLayoutSrc.includes('useStudyTracker'), 'RootLayout must mount useStudyTracker');
   assert.ok(myPageSrc.includes('나의 학습 통계'), 'My Page must render study statistics section');
   assert.ok(myPageSrc.includes('연속 실행'), 'My Page must render consecutive streak metric');
-  assert.ok(myPageSrc.includes('내가 저장한 북마크'), 'My Page must render bookmarks below stats');
+  assert.ok(myPageSrc.includes('저장한 단어 · 발음기호'), 'My Page must render saved items below stats');
   assert.ok(
-    myPageSrc.indexOf('나의 학습 통계') < myPageSrc.indexOf('내가 저장한 북마크'),
-    'Stats and streak section must appear above bookmarks'
+    myPageSrc.indexOf('나의 학습 통계') < myPageSrc.indexOf('저장한 단어 · 발음기호'),
+    'Stats and streak section must appear above saved items'
   );
 });
 

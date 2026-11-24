@@ -1,4 +1,4 @@
-import { ArrowsClockwise, BookmarkSimple, CheckCircle, Gauge, Smiley, Sparkle, SpeakerHigh, SpeakerLow, X } from 'phosphor-react-native';
+import { ArrowsClockwise, CheckCircle, Gauge, Heart, Smiley, Sparkle, SpeakerHigh, SpeakerLow, X } from './PlumpIcons';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,6 +14,7 @@ import { useSpeechAudio } from '../hooks/useSpeechAudio';
 import { fetchSymbolExamplesByLevel } from '../services/wordApi';
 import { useLearningStore } from '../store/useLearningStore';
 import { COLORS, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../theme/tokens';
+import { InfoTipBox, InfoTipButton } from './InfoTip';
 import type {
   ExampleDifficultyLevel,
   IpaSymbol,
@@ -146,6 +147,7 @@ export function SymbolDetailSheet({
 
   const [difficulty, setDifficulty] = useState<ExampleDifficultyLevel>('beginner');
   const [refreshSeed, setRefreshSeed] = useState(0);
+  const [showExamplesInfo, setShowExamplesInfo] = useState(false);
   const [loadedState, setLoadedState] = useState<{
     key: string;
     items: SymbolExampleWord[];
@@ -156,6 +158,7 @@ export function SymbolDetailSheet({
   const [cachedSymbol, setCachedSymbol] = useState<IpaSymbol | null>(symbol);
   if (symbol && symbol !== cachedSymbol) {
     setCachedSymbol(symbol);
+    setShowExamplesInfo(false);
     if (refreshSeed !== 0) {
       setRefreshSeed(0);
     }
@@ -283,13 +286,13 @@ export function SymbolDetailSheet({
                 accessibilityState={{ selected: isBookmarked }}
                 accessibilityLabel={
                   isBookmarked
-                    ? `${activeSymbol.ipa} 북마크 해제`
-                    : `${activeSymbol.ipa} 북마크 저장`
+                    ? `${activeSymbol.ipa} 저장 해제`
+                    : `${activeSymbol.ipa} 저장`
                 }
               >
-                <BookmarkSimple
+                <Heart
                   size={24}
-                  color={isBookmarked ? COLORS.goldText : COLORS.text}
+                  color={isBookmarked ? COLORS.primary : COLORS.textMuted}
                   weight={isBookmarked ? 'fill' : 'regular'}
                 />
               </Pressable>
@@ -339,9 +342,16 @@ export function SymbolDetailSheet({
             <View style={styles.examplesSection}>
               <View style={styles.sectionHeaderBlock}>
                 <View style={styles.sectionTitleRow}>
-                  <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
-                    대표 단어 3개 · {currentTabMeta.titleLabel}
-                  </Text>
+                  <View style={styles.sectionTitleLeft}>
+                    <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
+                      대표 단어 3개 · {currentTabMeta.titleLabel}
+                    </Text>
+                    <InfoTipButton
+                      open={showExamplesInfo}
+                      onToggle={() => setShowExamplesInfo((prev) => !prev)}
+                      accessibilityLabel="대표 단어 강세 안내 보기"
+                    />
+                  </View>
                   <Pressable
                     onPress={handleRefreshExamples}
                     disabled={isExamplesLoading}
@@ -358,11 +368,16 @@ export function SymbolDetailSheet({
                     </Text>
                   </Pressable>
                 </View>
-                <Text style={styles.sectionLegend} maxFontSizeMultiplier={1.4}>
-                  {activeSymbol.id === 'sym_schwa'
-                    ? '노란 표시(⬤)를 세게, 회색 표시는 힘 빼고 약하게!'
-                    : '노란 표시(⬤) 부분을 세게·또렷하게 발음해 보세요'}
-                </Text>
+                <InfoTipBox
+                  visible={showExamplesInfo}
+                  text={
+                    activeSymbol.id === 'sym_schwa'
+                      ? '노란 표시(⬤)를 세게, 회색 표시는 힘 빼고 약하게 읽어 보세요.'
+                      : '노란 표시(⬤) 부분을 세게·또렷하게 발음해 보세요.'
+                  }
+                  variant="surface"
+                  onClose={() => setShowExamplesInfo(false)}
+                />
               </View>
 
               {/* 초급 / 중급 / 고급 난이도 선택 탭 (보더 없는 UI) */}
@@ -619,21 +634,21 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   bookmarkIconBtn: {
-    minHeight: TOUCH.minTarget,
-    minWidth: TOUCH.minTarget,
-    borderRadius: RADIUS.md,
+    width: TOUCH.minTarget,
+    height: TOUCH.minTarget,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
     ...SHADOW.card,
   },
   bookmarkIconBtnActive: {
-    backgroundColor: COLORS.goldSoft,
+    backgroundColor: COLORS.tint,
   },
   closeButton: {
-    minHeight: TOUCH.minTarget,
-    minWidth: TOUCH.minTarget,
-    borderRadius: RADIUS.md,
+    width: TOUCH.minTarget,
+    height: TOUCH.minTarget,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
@@ -665,14 +680,14 @@ const styles = StyleSheet.create({
   },
   guideBody: {
     fontSize: TYPOGRAPHY.bodyLarge,
-    lineHeight: 30,
+    lineHeight: 24,
     color: COLORS.text,
   },
   hintPill: {
     marginTop: 4,
     backgroundColor: COLORS.tealSoft,
     borderRadius: RADIUS.md,
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: SPACING.md,
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -703,9 +718,14 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
     flexWrap: 'wrap',
   },
-  sectionTitle: {
+  sectionTitleLeft: {
     flex: 1,
-    minWidth: 180,
+    minWidth: 160,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  sectionTitle: {
     fontSize: TYPOGRAPHY.bodyLarge,
     fontWeight: '700',
     color: COLORS.text,
@@ -739,7 +759,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     fontWeight: '400',
     textAlign: 'center',
-    lineHeight: 26,
+    lineHeight: 21,
   },
   retryBtn: {
     minHeight: TOUCH.minTarget,
@@ -821,7 +841,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   syllableDot: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '500',
     color: COLORS.textMuted,
   },
@@ -831,31 +851,31 @@ const styles = StyleSheet.create({
     gap: 4,
     backgroundColor: COLORS.accentSoft,
     borderRadius: RADIUS.sm,
-    paddingHorizontal: 9,
-    paddingVertical: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
   stressChipDot: {
-    fontSize: 11,
+    fontSize: 10,
     color: COLORS.accent,
   },
   stressChipText: {
-    fontSize: 19,
+    fontSize: 15,
     fontWeight: '700',
     color: COLORS.accentText,
   },
   weakChip: {
     backgroundColor: COLORS.background,
     borderRadius: RADIUS.sm,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
   },
   weakChipText: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '400',
     color: COLORS.textMuted,
   },
   normalSyllableText: {
-    fontSize: 19,
+    fontSize: 15,
     fontWeight: '500',
     color: COLORS.text,
   },
@@ -865,10 +885,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   exampleWord: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '700',
     color: COLORS.text,
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   inlineStressSpan: {
     backgroundColor: COLORS.accentSoft,
@@ -888,19 +908,19 @@ const styles = StyleSheet.create({
     marginTop: 2,
     backgroundColor: COLORS.goldSoft,
     borderRadius: RADIUS.md,
-    paddingVertical: 10,
+    paddingVertical: 9,
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
   },
   emphasisTipIcon: {
-    marginTop: 3,
+    marginTop: 2,
   },
   emphasisTipText: {
     flex: 1,
     fontSize: TYPOGRAPHY.body,
-    lineHeight: 26,
+    lineHeight: 21,
     fontWeight: '500',
     color: COLORS.goldText,
   },

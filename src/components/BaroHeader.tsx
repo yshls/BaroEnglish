@@ -1,4 +1,4 @@
-import { MagnifyingGlass, User } from 'phosphor-react-native';
+import { MagnifyingGlass, User } from './PlumpIcons';
 import {
   Pressable,
   StyleSheet,
@@ -15,7 +15,7 @@ import {
   SPACING,
 } from '../theme/tokens';
 
-export type BaroTabName = 'index' | 'shorts' | 'bookmarks' | 'symbols';
+export type BaroTabName = 'index' | 'shorts' | 'symbols' | 'bookmarks';
 
 interface TabMeta {
   name: BaroTabName;
@@ -27,8 +27,8 @@ interface TabMeta {
 const TAB_ITEMS: TabMeta[] = [
   { name: 'index', label: '단어 읽기', softBg: COLORS.tint, textColor: COLORS.primaryDark },
   { name: 'shorts', label: '발음 쇼츠', softBg: COLORS.roseSoft, textColor: COLORS.roseText },
-  { name: 'bookmarks', label: '마이페이지', softBg: COLORS.successSoft, textColor: COLORS.successText },
   { name: 'symbols', label: '발음기호', softBg: COLORS.purpleSoft, textColor: COLORS.purpleText },
+  { name: 'bookmarks', label: '마이페이지', softBg: COLORS.successSoft, textColor: COLORS.successText },
 ];
 
 interface BaroHeaderProps {
@@ -164,8 +164,8 @@ const styles = StyleSheet.create({
   },
   brandText: {
     fontFamily: FONTS.family,
-    fontSize: 26,
-    lineHeight: 30,
+    fontSize: 23,
+    lineHeight: 27,
     fontWeight: '700',
     color: COLORS.primary,
     letterSpacing: -0.8,

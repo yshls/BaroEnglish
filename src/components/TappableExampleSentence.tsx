@@ -136,13 +136,13 @@ export function TappableExampleSentence({
 const styles = StyleSheet.create({
   sentence: {
     fontSize: TYPOGRAPHY.bodyLarge,
-    lineHeight: 33,
+    lineHeight: 25,
     fontWeight: '400',
     color: COLORS.text,
   },
   sentenceCompact: {
     fontSize: TYPOGRAPHY.body,
-    lineHeight: 28,
+    lineHeight: 21,
   },
   tappableWord: {
     color: COLORS.text,
