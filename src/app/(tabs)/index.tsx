@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { LayoutAnimation, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Tap } from '../../components/Tap';
 import { SymbolDetailSheet } from '../../components/SymbolDetailSheet';
 import {
   getSymbolsByCategory,
@@ -65,12 +66,12 @@ export default function IpaSymbolsScreen() {
                   바로영어에 오신 걸 환영해요!
                 </Text>
               </View>
-              <Pressable
-                onPress={dismissWelcomeBanner}
-                style={({ pressed }) => [
-                  styles.dismissBtn,
-                  pressed && styles.pressed,
-                ]}
+              <Tap
+                onPress={() => {
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  dismissWelcomeBanner();
+                }}
+                style={styles.dismissBtn}
                 accessibilityRole="button"
                 accessibilityLabel="안내 배너 닫기"
               >
@@ -78,7 +79,7 @@ export default function IpaSymbolsScreen() {
                 <Text style={styles.dismissBtnText} maxFontSizeMultiplier={1.3}>
                   닫기
                 </Text>
-              </Pressable>
+              </Tap>
             </View>
             <Text style={styles.welcomeBody} maxFontSizeMultiplier={1.5}>
               꼭 필요한 발음기호 18개만 모아 두었어요. 아래 카드를 눌러 입 모양을 보고
@@ -146,13 +147,12 @@ export default function IpaSymbolsScreen() {
                   const isLearned = learnedSymbolIds.includes(symbol.id);
 
                   return (
-                    <Pressable
+                    <Tap
                       key={symbol.id}
                       onPress={() => setSelectedSymbol(symbol)}
-                      style={({ pressed }) => [
+                      style={[
                         styles.symbolCard,
                         isLearned && styles.symbolCardLearned,
-                        pressed && styles.pressed,
                       ]}
                       accessibilityRole="button"
                       accessibilityLabel={`${symbol.ipa} ${symbol.titleKo} ${
@@ -194,7 +194,7 @@ export default function IpaSymbolsScreen() {
                       >
                         예: {symbol.examples[0]?.word} ({symbol.examples[0]?.meaningKo})
                       </Text>
-                    </Pressable>
+                    </Tap>
                   );
                 })}
               </View>
@@ -420,8 +420,5 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.body,
     color: COLORS.textMuted,
     fontWeight: '500',
-  },
-  pressed: {
-    opacity: 0.82,
   },
 });
