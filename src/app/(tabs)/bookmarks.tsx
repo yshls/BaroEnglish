@@ -31,6 +31,7 @@ import {
 import { BookmarkFlipDeck, type DeckMode } from '../../components/BookmarkFlipDeck';
 import { DailyGoalRing } from '../../components/DailyGoalRing';
 import { InfoTipBox, InfoTipButton } from '../../components/InfoTip';
+import { LiveDot } from '../../components/LiveDot';
 import { SymbolDetailSheet } from '../../components/SymbolDetailSheet';
 import { IPA_SYMBOL_BY_ID } from '../../data/categories';
 import { useSpeechAudio } from '../../hooks/useSpeechAudio';
@@ -299,7 +300,7 @@ export default function BookmarksScreen() {
               나의 학습 통계
             </Text>
             <View style={styles.liveTrackingPill}>
-              <View style={styles.liveDot} />
+              <LiveDot />
               <Text style={styles.liveTrackingText} maxFontSizeMultiplier={1.2}>
                 실시간 기록 중
               </Text>
