@@ -18,6 +18,11 @@ import {
   View,
 } from 'react-native';
 import { useSpeechAudio } from '../hooks/useSpeechAudio';
+import {
+  getNextStageIntervalLabel,
+  normalizeReviewWordKey,
+  type WordReviewSchedule,
+} from '../store/useLearningStore';
 import { Tap } from './Tap';
 import { COLORS, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../theme/tokens';
 import type { CoreWord } from '../types/learning';
@@ -25,13 +30,15 @@ import { triggerLightHaptic, triggerSuccessHaptic } from '../utils/haptics';
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
-type DeckMode = 'standard' | 'recall';
+export type DeckMode = 'standard' | 'recall';
 
 interface BookmarkFlipDeckProps {
   words: CoreWord[];
   showKoHint: boolean;
   onOpenInReader: (word: string) => void;
   onReviewWord?: (wordKey: string, outcome: 'pass' | 'again') => void;
+  initialMode?: DeckMode;
+  wordReviews?: Record<string, WordReviewSchedule>;
 }
 
 export function BookmarkFlipDeck({
@@ -39,12 +46,14 @@ export function BookmarkFlipDeck({
   showKoHint,
   onOpenInReader,
   onReviewWord,
+  initialMode = 'standard',
+  wordReviews,
 }: BookmarkFlipDeckProps) {
   const [queue, setQueue] = useState<CoreWord[]>(words);
   const [knownCount, setKnownCount] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [deckMode, setDeckMode] = useState<DeckMode>('standard');
+  const [deckMode, setDeckMode] = useState<DeckMode>(initialMode);
 
   const [flipAnim] = useState(() => new Animated.Value(0));
   const [slideAnim] = useState(() => new Animated.Value(0));
@@ -376,7 +385,7 @@ export function BookmarkFlipDeck({
 
             <Text style={styles.flipHint} maxFontSizeMultiplier={1.25}>
               {isRecall
-                ? '영어 단어를 떠올려 보세요 → 탭하면 정답'
+                ? '소리 내어 먼저 말해보세요 → 탭하면 정답'
                 : '카드를 탭하면 발음기호와 뜻이 나와요'}
             </Text>
           </Pressable>
@@ -588,7 +597,11 @@ export function BookmarkFlipDeck({
         >
           <Check size={18} color={COLORS.white} weight="bold" />
           <Text style={styles.knownBtnText} maxFontSizeMultiplier={1.25}>
-            알아요!
+            {wordReviews
+              ? `알아요! · ${getNextStageIntervalLabel(
+                  wordReviews[normalizeReviewWordKey(currentWord.word)]
+                )}`
+              : '알아요!'}
           </Text>
         </Tap>
       </View>
