@@ -764,12 +764,12 @@ export default function PronunciationShortsScreen() {
                             accessibilityRole="button"
                             accessibilityLabel={`${syl.text} 음절 듣기`}
                           >
-                            <Text
-                              style={[styles.sylDot, isPrimary && styles.sylDotPrimary]}
-                              maxFontSizeMultiplier={1.2}
-                            >
-                              {isPrimary ? '⬤' : '●'}
-                            </Text>
+                            <View
+                              style={[
+                                styles.sylDot,
+                                isPrimary ? styles.sylDotPrimary : isSecondary ? styles.sylDotSecondary : null,
+                              ]}
+                            />
                             <Text
                               style={[
                                 styles.sylText,
@@ -837,10 +837,12 @@ export default function PronunciationShortsScreen() {
                         style={[StyleSheet.absoluteFill, { borderRadius: RADIUS.md }]}
                       />
                     ) : null}
-                    <SpeakerHigh size={20} color={COLORS.white} />
-                    <Text style={styles.speedNormalText} maxFontSizeMultiplier={1.25}>
-                      {isExNormalPlaying ? '재생 중' : '듣기'}
-                    </Text>
+                    <View style={styles.ctaRow}>
+                      <SpeakerHigh size={20} color={COLORS.white} />
+                      <Text style={styles.speedNormalText} maxFontSizeMultiplier={1.25}>
+                        {isExNormalPlaying ? '재생 중' : '듣기'}
+                      </Text>
+                    </View>
                   </Tap>
 
                   <Tap
@@ -944,15 +946,12 @@ export default function PronunciationShortsScreen() {
                             accessibilityRole="button"
                             accessibilityLabel={`${syl.text} 음절 듣기`}
                           >
-                            <Text
+                            <View
                               style={[
                                 styles.sylDot,
-                                isPrimary && styles.sylDotPrimary,
+                                isPrimary ? styles.sylDotPrimary : isSecondary ? styles.sylDotSecondary : null,
                               ]}
-                              maxFontSizeMultiplier={1.2}
-                            >
-                              {isPrimary ? '⬤' : '●'}
-                            </Text>
+                            />
                             <Text
                               style={[
                                 styles.sylText,
@@ -1028,10 +1027,12 @@ export default function PronunciationShortsScreen() {
                           style={[StyleSheet.absoluteFill, { borderRadius: RADIUS.md }]}
                         />
                       ) : null}
-                      <SpeakerHigh size={20} color={COLORS.white} />
-                      <Text style={styles.speedNormalText} maxFontSizeMultiplier={1.25}>
-                        {isNormalPlaying ? '재생 중' : '듣기'}
-                      </Text>
+                      <View style={styles.ctaRow}>
+                        <SpeakerHigh size={20} color={COLORS.white} />
+                        <Text style={styles.speedNormalText} maxFontSizeMultiplier={1.25}>
+                          {isNormalPlaying ? '재생 중' : '듣기'}
+                        </Text>
+                      </View>
                     </Tap>
 
                     <Tap
@@ -1847,12 +1848,22 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.tint,
   },
   sylDot: {
-    fontSize: 10,
-    color: COLORS.textMuted,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.textMuted,
   },
   sylDotPrimary: {
-    fontSize: 12,
-    color: COLORS.accentText,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FF6B6B',
+  },
+  sylDotSecondary: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.teal,
   },
   sylText: {
     fontSize: 14,
@@ -1913,6 +1924,13 @@ const styles = StyleSheet.create({
   },
   speedNormalBtnActive: {
     backgroundColor: COLORS.primaryDark,
+  },
+  ctaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    zIndex: 1,
   },
   speedNormalText: {
     fontSize: 17,
