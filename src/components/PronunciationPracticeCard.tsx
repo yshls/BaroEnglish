@@ -36,7 +36,7 @@ type MasteryStep = '1a' | '1b' | '2' | '3' | 'done';
 const MASTERY_STEP_LABELS: Record<MasteryStep, string> = {
   '1a': '가볍게 2번만 따라 말해볼까요? (1/2)',
   '1b': '가볍게 2번만 따라 말해볼까요? (2/2)',
-  '2': '이제 한글 발음을 가렸어요',
+  '2': '이제 한글 발음을 가렸어요. 떠올려서 말해보세요',
   '3': '마지막! 짧은 문장에 넣어서 한 번 더',
   done: '입에 한 겹 붙었어요!',
 };
@@ -53,6 +53,8 @@ export interface PronunciationPracticeCardProps {
   koPronunciation?: string;
   /** Step 3에서 보여줄 예문 (없으면 Step 3 스킵) */
   exampleSentence?: string;
+  /** Step 3 예문 원어민 재생 콜백 */
+  onPlayExample?: () => void | Promise<void>;
   /** 마스터리 완료 시 콜백 */
   onMasteryComplete?: () => void;
 }
@@ -68,10 +70,28 @@ export function PronunciationPracticeCard({
   embedded = false,
   koPronunciation,
   exampleSentence,
+  onPlayExample,
   onMasteryComplete,
 }: PronunciationPracticeCardProps) {
   const [showGuide, setShowGuide] = useState(false);
   const [displayScore, setDisplayScore] = useState(0);
+
+  const isMasteryMode = Boolean(koPronunciation);
+  const [masteryStep, setMasteryStep] = useState<MasteryStep>('1a');
+  const [prevWord, setPrevWord] = useState(word);
+  if (prevWord !== word) {
+    setPrevWord(word);
+    setMasteryStep('1a');
+  }
+  const hasExampleSentence = Boolean(exampleSentence);
+  const isSentenceStep = isMasteryMode && masteryStep === '3' && Boolean(exampleSentence);
+  const activeTargetText = isSentenceStep && exampleSentence ? exampleSentence : word;
+  const activeSyllableCount =
+    isSentenceStep && exampleSentence
+      ? Math.max(syllableCount, exampleSentence.trim().split(/\s+/).length)
+      : syllableCount;
+  const activePlayNative =
+    isSentenceStep && onPlayExample ? onPlayExample : onPlayNative;
 
   const {
     isRecording,
@@ -89,20 +109,12 @@ export function PronunciationPracticeCard({
     playCompareWithNative,
     resetPractice,
   } = usePronunciationPractice({
-    targetWord: word,
-    syllableCount,
-    onPlayNative,
+    targetWord: activeTargetText,
+    syllableCount: activeSyllableCount,
+    onPlayNative: activePlayNative,
     onStopNative,
   });
 
-  const isMasteryMode = Boolean(koPronunciation);
-  const [masteryStep, setMasteryStep] = useState<MasteryStep>('1a');
-  const [prevWord, setPrevWord] = useState(word);
-  if (prevWord !== word) {
-    setPrevWord(word);
-    setMasteryStep('1a');
-  }
-  const hasExampleSentence = Boolean(exampleSentence);
   const activeSteps: MasteryStep[] = hasExampleSentence
     ? ['1a', '1b', '2', '3']
     : ['1a', '1b', '2'];
@@ -122,6 +134,12 @@ export function PronunciationPracticeCard({
     }
     setMasteryStep(nextStep);
   }, [hasExampleSentence, masteryStep, onMasteryComplete, resetPractice]);
+
+  const handleRestartMastery = useCallback(() => {
+    resetPractice();
+    triggerLightHaptic();
+    setMasteryStep('1a');
+  }, [resetPractice]);
 
   const [prevEvaluation, setPrevEvaluation] = useState(evaluation);
   if (evaluation !== prevEvaluation) {
@@ -407,6 +425,20 @@ export function PronunciationPracticeCard({
               <Text style={styles.sentenceText} maxFontSizeMultiplier={1.3}>
                 {exampleSentence}
               </Text>
+              {onPlayExample ? (
+                <Tap
+                  feel="snappy"
+                  onPress={() => void onPlayExample()}
+                  style={styles.sentenceListenBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="예문 먼저 들어보기"
+                >
+                  <SpeakerHigh size={15} color={COLORS.primaryDark} />
+                  <Text style={styles.sentenceListenText} maxFontSizeMultiplier={1.2}>
+                    문장 먼저 듣기
+                  </Text>
+                </Tap>
+              ) : null}
             </View>
           ) : null}
         </View>
@@ -431,7 +463,7 @@ export function PronunciationPracticeCard({
         ]}
         accessibilityRole="button"
         accessibilityLabel={
-          isRecording ? '말하기 끝내고 발음 비교하기' : `${word} 따라 말하기 시작`
+          isRecording ? '말하기 끝내고 발음 비교하기' : `${activeTargetText} 따라 말하기 시작`
         }
       >
         {isRecording ? (
@@ -444,7 +476,9 @@ export function PronunciationPracticeCard({
             ? '듣고 있어요 · 다 말하면 누르기'
             : hasRecording
               ? '다시 따라 말하기'
-              : '마이크 눌러 따라 말하기'}
+              : isSentenceStep
+                ? '마이크 눌러 문장 말하기'
+                : '마이크 눌러 따라 말하기'}
         </Text>
       </Tap>
       )}
@@ -496,7 +530,9 @@ export function PronunciationPracticeCard({
           <Text style={styles.recordingHint} maxFontSizeMultiplier={1.35}>
             {liveTranscript
               ? `들리는 소리: "${liveTranscript}"`
-              : `'${word}'를 편안하게 한 번 말해 보세요 (자동으로 멈춰요)`}
+              : isSentenceStep
+                ? '짧은 문장을 편안하게 한 번 말해 보세요 (자동으로 멈춰요)'
+                : `'${word}'를 편안하게 한 번 말해 보세요 (자동으로 멈춰요)`}
           </Text>
         </View>
       ) : null}
@@ -766,6 +802,17 @@ export function PronunciationPracticeCard({
           <Text style={styles.masteryDoneSub} maxFontSizeMultiplier={1.35}>
             내일 한 번 더 꺼내면 오래 남아요
           </Text>
+          <Tap
+            feel="snappy"
+            onPress={handleRestartMastery}
+            style={styles.masteryRestartBtn}
+            accessibilityRole="button"
+            accessibilityLabel="입에 붙이기 처음부터 다시 연습"
+          >
+            <Text style={styles.masteryRestartBtnText} maxFontSizeMultiplier={1.25}>
+              한 번 더 연습하기
+            </Text>
+          </Tap>
         </View>
       ) : null}
     </View>
@@ -1239,7 +1286,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.border,
   },
   stepDotCurrent: {
     backgroundColor: COLORS.primary,
@@ -1284,9 +1331,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
     borderRadius: RADIUS.md,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignSelf: 'stretch',
     alignItems: 'center',
+    gap: 8,
   },
   sentenceText: {
     fontSize: 16,
@@ -1294,6 +1342,20 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     textAlign: 'center',
     lineHeight: 24,
+  },
+  sentenceListenBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.tint,
+  },
+  sentenceListenText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primaryDark,
   },
   nextStepBtn: {
     minHeight: TOUCH.minTarget,
@@ -1335,5 +1397,17 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  masteryRestartBtn: {
+    marginTop: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.background,
+  },
+  masteryRestartBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
   },
 });

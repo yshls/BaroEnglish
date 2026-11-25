@@ -28,7 +28,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { BookmarkFlipDeck } from '../../components/BookmarkFlipDeck';
+import { BookmarkFlipDeck, type DeckMode } from '../../components/BookmarkFlipDeck';
 import { DailyGoalRing } from '../../components/DailyGoalRing';
 import { InfoTipBox, InfoTipButton } from '../../components/InfoTip';
 import { SymbolDetailSheet } from '../../components/SymbolDetailSheet';
@@ -59,6 +59,10 @@ export default function BookmarksScreen() {
   const [isEditingNickname, setIsEditingNickname] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState('');
   const [showSavedInfo, setShowSavedInfo] = useState(false);
+  const [showDueInfo, setShowDueInfo] = useState(false);
+  const [deckInitialMode, setDeckInitialMode] = useState<DeckMode>('standard');
+  const [deckSessionId, setDeckSessionId] = useState(0);
+  const [dueDeckSnapshot, setDueDeckSnapshot] = useState<CoreWord[] | null>(null);
   const navSeqRef = useRef(0);
 
   const cachedWords = useWordCacheStore((state) => state.cachedWords);
@@ -427,9 +431,19 @@ export default function BookmarksScreen() {
                   {dueWords.length}개
                 </Text>
               </View>
+              <InfoTipButton
+                open={showDueInfo}
+                onToggle={() => setShowDueInfo((prev) => !prev)}
+                accessibilityLabel="간격 반복 복습 안내 보기"
+              />
             </View>
+            <InfoTipBox
+              visible={showDueInfo}
+              text="한 번에 몰아서 외우기보다 1일 → 3일 → 7일 간격으로 뜻을 보고 먼저 소리 내어 떠올리면 장기 기억으로 굳어져요."
+              onClose={() => setShowDueInfo(false)}
+            />
             <Text style={styles.dueSub} maxFontSizeMultiplier={1.35}>
-              며칠 뒤 다시 꺼내서 떠올리면 훨씬 오래 기억돼요
+              뜻을 보고 먼저 소리 내어 떠올려 보세요 · 1일→3일→7일 간격 복습
             </Text>
             <View style={styles.dueChipRow}>
               {dueWords.slice(0, 5).map((w) => (
@@ -452,15 +466,19 @@ export default function BookmarksScreen() {
                 triggerLightHaptic();
                 stop();
                 setFilter('words');
+                setFilterText('');
+                setDueDeckSnapshot(dueWords);
+                setDeckInitialMode('recall');
+                setDeckSessionId((prev) => prev + 1);
                 setWordViewMode('deck');
               }}
               style={({ pressed }) => [styles.dueStartBtn, pressed && styles.pressed]}
               accessibilityRole="button"
-              accessibilityLabel="카드 복습 시작하기"
+              accessibilityLabel="오늘 다시 꺼낼 단어 뜻 보고 말하기 복습 시작"
             >
               <ArrowsClockwise size={18} color={COLORS.white} />
               <Text style={styles.dueStartBtnText} maxFontSizeMultiplier={1.25}>
-                카드 복습 시작
+                뜻 보고 꺼내 말하기 ({dueWords.length}개)
               </Text>
             </Pressable>
           </View>
@@ -641,6 +659,7 @@ export default function BookmarksScreen() {
                     <Pressable
                       onPress={() => {
                         triggerLightHaptic();
+                        setDueDeckSnapshot(null);
                         setWordViewMode('list');
                       }}
                       style={({ pressed }) => [
@@ -665,6 +684,9 @@ export default function BookmarksScreen() {
                       onPress={() => {
                         triggerLightHaptic();
                         stop();
+                        setDueDeckSnapshot(null);
+                        setDeckInitialMode('standard');
+                        setDeckSessionId((prev) => prev + 1);
                         setWordViewMode('deck');
                       }}
                       style={({ pressed }) => [
@@ -690,9 +712,15 @@ export default function BookmarksScreen() {
 
                 {wordViewMode === 'deck' ? (
                   <BookmarkFlipDeck
-                    key={filteredWords.map((w) => w.id).join('|')}
-                    words={filteredWords}
+                    key={
+                      dueDeckSnapshot
+                        ? `due-${deckSessionId}`
+                        : `all-${deckSessionId}-${filteredWords.map((w) => w.id).join('|')}`
+                    }
+                    words={dueDeckSnapshot ?? filteredWords}
                     showKoHint={shouldShowKoHint}
+                    initialMode={deckInitialMode}
+                    wordReviews={wordReviews}
                     onOpenInReader={handleOpenInReader}
                     onReviewWord={handleReviewWord}
                   />

@@ -1084,6 +1084,14 @@ export default function WordReaderScreen() {
               onStopNative={stop}
               koPronunciation={displayedWord.koPronunciation}
               exampleSentence={displayedExamples[0]?.en}
+              onPlayExample={
+                displayedExamples[0]?.en
+                  ? () =>
+                      playNormal(displayedExamples[0].en, {
+                        key: `word:${displayedWord.id}:mastery-ex`,
+                      })
+                  : undefined
+              }
               onMasteryComplete={() =>
                 recordMasteryMissionComplete(
                   normalizeReviewWordKey(displayedWord.word)
