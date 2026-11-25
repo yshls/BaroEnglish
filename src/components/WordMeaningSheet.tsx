@@ -355,11 +355,8 @@ const styles = StyleSheet.create({
   closeButton: {
     width: TOUCH.minTarget,
     height: TOUCH.minTarget,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOW.card,
   },
   wordCard: {
     backgroundColor: COLORS.card,

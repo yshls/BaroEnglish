@@ -62,8 +62,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="shorts"
         options={{
-          title: '발음 쇼츠',
-          tabBarLabel: '발음 쇼츠',
+          title: '발음 피드',
+          tabBarLabel: '발음 피드',
         }}
       />
       <Tabs.Screen

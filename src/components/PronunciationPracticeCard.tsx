@@ -1264,8 +1264,6 @@ const styles = StyleSheet.create({
   sheetCloseBtn: {
     width: TOUCH.minTarget,
     height: TOUCH.minTarget,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1379,10 +1377,6 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.lg,
   },
   masteryDoneIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.successSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },

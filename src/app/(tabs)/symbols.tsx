@@ -1,10 +1,12 @@
 import { CheckCircle, Sparkle, SpeakerHigh, SpeakerLow, X } from '../../components/PlumpIcons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { InfoTipBox, InfoTipButton } from '../../components/InfoTip';
 import { MinimalPairTrainer } from '../../components/MinimalPairTrainer';
+import { SpringReveal } from '../../components/SpringMotion';
 import { SymbolDetailSheet } from '../../components/SymbolDetailSheet';
+import { Tap } from '../../components/Tap';
 import {
   CORE_IPA_SYMBOLS,
   getSymbolsByCategory,
@@ -109,17 +111,15 @@ export default function IpaSymbolsScreen() {
                   바로영어에 오신 걸 환영해요!
                 </Text>
               </View>
-              <Pressable
+              <Tap
+                feel="snappy"
                 onPress={dismissWelcomeBanner}
-                style={({ pressed }) => [
-                  styles.dismissBtn,
-                  pressed && styles.pressed,
-                ]}
+                style={styles.dismissBtn}
                 accessibilityRole="button"
                 accessibilityLabel="안내 배너 닫기"
               >
                 <X size={20} color={COLORS.indigoText} />
-              </Pressable>
+              </Tap>
             </View>
             <Text style={styles.welcomeBody} maxFontSizeMultiplier={1.5}>
               미국식 영어 발음기호 전체 40개를 모두 담았어요. 처음이라면 위에서
@@ -130,12 +130,12 @@ export default function IpaSymbolsScreen() {
 
         {/* 핵심 18개 / 전체 40개 전환 스위치 */}
         <View style={styles.modeSwitchContainer}>
-          <Pressable
+          <Tap
+            feel="playful"
             onPress={() => setViewMode('core')}
-            style={({ pressed }) => [
+            style={[
               styles.modeSwitchBtn,
               isCoreOnly && styles.modeSwitchBtnCoreActive,
-              pressed && styles.pressed,
             ]}
             accessibilityRole="button"
             accessibilityState={{ selected: isCoreOnly }}
@@ -150,14 +150,14 @@ export default function IpaSymbolsScreen() {
             >
               핵심 {CORE_IPA_SYMBOLS.length}개
             </Text>
-          </Pressable>
+          </Tap>
 
-          <Pressable
+          <Tap
+            feel="playful"
             onPress={() => setViewMode('all')}
-            style={({ pressed }) => [
+            style={[
               styles.modeSwitchBtn,
               !isCoreOnly && styles.modeSwitchBtnAllActive,
-              pressed && styles.pressed,
             ]}
             accessibilityRole="button"
             accessibilityState={{ selected: !isCoreOnly }}
@@ -172,7 +172,7 @@ export default function IpaSymbolsScreen() {
             >
               전체 {IPA_SYMBOLS.length}개 (완전판)
             </Text>
-          </Pressable>
+          </Tap>
         </View>
 
         {/* 진도 Bento 요약 카드 */}
@@ -204,177 +204,182 @@ export default function IpaSymbolsScreen() {
         <MinimalPairTrainer />
 
         {/* 카테고리별 발음기호 Bento 섹션 */}
-        {visibleCategories.map(({ category, symbols }, index) => {
-          const learnedInCategory = symbols.filter((s) =>
-            learnedSymbolIds.includes(s.id)
-          ).length;
-          const subtitle =
-            isCoreOnly && category.subtitleCoreKo
-              ? category.subtitleCoreKo
-              : category.subtitleKo;
-          const accent = CATEGORY_ACCENTS[category.id] ?? {
-            soft: COLORS.tint,
-            text: COLORS.primaryDark,
-            solid: COLORS.primary,
-          };
+        <SpringReveal
+          triggerKey={viewMode}
+          distance={10}
+          feel="gentle"
+          style={styles.categoriesStack}
+        >
+          {visibleCategories.map(({ category, symbols }, index) => {
+            const learnedInCategory = symbols.filter((s) =>
+              learnedSymbolIds.includes(s.id)
+            ).length;
+            const subtitle =
+              isCoreOnly && category.subtitleCoreKo
+                ? category.subtitleCoreKo
+                : category.subtitleKo;
+            const accent = CATEGORY_ACCENTS[category.id] ?? {
+              soft: COLORS.tint,
+              text: COLORS.primaryDark,
+              solid: COLORS.primary,
+            };
 
-          return (
-            <View key={category.id} style={styles.categorySection}>
-              <View style={styles.categoryHeader}>
-                <View style={styles.categoryTitleBlock}>
-                  <View style={styles.categoryStepRow}>
-                    <View
-                      style={[
-                        styles.categoryStepPill,
-                        { backgroundColor: accent.soft },
-                      ]}
-                    >
-                      <Text
+            return (
+              <View key={category.id} style={styles.categorySection}>
+                <View style={styles.categoryHeader}>
+                  <View style={styles.categoryTitleBlock}>
+                    <View style={styles.categoryStepRow}>
+                      <View
                         style={[
-                          styles.categoryStepPillText,
-                          { color: accent.text },
+                          styles.categoryStepPill,
+                          { backgroundColor: accent.soft },
                         ]}
-                        maxFontSizeMultiplier={1.3}
                       >
-                        {index + 1}단계
+                        <Text
+                          style={[
+                            styles.categoryStepPillText,
+                            { color: accent.text },
+                          ]}
+                          maxFontSizeMultiplier={1.3}
+                        >
+                          {index + 1}단계
+                        </Text>
+                      </View>
+                      <Text style={styles.categoryStep} maxFontSizeMultiplier={1.4}>
+                        {category.titleKo}
                       </Text>
+                      <InfoTipButton
+                        open={openCategoryInfoId === category.id}
+                        onToggle={() =>
+                          setOpenCategoryInfoId((prev) =>
+                            prev === category.id ? null : category.id
+                          )
+                        }
+                        accessibilityLabel={`${category.titleKo} 설명 보기`}
+                      />
                     </View>
-                    <Text style={styles.categoryStep} maxFontSizeMultiplier={1.4}>
-                      {category.titleKo}
+                  </View>
+
+                  <View
+                    style={[
+                      styles.categoryProgressBadge,
+                      { backgroundColor: accent.soft },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.categoryProgressText,
+                        { color: accent.text },
+                      ]}
+                      maxFontSizeMultiplier={1.35}
+                    >
+                      {learnedInCategory} / {symbols.length} 익힘
                     </Text>
-                    <InfoTipButton
-                      open={openCategoryInfoId === category.id}
-                      onToggle={() =>
-                        setOpenCategoryInfoId((prev) =>
-                          prev === category.id ? null : category.id
-                        )
-                      }
-                      accessibilityLabel={`${category.titleKo} 설명 보기`}
-                    />
                   </View>
                 </View>
 
-                <View
-                  style={[
-                    styles.categoryProgressBadge,
-                    { backgroundColor: accent.soft },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.categoryProgressText,
-                      { color: accent.text },
-                    ]}
-                    maxFontSizeMultiplier={1.35}
-                  >
-                    {learnedInCategory} / {symbols.length} 익힘
-                  </Text>
-                </View>
-              </View>
+                <InfoTipBox
+                  visible={openCategoryInfoId === category.id}
+                  text={subtitle}
+                  variant="surface"
+                  onClose={() => setOpenCategoryInfoId(null)}
+                />
 
-              <InfoTipBox
-                visible={openCategoryInfoId === category.id}
-                text={subtitle}
-                variant="surface"
-                onClose={() => setOpenCategoryInfoId(null)}
-              />
+                <View style={styles.grid}>
+                  {symbols.map((symbol) => {
+                    const isLearned = learnedSymbolIds.includes(symbol.id);
+                    const previewSound = symbol.ipa.replace(/\//g, '');
+                    const quickPlayKey = `sym:quick:${symbol.id}`;
+                    const isQuickPlaying = activeKey === quickPlayKey;
 
-              <View style={styles.grid}>
-                {symbols.map((symbol) => {
-                  const isLearned = learnedSymbolIds.includes(symbol.id);
-                  const previewSound = symbol.ipa.replace(/\//g, '');
-                  const quickPlayKey = `sym:quick:${symbol.id}`;
-                  const isQuickPlaying = activeKey === quickPlayKey;
-
-                  return (
-                    <Pressable
-                      key={symbol.id}
-                      onPress={() => setSelectedSymbol(symbol)}
-                      style={({ pressed }) => [
-                        styles.symbolCard,
-                        isLearned && styles.symbolCardLearned,
-                        isQuickPlaying && styles.symbolCardPlaying,
-                        pressed && styles.pressed,
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${symbol.ipa} ${symbol.titleKo} ${
-                        isLearned ? '익힘 완료' : '학습하기'
-                      }`}
-                    >
-                      <View style={styles.symbolCardTop}>
-                        <Text
-                          style={[styles.symbolIpa, { color: accent.text }]}
-                          maxFontSizeMultiplier={1.35}
-                        >
-                          {symbol.ipa}
-                        </Text>
-                        <View style={styles.badgeRow}>
-                          {!isCoreOnly && symbol.isCore ? (
-                            <View style={styles.coreTag}>
-                              <Text
-                                style={styles.coreTagText}
-                                maxFontSizeMultiplier={1.25}
-                              >
-                                핵심
-                              </Text>
-                            </View>
-                          ) : null}
-                          {isLearned ? (
-                            <View style={styles.doneTag}>
-                              <CheckCircle
-                                size={18}
-                                color={COLORS.success}
-                                weight="fill"
-                              />
-                            </View>
-                          ) : null}
-                        </View>
-                      </View>
-
-                      <Text
-                        style={styles.symbolKoHint}
-                        numberOfLines={2}
-                        maxFontSizeMultiplier={1.4}
+                    return (
+                      <Tap
+                        key={symbol.id}
+                        feel="gentle"
+                        onPress={() => setSelectedSymbol(symbol)}
+                        style={[
+                          styles.symbolCard,
+                          isLearned && styles.symbolCardLearned,
+                          isQuickPlaying && styles.symbolCardPlaying,
+                        ]}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${symbol.ipa} ${symbol.titleKo} ${
+                          isLearned ? '익힘 완료' : '학습하기'
+                        }`}
                       >
-                        {symbol.koHint}
-                      </Text>
-                      <View style={styles.symbolCardBottomRow}>
+                        <View style={styles.symbolCardTop}>
+                          <Text
+                            style={[styles.symbolIpa, { color: accent.text }]}
+                            maxFontSizeMultiplier={1.35}
+                          >
+                            {symbol.ipa}
+                          </Text>
+                          <View style={styles.badgeRow}>
+                            {!isCoreOnly && symbol.isCore ? (
+                              <View style={styles.coreTag}>
+                                <Text
+                                  style={styles.coreTagText}
+                                  maxFontSizeMultiplier={1.25}
+                                >
+                                  핵심
+                                </Text>
+                              </View>
+                            ) : null}
+                            {isLearned ? (
+                              <View style={styles.doneTag}>
+                                <CheckCircle
+                                  size={18}
+                                  color={COLORS.success}
+                                  weight="fill"
+                                />
+                              </View>
+                            ) : null}
+                          </View>
+                        </View>
+
                         <Text
-                          style={styles.symbolExamplePreview}
-                          numberOfLines={1}
+                          style={styles.symbolKoHint}
+                          numberOfLines={2}
                           maxFontSizeMultiplier={1.4}
                         >
-                          {symbol.titleKo}
+                          {symbol.koHint}
                         </Text>
+                        <View style={styles.symbolCardBottomRow}>
+                          <Text
+                            style={styles.symbolExamplePreview}
+                            numberOfLines={1}
+                            maxFontSizeMultiplier={1.4}
+                          >
+                            {symbol.titleKo}
+                          </Text>
 
-                        {/* 빠른 소리 듣기 아이콘 버튼 */}
-                        <Pressable
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            void playNormal(previewSound, { key: quickPlayKey });
-                          }}
-                          style={({ pressed }) => [
-                            styles.quickPlayBtn,
-                            isQuickPlaying && styles.quickPlayBtnActive,
-                            pressed && styles.pressed,
-                          ]}
-                          accessibilityRole="button"
-                          accessibilityLabel={`${symbol.ipa} 소리 바로 듣기`}
-                        >
-                          {isQuickPlaying ? (
-                            <SpeakerHigh size={18} color={COLORS.white} weight="fill" />
-                          ) : (
-                            <SpeakerLow size={18} color={accent.text} />
-                          )}
-                        </Pressable>
-                      </View>
-                    </Pressable>
-                  );
-                })}
+                          {/* 빠른 소리 듣기 아이콘 버튼 */}
+                          <Tap
+                            feel="snappy"
+                            pressedScale={0.86}
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              void playNormal(previewSound, { key: quickPlayKey });
+                            }}
+                            style={styles.quickPlayBtn}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${symbol.ipa} 소리 바로 듣기`}
+                          >
+                            {isQuickPlaying ? (
+                              <SpeakerHigh size={18} color={COLORS.primary} weight="fill" />
+                            ) : (
+                              <SpeakerLow size={18} color={accent.text} />
+                            )}
+                          </Tap>
+                        </View>
+                      </Tap>
+                    );
+                  })}
+                </View>
               </View>
-            </View>
-          );
-        })}
+            );
+          })}
+        </SpringReveal>
       </ScrollView>
 
       <SymbolDetailSheet
@@ -394,6 +399,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: SPACING.sm,
     paddingBottom: LAYOUT.floatingTabClearance,
+    gap: SPACING.sm,
+  },
+  categoriesStack: {
     gap: SPACING.sm,
   },
   welcomeBanner: {
@@ -426,8 +434,6 @@ const styles = StyleSheet.create({
   dismissBtn: {
     width: TOUCH.minTarget,
     height: TOUCH.minTarget,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -644,15 +650,7 @@ const styles = StyleSheet.create({
   quickPlayBtn: {
     width: 36,
     height: 36,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.background,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  quickPlayBtnActive: {
-    backgroundColor: COLORS.primary,
-  },
-  pressed: {
-    opacity: 0.82,
   },
 });

@@ -12,14 +12,9 @@ import {
   StyleSheet,
   View,
   type LayoutChangeEvent,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { COLORS, RADIUS, SHADOW } from '../theme/tokens';
-import { CaretRight } from './PlumpIcons';
-import { Tap } from './Tap';
 
 interface HorizontalChipScrollProps {
   children: ReactNode;
@@ -37,14 +32,9 @@ export function HorizontalChipScroll({
   style,
 }: HorizontalChipScrollProps) {
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
-  const [scrollX, setScrollX] = useState(0);
   const [viewportWidth, setViewportWidth] = useState(0);
   const [contentWidth, setContentWidth] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-
-  const canScrollLeft = scrollX > 4;
-  const canScrollRight =
-    contentWidth > 0 && viewportWidth > 0 && contentWidth - viewportWidth - scrollX > 4;
 
   const handleLayout = useCallback((e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
@@ -54,23 +44,6 @@ export function HorizontalChipScroll({
   const handleContentSizeChange = useCallback((w: number) => {
     if (w > 0) setContentWidth(w);
   }, []);
-
-  const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    setScrollX(e.nativeEvent.contentOffset.x);
-  }, []);
-
-  const scrollByStep = useCallback(
-    (direction: 'left' | 'right') => {
-      const step = Math.max(160, Math.round(viewportWidth * 0.65));
-      const maxScroll = Math.max(0, contentWidth - viewportWidth);
-      const nextX =
-        direction === 'right'
-          ? Math.min(maxScroll, scrollX + step)
-          : Math.max(0, scrollX - step);
-      scrollRef.current?.scrollTo({ x: nextX, animated: true });
-    },
-    [contentWidth, scrollX, viewportWidth]
-  );
 
   // 웹 환경: 마우스 휠 가로 전환 + 클릭 드래그 스크롤 지원
   useEffect(() => {
@@ -160,7 +133,6 @@ export function HorizontalChipScroll({
         keyboardShouldPersistTaps="handled"
         onLayout={handleLayout}
         onContentSizeChange={handleContentSizeChange}
-        onScroll={handleScroll}
         scrollEventThrottle={16}
         style={
           Platform.OS === 'web'
@@ -183,34 +155,6 @@ export function HorizontalChipScroll({
           children
         )}
       </ScrollView>
-
-      {canScrollLeft ? (
-        <Tap
-          feel="snappy"
-          pressedScale={0.88}
-          onPress={() => scrollByStep('left')}
-          style={[styles.navBtn, styles.navBtnLeft]}
-          accessibilityRole="button"
-          accessibilityLabel="이전 칩 보기"
-        >
-          <View style={styles.leftIconFlip}>
-            <CaretRight size={16} color={COLORS.text} weight="bold" />
-          </View>
-        </Tap>
-      ) : null}
-
-      {canScrollRight ? (
-        <Tap
-          feel="snappy"
-          pressedScale={0.88}
-          onPress={() => scrollByStep('right')}
-          style={[styles.navBtn, styles.navBtnRight]}
-          accessibilityRole="button"
-          accessibilityLabel="다음 칩 더 보기"
-        >
-          <CaretRight size={16} color={COLORS.text} weight="bold" />
-        </Tap>
-      ) : null}
     </View>
   );
 }
@@ -231,25 +175,5 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
     paddingLeft: 0,
     paddingRight: 0,
-  },
-  navBtn: {
-    position: 'absolute',
-    width: 30,
-    height: 30,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 5,
-    ...SHADOW.floating,
-  },
-  navBtnLeft: {
-    left: 2,
-  },
-  navBtnRight: {
-    right: 2,
-  },
-  leftIconFlip: {
-    transform: [{ rotate: '180deg' }],
   },
 });

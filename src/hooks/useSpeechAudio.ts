@@ -31,7 +31,6 @@ const MAX_PLAYBACK_SAFETY_MS = 12000;
 const MAX_TTS_SAFETY_MS = 10000;
 
 // 전역 싱글톤 오디오 컨트롤러
-let audioModeConfigured = false;
 let appStateSubscribed = false;
 let resolvedEnglishVoiceId: string | undefined;
 let voiceInitPromise: Promise<string | undefined> | null = null;
@@ -130,8 +129,7 @@ function ensureAppStateListener() {
 
   AppState.addEventListener('change', (nextState: AppStateStatus) => {
     if (nextState !== 'active') {
-      // 백그라운드/전화 인터럽션 시 재생 즉시 중단 및 오디오 세션 재설정 플래그 초기화
-      audioModeConfigured = false;
+      // 백그라운드/전화 인터럽션 시 재생 즉시 중단
       void stopGlobalAudio();
     }
   });
@@ -161,14 +159,14 @@ async function stopGlobalAudio(): Promise<number> {
 
 async function ensureAudioMode() {
   ensureAppStateListener();
-  if (audioModeConfigured) return;
+  // 매 재생마다 오디오 세션을 재적용 — iOS 무음 스위치에서도 재생되도록 playback
+  // 카테고리를 보장하고, 인터럽션 등으로 세션이 바뀌어 있어도 즉시 복원한다.
   try {
     await setAudioModeAsync({
       playsInSilentMode: true,
       shouldPlayInBackground: false,
       interruptionMode: 'duckOthers',
     });
-    audioModeConfigured = true;
   } catch {
     // 일부 시뮬레이터 환경에서 실패해도 TTS 폴백 계속 진행
   }

@@ -82,6 +82,21 @@ function getFirstExample(item: CoreWord): { en: string; ko?: string } | null {
 export default function PronunciationShortsScreen() {
   const shortsMode = useLearningStore((s) => s.shortsMode);
   const setShortsMode = useLearningStore((s) => s.setShortsMode);
+
+  // 세그먼트 컨트롤 슬라이딩 인디케이터
+  const modeIndex = SHORTS_MODES.findIndex((m) => m.id === shortsMode);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- stable animated value
+  const slideAnim = useMemo(() => new Animated.Value(modeIndex), []);
+  const [trackWidth, setTrackWidth] = useState(0);
+
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: modeIndex,
+      useNativeDriver: USE_NATIVE_DRIVER,
+      tension: 300,
+      friction: 25,
+    }).start();
+  }, [modeIndex, slideAnim]);
   const [feedWords, setFeedWords] = useState<CoreWord[]>([]);
   const [viewportHeight, setViewportHeight] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -1329,7 +1344,7 @@ export default function PronunciationShortsScreen() {
             <>
               <ActivityIndicator size="large" color={COLORS.rose} />
               <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
-                다음 발음 쇼츠를 불러오는 중...
+                다음 발음 피드를 불러오는 중...
               </Text>
               <Text style={styles.emptySub} maxFontSizeMultiplier={1.45}>
                 새로운 실생활 영단어와 원어민 발음을 실시간으로 가져오고 있어요.
@@ -1339,7 +1354,7 @@ export default function PronunciationShortsScreen() {
             <>
               <Sparkle size={34} color={COLORS.rose} />
               <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
-                새로운 발음 쇼츠가 준비돼 있어요
+                새로운 발음 피드가 준비돼 있어요
               </Text>
               <Text style={styles.emptySub} maxFontSizeMultiplier={1.45}>
                 아래 버튼을 누르면 새 실생활 영단어를 바로 이어서 볼 수 있어요.
@@ -1351,7 +1366,7 @@ export default function PronunciationShortsScreen() {
                   pressed && styles.pressed,
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel="새 발음 쇼츠 바로 불러오기"
+                accessibilityLabel="새 발음 피드 바로 불러오기"
               >
                 <Text style={styles.retryBtnText} maxFontSizeMultiplier={1.3}>
                   새 단어 바로 불러오기
@@ -1394,7 +1409,7 @@ export default function PronunciationShortsScreen() {
           <View style={styles.emptyCard}>
             <ActivityIndicator size="large" color={COLORS.rose} />
             <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
-              발음 쇼츠 카드를 준비하고 있어요
+              발음 피드 카드를 준비하고 있어요
             </Text>
             <Text style={styles.emptySub} maxFontSizeMultiplier={1.45}>
               원어민 음성과 생활 예문을 실시간으로 모으는 중입니다...
@@ -1409,7 +1424,31 @@ export default function PronunciationShortsScreen() {
     <View style={styles.screen}>
       {/* 모드 전환 바: 함께 · 단어 · 문장 */}
       <View style={styles.modeBarWrap}>
-        <View style={styles.modeSwitchTrack} accessibilityRole="tablist">
+        <View
+          style={styles.modeSwitchTrack}
+          accessibilityRole="tablist"
+          onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
+        >
+          {trackWidth > 0 && (
+            <Animated.View
+              style={[
+                styles.modeSwitchIndicator,
+                {
+                  width: (trackWidth - 4) / SHORTS_MODES.length,
+                  transform: [
+                    {
+                      translateX: slideAnim.interpolate({
+                        inputRange: SHORTS_MODES.map((_, i) => i),
+                        outputRange: SHORTS_MODES.map(
+                          (_, i) => 2 + i * ((trackWidth - 4) / SHORTS_MODES.length),
+                        ),
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            />
+          )}
           {SHORTS_MODES.map((m) => {
             const active = shortsMode === m.id;
             return (
@@ -1417,10 +1456,7 @@ export default function PronunciationShortsScreen() {
                 key={m.id}
                 feel="playful"
                 onPress={() => handleChangeMode(m.id)}
-                style={[
-                  styles.modeSwitchBtn,
-                  active && styles.modeSwitchBtnActive,
-                ]}
+                style={styles.modeSwitchBtn}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={`${m.label} 모드`}
@@ -1528,33 +1564,35 @@ const styles = StyleSheet.create({
   },
   modeBarWrap: {
     paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.xs,
+    paddingTop: 4,
     paddingBottom: 2,
     alignItems: 'center',
   },
   modeSwitchTrack: {
-    width: '100%',
-    maxWidth: 320,
+    maxWidth: 220,
     flexDirection: 'row',
-    backgroundColor: 'transparent',
+    backgroundColor: COLORS.surface,
     borderRadius: RADIUS.pill,
     padding: 2,
-    gap: 6,
   },
-  modeSwitchBtn: {
-    flex: 1,
-    minHeight: 34,
+  modeSwitchIndicator: {
+    position: 'absolute',
+    top: 2,
+    bottom: 2,
     borderRadius: RADIUS.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-  },
-  modeSwitchBtnActive: {
     backgroundColor: COLORS.card,
     ...SHADOW.card,
   },
+  modeSwitchBtn: {
+    flex: 1,
+    minHeight: 28,
+    borderRadius: RADIUS.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
   modeSwitchText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
     color: COLORS.textMuted,
   },
@@ -1669,13 +1707,8 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   heartBurstCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.tint,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOW.floating,
   },
   heartBurstPill: {
     backgroundColor: COLORS.text,
@@ -2036,8 +2069,6 @@ const styles = StyleSheet.create({
   exMiniSpeakBtn: {
     width: 34,
     height: 34,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.tealSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -137,9 +137,14 @@ test('borderless UI rule: no non-zero borderWidth or borderColor in screens and 
     'src/app/(tabs)/shorts.tsx',
     'src/app/(tabs)/symbols.tsx',
     'src/components/BaroHeader.tsx',
+    'src/components/FloatingPillTabBar.tsx',
+    'src/components/HorizontalChipScroll.tsx',
+    'src/components/InfoTip.tsx',
     'src/components/PronunciationPracticeCard.tsx',
     'src/components/RhythmBlocks.tsx',
+    'src/components/SpringMotion.tsx',
     'src/components/SymbolDetailSheet.tsx',
+    'src/components/Tap.tsx',
     'src/components/TappableExampleSentence.tsx',
     'src/components/WordMeaningSheet.tsx',
   ];
@@ -270,3 +275,29 @@ test('My Page (bookmarks tab) provides nickname setting, usage time stats, conse
   );
 });
 
+test('responsive spring UI/UX system is wired across web and native with reduced-motion support', () => {
+  const cssSrc = fs.readFileSync(path.join(root, 'src/styles/fonts.css'), 'utf8');
+  const tapSrc = fs.readFileSync(path.join(root, 'src/components/Tap.tsx'), 'utf8');
+  const motionSrc = fs.readFileSync(path.join(root, 'src/components/SpringMotion.tsx'), 'utf8');
+  const reducedSrc = fs.readFileSync(path.join(root, 'src/hooks/useReducedMotion.ts'), 'utf8');
+  const wordSheetSrc = fs.readFileSync(path.join(root, 'src/components/WordMeaningSheet.tsx'), 'utf8');
+  const symbolSheetSrc = fs.readFileSync(path.join(root, 'src/components/SymbolDetailSheet.tsx'), 'utf8');
+  const practiceSrc = fs.readFileSync(path.join(root, 'src/components/PronunciationPracticeCard.tsx'), 'utf8');
+  const indexSrc = fs.readFileSync(path.join(root, 'src/app/(tabs)/index.tsx'), 'utf8');
+  const symbolsSrc = fs.readFileSync(path.join(root, 'src/app/(tabs)/symbols.tsx'), 'utf8');
+  const bookmarksSrc = fs.readFileSync(path.join(root, 'src/app/(tabs)/bookmarks.tsx'), 'utf8');
+
+  assert.ok(cssSrc.includes('-webkit-tap-highlight-color: transparent'), 'fonts.css must disable mobile tap highlight');
+  assert.ok(cssSrc.includes('touch-action: manipulation'), 'fonts.css must prevent double-tap zoom delay');
+  assert.ok(cssSrc.includes('overscroll-behavior-y: none'), 'fonts.css must prevent rubber-band overscroll');
+  assert.ok(reducedSrc.includes('prefers-reduced-motion: reduce'), 'useReducedMotion must respect web reduced motion');
+  assert.ok(tapSrc.includes('useReducedMotion'), 'Tap must respect reduced motion');
+  assert.ok(motionSrc.includes('export function SpringSheet'), 'SpringMotion must export SpringSheet');
+  assert.ok(motionSrc.includes('export function SpringReveal'), 'SpringMotion must export SpringReveal');
+  assert.ok(wordSheetSrc.includes('SpringSheet'), 'WordMeaningSheet must use SpringSheet');
+  assert.ok(symbolSheetSrc.includes('SpringSheet'), 'SymbolDetailSheet must use SpringSheet');
+  assert.ok(practiceSrc.includes('SpringSheet'), 'PronunciationPracticeSheet must use SpringSheet');
+  assert.ok(indexSrc.includes('SpringReveal') && indexSrc.includes('<Tap'), 'index.tsx must use SpringReveal and Tap');
+  assert.ok(symbolsSrc.includes('SpringReveal') && symbolsSrc.includes('<Tap'), 'symbols.tsx must use SpringReveal and Tap');
+  assert.ok(bookmarksSrc.includes('SpringReveal') && bookmarksSrc.includes('<Tap'), 'bookmarks.tsx must use SpringReveal and Tap');
+});

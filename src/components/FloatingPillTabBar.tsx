@@ -9,6 +9,7 @@ import {
   View,
   type LayoutChangeEvent,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useLearningStore } from '../store/useLearningStore';
 import { COLORS, FONTS, LAYOUT, RADIUS, SHADOW, SPACING, Z_INDEX } from '../theme/tokens';
 import { triggerLightHaptic } from '../utils/haptics';
@@ -21,13 +22,13 @@ export interface FloatingPillTabBarProps extends ExpoBottomTabBarProps {
   bottomInset: number;
 }
 
-const TAB_ORDER = ['index', 'shorts', 'symbols', 'bookmarks'] as const;
+const TAB_ORDER = ['index', 'symbols', 'shorts', 'bookmarks'] as const;
 type OrderedTabName = (typeof TAB_ORDER)[number];
 
 const DEFAULT_LABELS: Record<OrderedTabName, string> = {
   index: '단어 읽기',
-  shorts: '발음 쇼츠',
   symbols: '발음기호',
+  shorts: '발음 피드',
   bookmarks: '마이페이지',
 };
 
@@ -42,10 +43,10 @@ function renderTabIcon(name: string, focused: boolean) {
   switch (name) {
     case 'index':
       return <BookOpen size={22} color={color} weight={weight} />;
-    case 'shorts':
-      return <Play size={22} color={color} weight={weight} />;
     case 'symbols':
       return <SpeakerHigh size={22} color={color} weight={weight} />;
+    case 'shorts':
+      return <Play size={22} color={color} weight={weight} />;
     case 'bookmarks':
     default:
       return <User size={22} color={color} weight={weight} />;
@@ -63,7 +64,7 @@ export function FloatingPillTabBar({
   const nickname = useLearningStore((s) => s.nickname);
   const customMyLabel = nickname.trim();
 
-  // 탭 순서를 항상 [단어 읽기, 발음 쇼츠, 발음기호, 마이페이지]로 고정 (마이페이지 맨 오른쪽)
+  // 탭 순서를 항상 [단어 읽기, 발음기호, 발음 쇼츠, 마이페이지]로 고정 (마이페이지 맨 오른쪽)
   const orderedRoutes = [...state.routes].sort((a, b) => {
     const idxA = TAB_ORDER.indexOf(a.name as OrderedTabName);
     const idxB = TAB_ORDER.indexOf(b.name as OrderedTabName);
@@ -153,6 +154,13 @@ export function FloatingPillTabBar({
         accessibilityRole="tablist"
         onLayout={handleBarLayout}
       >
+        {/* 글래스모피즘 반투명 블러 배경 */}
+        <BlurView
+          intensity={60}
+          tint="light"
+          pointerEvents="none"
+          style={styles.pillBlur}
+        />
         {slotWidth > 0 ? (
           <Animated.View
             pointerEvents="none"
@@ -268,11 +276,22 @@ const styles = StyleSheet.create({
     maxWidth: LAYOUT.contentMaxWidth,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.card,
+    backgroundColor: 'transparent',
     borderRadius: RADIUS.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
     padding: PILL_PADDING,
     gap: TAB_GAP,
     ...SHADOW.floating,
+  },
+  pillBlur: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: RADIUS.pill,
+    overflow: 'hidden',
   },
   slidingIndicator: {
     position: 'absolute',
@@ -280,7 +299,10 @@ const styles = StyleSheet.create({
     bottom: PILL_PADDING,
     left: PILL_PADDING,
     borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.surface,
+    backgroundColor: 'rgba(255, 255, 255, 0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.7)',
+    ...SHADOW.card,
   },
   tabItem: {
     flex: 1,
@@ -294,7 +316,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   tabItemActive: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: 'rgba(255, 255, 255, 0.55)',
   },
   tabItemInner: {
     alignItems: 'center',
