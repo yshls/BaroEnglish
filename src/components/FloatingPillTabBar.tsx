@@ -9,6 +9,7 @@ import {
   View,
   type LayoutChangeEvent,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useLearningStore } from '../store/useLearningStore';
 import { COLORS, FONTS, LAYOUT, RADIUS, SHADOW, SPACING, Z_INDEX } from '../theme/tokens';
 import { triggerLightHaptic } from '../utils/haptics';
@@ -153,6 +154,13 @@ export function FloatingPillTabBar({
         accessibilityRole="tablist"
         onLayout={handleBarLayout}
       >
+        {/* 글래스모피즘 반투명 블러 배경 */}
+        <BlurView
+          intensity={60}
+          tint="light"
+          pointerEvents="none"
+          style={styles.pillBlur}
+        />
         {slotWidth > 0 ? (
           <Animated.View
             pointerEvents="none"
@@ -268,11 +276,22 @@ const styles = StyleSheet.create({
     maxWidth: LAYOUT.contentMaxWidth,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.card,
+    backgroundColor: 'transparent',
     borderRadius: RADIUS.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
     padding: PILL_PADDING,
     gap: TAB_GAP,
     ...SHADOW.floating,
+  },
+  pillBlur: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: RADIUS.pill,
+    overflow: 'hidden',
   },
   slidingIndicator: {
     position: 'absolute',
