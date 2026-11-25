@@ -184,7 +184,7 @@ export default function BookmarksScreen() {
     () => (Array.isArray(activeDateHistory) ? activeDateHistory : []),
     [activeDateHistory]
   );
-  const recentWeek = useMemo(() => getRecentWeekDays(7), []);
+  const recentWeek = useMemo(() => getRecentWeekDays(7), [todayKey]);
   const activeDateSet = useMemo(() => new Set(safeHistory), [safeHistory]);
   const weekCheckedCount = recentWeek.filter(
     (d) => d.isToday || activeDateSet.has(d.key)
