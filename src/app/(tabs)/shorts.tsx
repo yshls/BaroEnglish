@@ -1564,13 +1564,12 @@ const styles = StyleSheet.create({
   },
   modeBarWrap: {
     paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.xs,
+    paddingTop: 4,
     paddingBottom: 2,
     alignItems: 'center',
   },
   modeSwitchTrack: {
-    width: '100%',
-    maxWidth: 300,
+    maxWidth: 220,
     flexDirection: 'row',
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.pill,
@@ -1586,14 +1585,14 @@ const styles = StyleSheet.create({
   },
   modeSwitchBtn: {
     flex: 1,
-    minHeight: 34,
+    minHeight: 28,
     borderRadius: RADIUS.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
   },
   modeSwitchText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
     color: COLORS.textMuted,
   },
