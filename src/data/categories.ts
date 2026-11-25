@@ -10,9 +10,9 @@ export const IPA_CATEGORIES: IpaCategoryMeta[] = [
   },
   {
     id: 'diphthongs',
-    titleKo: '합쳐진 모음',
-    subtitleCoreKo: '두 소리가 부드럽게 이어지는 이중모음 5개',
-    subtitleKo: '두 소리가 부드럽게 이어지는 이중모음 5개',
+    titleKo: '합쳐진 소리',
+    subtitleCoreKo: '두 소리가 부드럽게 이어지는 모음 5개',
+    subtitleKo: '두 소리가 부드럽게 이어지는 모음 5개',
   },
   {
     id: 'key_consonants',

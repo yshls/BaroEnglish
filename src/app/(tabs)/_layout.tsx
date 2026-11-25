@@ -53,17 +53,17 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="shorts"
-        options={{
-          title: '발음 쇼츠',
-          tabBarLabel: '발음 쇼츠',
-        }}
-      />
-      <Tabs.Screen
         name="symbols"
         options={{
           title: '발음기호 기초',
           tabBarLabel: '발음기호',
+        }}
+      />
+      <Tabs.Screen
+        name="shorts"
+        options={{
+          title: '발음 쇼츠',
+          tabBarLabel: '발음 쇼츠',
         }}
       />
       <Tabs.Screen

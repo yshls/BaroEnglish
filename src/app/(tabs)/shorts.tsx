@@ -15,6 +15,13 @@ import {
   type NativeSyntheticEvent,
   type ViewStyle,
 } from 'react-native';
+import Svg, {
+  Defs,
+  LinearGradient as SvgLinearGradient,
+  RadialGradient,
+  Rect,
+  Stop,
+} from 'react-native-svg';
 import { InfoTipBox, InfoTipButton } from '../../components/InfoTip';
 import { PronunciationPracticeSheet } from '../../components/PronunciationPracticeCard';
 import { Tap } from '../../components/Tap';

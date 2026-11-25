@@ -1,5 +1,5 @@
 import { ArrowsClockwise, Eye, EyeSlash, Gauge, Heart, Info, Lightning, MagnifyingGlass, Microphone, Question, SpeakerHigh, Translate, XCircle } from '../../components/PlumpIcons';
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -90,6 +90,8 @@ export default function WordReaderScreen() {
 
   const showKoPronunciation = useLearningStore((state) => state.showKoPronunciation);
   const learningHasHydrated = useLearningStore((state) => state.hasHydrated);
+  const learnedSymbolIds = useLearningStore((state) => state.learnedSymbolIds);
+  const showSymbolNudge = learningHasHydrated && (!Array.isArray(learnedSymbolIds) || learnedSymbolIds.length === 0);
   const setShowKoPronunciation = useLearningStore(
     (state) => state.setShowKoPronunciation
   );
@@ -747,6 +749,26 @@ export default function WordReaderScreen() {
           )}
         </View>
 
+        {/* 발음기호 유도 카드 (기호를 하나도 안 익힌 왕초보에게만) */}
+        {showSymbolNudge && !displayedWord && !isLoading ? (
+          <Pressable
+            onPress={() => router.navigate('/(tabs)/symbols')}
+            style={({ pressed }) => [styles.symbolNudgeCard, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel="발음기호 기초 화면으로 이동"
+          >
+            <Text style={styles.symbolNudgeTitle} maxFontSizeMultiplier={1.35}>
+              발음기호 먼저 익혀볼까요?
+            </Text>
+            <Text style={styles.symbolNudgeSub} maxFontSizeMultiplier={1.4}>
+              영어 소리의 기초를 배우면 모르는 단어도 읽을 수 있어요
+            </Text>
+            <Text style={styles.symbolNudgeLink} maxFontSizeMultiplier={1.3}>
+              발음기호 기초 보러가기 →
+            </Text>
+          </Pressable>
+        ) : null}
+
         {/* 로딩 카드 */}
         {isLoading ? (
           <View style={styles.loadingCard}>
@@ -755,7 +777,7 @@ export default function WordReaderScreen() {
               단어 소리와 뜻을 찾아오고 있어요
             </Text>
             <Text style={styles.loadingSub} maxFontSizeMultiplier={1.45}>
-              원어민 발음, 강세 리듬, 한글 뜻을 함께 정리하고 있습니다...
+              원어민 발음, 강약 리듬, 한글 뜻을 함께 정리하고 있습니다...
             </Text>
           </View>
         ) : null}
@@ -1018,14 +1040,14 @@ export default function WordReaderScreen() {
             <View style={styles.sectionCard}>
               <View style={styles.sectionTitleLeft}>
                 <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.4}>
-                  음절별 강약(강세) 리듬
+                  음절별 강약 리듬
                 </Text>
                 <InfoTipButton
                   open={openTip === 'rhythm'}
                   onToggle={() =>
                     setOpenTip((prev) => (prev === 'rhythm' ? null : 'rhythm'))
                   }
-                  accessibilityLabel="강세 리듬 설명 보기"
+                  accessibilityLabel="강약 리듬 설명 보기"
                 />
               </View>
               <InfoTipBox
@@ -1604,6 +1626,28 @@ const styles = StyleSheet.create({
   },
   wordChipTextSelected: {
     color: COLORS.primaryDark,
+  },
+  symbolNudgeCard: {
+    backgroundColor: COLORS.indigoSoft,
+    borderRadius: RADIUS.card,
+    padding: SPACING.lg,
+    gap: 6,
+  },
+  symbolNudgeTitle: {
+    fontSize: TYPOGRAPHY.bodyLarge,
+    fontWeight: '700',
+    color: COLORS.indigoText,
+  },
+  symbolNudgeSub: {
+    fontSize: TYPOGRAPHY.body,
+    color: COLORS.indigoText,
+    lineHeight: 22,
+  },
+  symbolNudgeLink: {
+    fontSize: TYPOGRAPHY.body,
+    fontWeight: '700',
+    color: COLORS.indigo,
+    marginTop: 4,
   },
   loadingCard: {
     backgroundColor: COLORS.card,

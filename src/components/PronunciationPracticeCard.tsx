@@ -16,9 +16,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   Animated,
   Easing,
-  Modal,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -28,6 +26,8 @@ import { usePronunciationPractice } from '../hooks/usePronunciationPractice';
 import { COLORS, LAYOUT, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../theme/tokens';
 import { triggerLightHaptic, triggerMediumHaptic, triggerSuccessHaptic } from '../utils/haptics';
 import { InfoTipBox, InfoTipButton } from './InfoTip';
+import { SpringSheet } from './SpringMotion';
+import { Tap } from './Tap';
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
@@ -414,7 +414,9 @@ export function PronunciationPracticeCard({
 
       {/* 메인 마이크 시작/중지 버튼 */}
       {showPracticeUI && (
-      <Pressable
+      <Tap
+        feel="snappy"
+        haptic={false}
         onPress={() => {
           triggerMediumHaptic();
           if (isRecording) {
@@ -423,10 +425,9 @@ export function PronunciationPracticeCard({
             void startRecording();
           }
         }}
-        style={({ pressed }) => [
+        style={[
           styles.micButton,
           isRecording && styles.micButtonRecording,
-          pressed && styles.pressed,
         ]}
         accessibilityRole="button"
         accessibilityLabel={
@@ -445,7 +446,7 @@ export function PronunciationPracticeCard({
               ? '다시 따라 말하기'
               : '마이크 눌러 따라 말하기'}
         </Text>
-      </Pressable>
+      </Tap>
       )}
 
       {/* 녹음 중 코랄 펄스 링 + 실시간 애니메이션 파형 + 인식 프리뷰 */}
@@ -655,15 +656,16 @@ export function PronunciationPracticeCard({
 
           {hasRecording ? (
             <View style={styles.playbackRow}>
-              <Pressable
+              <Tap
+                feel="snappy"
+                haptic={false}
                 onPress={() => {
                   triggerLightHaptic();
                   void playUserRecording();
                 }}
-                style={({ pressed }) => [
+                style={[
                   styles.playMineBtn,
                   isPlayingUser && !isComparing && styles.playMineBtnActive,
-                  pressed && styles.pressed,
                 ]}
                 accessibilityRole="button"
                 accessibilityLabel="방금 내가 말한 목소리 들어보기"
@@ -685,17 +687,18 @@ export function PronunciationPracticeCard({
                 >
                   {isPlayingUser && !isComparing ? '재생 중...' : '내 목소리 듣기'}
                 </Text>
-              </Pressable>
+              </Tap>
 
-              <Pressable
+              <Tap
+                feel="snappy"
+                haptic={false}
                 onPress={() => {
                   triggerLightHaptic();
                   playCompareWithNative();
                 }}
-                style={({ pressed }) => [
+                style={[
                   styles.compareBtn,
                   isComparing && styles.compareBtnActive,
-                  pressed && styles.pressed,
                 ]}
                 accessibilityRole="button"
                 accessibilityLabel="원어민 발음과 내 발음 연달아 비교해 듣기"
@@ -713,14 +716,15 @@ export function PronunciationPracticeCard({
                 >
                   {isComparing ? '비교 재생 중...' : '원어민 → 내 발음'}
                 </Text>
-              </Pressable>
+              </Tap>
             </View>
           ) : null}
 
           {isMasteryMode && evaluation ? (
-            <Pressable
+            <Tap
+              feel="playful"
               onPress={advanceMasteryStep}
-              style={({ pressed }) => [styles.nextStepBtn, pressed && styles.pressed]}
+              style={styles.nextStepBtn}
               accessibilityRole="button"
               accessibilityLabel="다음 단계로"
             >
@@ -728,25 +732,23 @@ export function PronunciationPracticeCard({
                 다음 단계
               </Text>
               <CaretRight size={18} color={COLORS.white} />
-            </Pressable>
+            </Tap>
           ) : (
             <View style={styles.footerRow}>
               <Text style={styles.ephemeralNote} maxFontSizeMultiplier={1.3}>
                 다른 단어로 넘어가거나 닫으면 방금 녹음은 즉시 지워져요.
               </Text>
-              <Pressable
+              <Tap
+                feel="snappy"
                 onPress={resetPractice}
-                style={({ pressed }) => [
-                  styles.clearRecordBtn,
-                  pressed && styles.pressed,
-                ]}
+                style={styles.clearRecordBtn}
                 accessibilityRole="button"
                 accessibilityLabel="방금 녹음 지우기"
               >
                 <Text style={styles.clearRecordText} maxFontSizeMultiplier={1.3}>
                   지우기
                 </Text>
-              </Pressable>
+              </Tap>
             </View>
           )}
         </View>
@@ -790,66 +792,58 @@ export function PronunciationPracticeSheet({
   onClose,
 }: PronunciationPracticeSheetProps) {
   const insets = useSafeAreaInsets();
-  if (!word) return null;
+  const [cachedWord, setCachedWord] = useState<string | null>(word);
+  if (word && word !== cachedWord) {
+    setCachedWord(word);
+  }
+  const displayWord = word ?? cachedWord;
+  if (!displayWord) return null;
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
+    <SpringSheet
+      visible={visible && Boolean(word)}
+      onClose={onClose}
+      dismissLabel="따라 말하기 창 닫기"
       statusBarTranslucent
-      onRequestClose={onClose}
+      sheetStyle={[
+        styles.sheetContainer,
+        { paddingBottom: Math.max(insets.bottom, SPACING.md) },
+      ]}
     >
-      <View style={styles.modalBackdrop}>
-        <Pressable
-          style={styles.modalDismissArea}
-          onPress={onClose}
-          accessibilityLabel="따라 말하기 창 닫기"
-        />
-        <View
+      <View style={styles.sheetHandle} />
+      <View style={styles.sheetTopBar}>
+        <Text
           style={[
-            styles.sheetContainer,
-            { paddingBottom: Math.max(insets.bottom, SPACING.md) },
+            styles.sheetWordTitle,
+            displayWord.includes(' ') && styles.sheetSentenceTitle,
           ]}
+          numberOfLines={3}
+          maxFontSizeMultiplier={1.3}
         >
-          <View style={styles.sheetHandle} />
-          <View style={styles.sheetTopBar}>
-            <Text
-              style={[
-                styles.sheetWordTitle,
-                word.includes(' ') && styles.sheetSentenceTitle,
-              ]}
-              numberOfLines={3}
-              maxFontSizeMultiplier={1.3}
-            >
-              {word}
-            </Text>
-            <Pressable
-              onPress={onClose}
-              style={({ pressed }) => [
-                styles.sheetCloseBtn,
-                pressed && styles.pressed,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel="닫기"
-            >
-              <X size={22} color={COLORS.text} />
-            </Pressable>
-          </View>
-
-          {visible ? (
-            <PronunciationPracticeCard
-              word={word}
-              ipa={ipa}
-              syllableCount={syllableCount}
-              onPlayNative={onPlayNative}
-              onStopNative={onStopNative}
-              embedded
-            />
-          ) : null}
-        </View>
+          {displayWord}
+        </Text>
+        <Tap
+          feel="snappy"
+          onPress={onClose}
+          style={styles.sheetCloseBtn}
+          accessibilityRole="button"
+          accessibilityLabel="닫기"
+        >
+          <X size={22} color={COLORS.text} />
+        </Tap>
       </View>
-    </Modal>
+
+      {visible && word ? (
+        <PronunciationPracticeCard
+          word={word}
+          ipa={ipa}
+          syllableCount={syllableCount}
+          onPlayNative={onPlayNative}
+          onStopNative={onStopNative}
+          embedded
+        />
+      ) : null}
+    </SpringSheet>
   );
 }
 
