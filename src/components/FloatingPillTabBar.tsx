@@ -21,13 +21,13 @@ export interface FloatingPillTabBarProps extends ExpoBottomTabBarProps {
   bottomInset: number;
 }
 
-const TAB_ORDER = ['index', 'shorts', 'symbols', 'bookmarks'] as const;
+const TAB_ORDER = ['index', 'symbols', 'shorts', 'bookmarks'] as const;
 type OrderedTabName = (typeof TAB_ORDER)[number];
 
 const DEFAULT_LABELS: Record<OrderedTabName, string> = {
   index: '단어 읽기',
-  shorts: '발음 쇼츠',
   symbols: '발음기호',
+  shorts: '발음 쇼츠',
   bookmarks: '마이페이지',
 };
 
@@ -42,10 +42,10 @@ function renderTabIcon(name: string, focused: boolean) {
   switch (name) {
     case 'index':
       return <BookOpen size={22} color={color} weight={weight} />;
-    case 'shorts':
-      return <Play size={22} color={color} weight={weight} />;
     case 'symbols':
       return <SpeakerHigh size={22} color={color} weight={weight} />;
+    case 'shorts':
+      return <Play size={22} color={color} weight={weight} />;
     case 'bookmarks':
     default:
       return <User size={22} color={color} weight={weight} />;
@@ -63,7 +63,7 @@ export function FloatingPillTabBar({
   const nickname = useLearningStore((s) => s.nickname);
   const customMyLabel = nickname.trim();
 
-  // 탭 순서를 항상 [단어 읽기, 발음 쇼츠, 발음기호, 마이페이지]로 고정 (마이페이지 맨 오른쪽)
+  // 탭 순서를 항상 [단어 읽기, 발음기호, 발음 쇼츠, 마이페이지]로 고정 (마이페이지 맨 오른쪽)
   const orderedRoutes = [...state.routes].sort((a, b) => {
     const idxA = TAB_ORDER.indexOf(a.name as OrderedTabName);
     const idxB = TAB_ORDER.indexOf(b.name as OrderedTabName);

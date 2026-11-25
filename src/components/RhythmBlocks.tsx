@@ -1,7 +1,7 @@
 import { CheckCircle, MusicNote, Play, Sparkle, SpeakerHigh, SpeakerLow } from './PlumpIcons';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { type ComponentRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, type GestureResponderEvent, type LayoutChangeEvent, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSpeechAudio } from '../hooks/useSpeechAudio';
 import { COLORS, RADIUS, SPACING, TOUCH, TYPOGRAPHY } from '../theme/tokens';
 import type { SyllableItem } from '../types/learning';
@@ -15,6 +15,7 @@ import { InfoTipBox, InfoTipButton } from './InfoTip';
 import { Tap } from './Tap';
 
 const USE_NATIVE_DRIVER = Platform.OS !== 'web';
+const SMOOTH_EASE = Easing.bezier(0.25, 0.1, 0.25, 1);
 
 interface RhythmBlocksProps {
   syllables: SyllableItem[];
@@ -137,9 +138,11 @@ export function RhythmBlocks({
     (idx: number, stress: SyllableItem['stress']) => {
       const anim = getBlockAnim(idx);
       if (!anim) return;
-      const liftTarget = stress === 'primary' ? -10 : stress === 'secondary' ? -6 : -3;
-      const scaleTarget = stress === 'primary' ? 1.08 : stress === 'secondary' ? 1.05 : 1.03;
-      const dotTarget = stress === 'primary' ? 1.48 : 1.3;
+      const liftTarget = stress === 'primary' ? -16 : stress === 'secondary' ? -9 : -4;
+      const scaleTarget = stress === 'primary' ? 1.1 : stress === 'secondary' ? 1.05 : 1.02;
+      const dotTarget = stress === 'primary' ? 2.0 : stress === 'secondary' ? 1.5 : 1.2;
+      const upDuration = stress === 'primary' ? 220 : stress === 'secondary' ? 180 : 150;
+      const downDuration = stress === 'primary' ? 400 : stress === 'secondary' ? 340 : 280;
 
       anim.liftY.stopAnimation();
       anim.scale.stopAnimation();
@@ -147,44 +150,44 @@ export function RhythmBlocks({
 
       Animated.parallel([
         Animated.sequence([
-          Animated.spring(anim.liftY, {
+          Animated.timing(anim.liftY, {
             toValue: liftTarget,
-            speed: 28,
-            bounciness: 12,
+            duration: upDuration,
+            easing: Easing.out(Easing.quad),
             useNativeDriver: USE_NATIVE_DRIVER,
           }),
-          Animated.spring(anim.liftY, {
+          Animated.timing(anim.liftY, {
             toValue: 0,
-            speed: 18,
-            bounciness: 10,
+            duration: downDuration,
+            easing: SMOOTH_EASE,
             useNativeDriver: USE_NATIVE_DRIVER,
           }),
         ]),
         Animated.sequence([
-          Animated.spring(anim.scale, {
+          Animated.timing(anim.scale, {
             toValue: scaleTarget,
-            speed: 28,
-            bounciness: 12,
+            duration: upDuration,
+            easing: Easing.out(Easing.quad),
             useNativeDriver: USE_NATIVE_DRIVER,
           }),
-          Animated.spring(anim.scale, {
+          Animated.timing(anim.scale, {
             toValue: 1,
-            speed: 18,
-            bounciness: 10,
+            duration: downDuration,
+            easing: SMOOTH_EASE,
             useNativeDriver: USE_NATIVE_DRIVER,
           }),
         ]),
         Animated.sequence([
-          Animated.spring(anim.dotScale, {
+          Animated.timing(anim.dotScale, {
             toValue: dotTarget,
-            speed: 30,
-            bounciness: 14,
+            duration: upDuration,
+            easing: Easing.out(Easing.cubic),
             useNativeDriver: USE_NATIVE_DRIVER,
           }),
-          Animated.spring(anim.dotScale, {
+          Animated.timing(anim.dotScale, {
             toValue: 1,
-            speed: 20,
-            bounciness: 8,
+            duration: downDuration + 80,
+            easing: SMOOTH_EASE,
             useNativeDriver: USE_NATIVE_DRIVER,
           }),
         ]),
@@ -361,11 +364,156 @@ export function RhythmBlocks({
     }, cumulativeDelay + 400);
   }, [animateBounce, clearRhythmTimers, isQuizHidingStress, playSlow, playTargetWord, scheduleTimer, stop, syllables]);
 
+  // --- 블렌딩(이어읽기): 전체 단어를 보통 속도로 재생하면서 음절 순차 하이라이트 ---
+  const handleBlendPlay = useCallback(() => {
+    if (isQuizHidingStress) return;
+    clearRhythmTimers();
+    const session = rhythmSessionRef.current;
+    stop();
+
+    const totalSyllables = syllables.length;
+    const avgDuration = 600 / totalSyllables;
+    let cumulativeDelay = 50;
+
+    syllables.forEach((syl, idx) => {
+      const delay = cumulativeDelay;
+      const holdTime =
+        syl.stress === 'primary'
+          ? avgDuration * 1.6
+          : syl.stress === 'secondary'
+            ? avgDuration * 1.2
+            : avgDuration * 0.8;
+
+      scheduleTimer(() => {
+        if (rhythmSessionRef.current !== session) return;
+        setRhythmIndex(idx);
+        if (syl.stress === 'primary') {
+          triggerMediumHaptic();
+        } else {
+          triggerLightHaptic();
+        }
+        animateBounce(idx, syl.stress);
+      }, delay);
+
+      cumulativeDelay += holdTime;
+    });
+
+    playTargetWord();
+
+    scheduleTimer(() => {
+      if (rhythmSessionRef.current !== session) return;
+      setRhythmIndex(null);
+    }, cumulativeDelay + 300);
+  }, [animateBounce, clearRhythmTimers, isQuizHidingStress, playTargetWord, scheduleTimer, stop, syllables]);
+
+  // --- 스와이프 따라가기: 손가락 위치에 따라 해당 음절 재생 ---
+  const blockLayoutsRef = useRef<number[]>([]);
+  const swipeActiveRef = useRef<number>(-1);
+
+  const handleBlockLayout = useCallback(
+    (idx: number, e: LayoutChangeEvent) => {
+      const { x, width } = e.nativeEvent.layout;
+      blockLayoutsRef.current[idx] = x + width / 2;
+    },
+    []
+  );
+
+  const findSyllableAtX = useCallback(
+    (pageX: number, containerX: number) => {
+      const relX = pageX - containerX;
+      const centers = blockLayoutsRef.current;
+      if (centers.length === 0) return -1;
+
+      let closest = 0;
+      let minDist = Math.abs(relX - (centers[0] ?? 0));
+      for (let i = 1; i < centers.length; i++) {
+        const dist = Math.abs(relX - (centers[i] ?? 0));
+        if (dist < minDist) {
+          minDist = dist;
+          closest = i;
+        }
+      }
+      return closest;
+    },
+    []
+  );
+
+  const blocksRowRef = useRef<ComponentRef<typeof View>>(null);
+  const containerXRef = useRef(0);
+  const touchStartXRef = useRef<number | null>(null);
+
+  const handleBlocksRowLayout = useCallback(() => {
+    blocksRowRef.current?.measureInWindow((x: number) => {
+      containerXRef.current = x;
+    });
+  }, []);
+
+  const handleTouchStart = useCallback((evt: GestureResponderEvent) => {
+    touchStartXRef.current = evt.nativeEvent.pageX;
+  }, []);
+
+  const handleStartShouldSetResponder = useCallback(
+    () => !isQuizHidingStress && !quizMode,
+    [isQuizHidingStress, quizMode]
+  );
+
+  const handleMoveShouldSetResponder = useCallback(
+    (evt: GestureResponderEvent) => {
+      if (isQuizHidingStress || quizMode) return false;
+      const startX = touchStartXRef.current;
+      return startX !== null && Math.abs(evt.nativeEvent.pageX - startX) > 8;
+    },
+    [isQuizHidingStress, quizMode]
+  );
+
+  const handleSwipeGrant = useCallback(
+    (evt: GestureResponderEvent) => {
+      const pageX = evt.nativeEvent.pageX;
+      touchStartXRef.current = pageX;
+      swipeActiveRef.current = -1;
+      clearRhythmTimers();
+      stop();
+      const idx = findSyllableAtX(pageX, containerXRef.current);
+      if (idx >= 0 && idx < syllables.length) {
+        swipeActiveRef.current = idx;
+        setRhythmIndex(idx);
+        const syl = syllables[idx];
+        animateBounce(idx, syl.stress);
+        if (syl.stress === 'primary') triggerMediumHaptic();
+        else triggerLightHaptic();
+        void playSlow(syl.text, { key: `rhythm:swipe:${idx}:${syl.text}` });
+      }
+    },
+    [animateBounce, clearRhythmTimers, findSyllableAtX, playSlow, stop, syllables]
+  );
+
+  const handleSwipeMove = useCallback(
+    (evt: GestureResponderEvent) => {
+      const idx = findSyllableAtX(evt.nativeEvent.pageX, containerXRef.current);
+      if (idx >= 0 && idx < syllables.length && idx !== swipeActiveRef.current) {
+        swipeActiveRef.current = idx;
+        setRhythmIndex(idx);
+        const syl = syllables[idx];
+        animateBounce(idx, syl.stress);
+        if (syl.stress === 'primary') triggerMediumHaptic();
+        else triggerLightHaptic();
+        void playSlow(syl.text, { key: `rhythm:swipe:${idx}:${syl.text}` });
+      }
+    },
+    [animateBounce, findSyllableAtX, playSlow, syllables]
+  );
+
+  const handleSwipeRelease = useCallback(() => {
+    touchStartXRef.current = null;
+    swipeActiveRef.current = -1;
+    scheduleTimer(() => setRhythmIndex(null), 400);
+  }, [scheduleTimer]);
+
   const isRhythmPlaying = rhythmIndex !== null;
 
   return (
     <View style={styles.container}>
-      {/* 상단 강약 박자 리듬 요약 (● ⬤ ●) + 강세 퀴즈 / 리듬 듣기 버튼 */}
+      {/* 상단 강약 박자 리듬 요약 + 강세 퀴즈 / 리듬 듣기 버튼 */}
       <View style={styles.rhythmBar}>
         <View style={styles.rhythmBarLeft}>
           <Text style={styles.rhythmBarLabel} maxFontSizeMultiplier={1.4}>
@@ -381,24 +529,20 @@ export function RhythmBlocks({
               const isPrimary = syl.stress === 'primary';
               const isSecondary = syl.stress === 'secondary';
               const isActive = rhythmIndex === idx;
+              const isPast = rhythmIndex !== null && idx < rhythmIndex;
               const anim = blockAnims[idx];
               return (
-                <Animated.View
-                  key={`dot-${idx}-${syl.text}`}
-                  style={anim ? { transform: [{ scale: anim.dotScale }] } : undefined}
-                >
-                  <Text
-                    style={[
-                      isQuizHidingStress
-                        ? styles.dotHidden
-                        : isPrimary
-                          ? styles.dotPrimary
-                          : isSecondary
-                            ? styles.dotSecondary
-                            : styles.dotNormal,
-                      isActive && styles.dotActive,
-                    ]}
-                    maxFontSizeMultiplier={1.25}
+                <View key={`dot-wrap-${idx}-${syl.text}`} style={styles.dotWithLine}>
+                  {idx > 0 && (
+                    <View
+                      style={[
+                        styles.dotConnector,
+                        (isActive || isPast) && styles.dotConnectorActive,
+                      ]}
+                    />
+                  )}
+                  <Animated.View
+                    style={anim ? { transform: [{ scale: anim.dotScale }] } : undefined}
                     accessibilityLabel={
                       isQuizHidingStress
                         ? '퀴즈 박자'
@@ -409,9 +553,22 @@ export function RhythmBlocks({
                             : '약한 박자'
                     }
                   >
-                    {isQuizHidingStress ? '?' : isPrimary ? '⬤' : '●'}
-                  </Text>
-                </Animated.View>
+                    {isQuizHidingStress ? (
+                      <Text style={styles.dotHidden} maxFontSizeMultiplier={1.25}>?</Text>
+                    ) : (
+                      <View
+                        style={[
+                          isPrimary
+                            ? styles.dotPrimary
+                            : isSecondary
+                              ? styles.dotSecondary
+                              : styles.dotNormal,
+                          isActive && styles.dotActive,
+                        ]}
+                      />
+                    )}
+                  </Animated.View>
+                </View>
               );
             })}
           </View>
@@ -478,6 +635,26 @@ export function RhythmBlocks({
                   : '리듬 듣기'}
             </Text>
           </Pressable>
+
+          {!isQuizHidingStress && word ? (
+            <Pressable
+              onPress={handleBlendPlay}
+              style={({ pressed }) => [
+                styles.blendPlayBtn,
+                pressed && styles.pressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="이어서 자연스럽게 듣기"
+            >
+              <SpeakerHigh size={15} color={COLORS.tealText} />
+              <Text
+                style={styles.blendPlayBtnText}
+                maxFontSizeMultiplier={1.25}
+              >
+                이어 듣기
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
       </View>
 
@@ -561,8 +738,19 @@ export function RhythmBlocks({
         </View>
       ) : null}
 
-      {/* 음절별 리듬 블록 카드 (스프링 바운스 + 터치 인터랙티브) */}
-      <View style={styles.blocksRow}>
+      {/* 음절별 리듬 블록 카드 (스와이프 따라가기 + 터치) */}
+      <View
+        ref={blocksRowRef}
+        style={styles.blocksRow}
+        onLayout={handleBlocksRowLayout}
+        onTouchStart={handleTouchStart}
+        onStartShouldSetResponder={handleStartShouldSetResponder}
+        onMoveShouldSetResponder={handleMoveShouldSetResponder}
+        onResponderGrant={handleSwipeGrant}
+        onResponderMove={handleSwipeMove}
+        onResponderRelease={handleSwipeRelease}
+        onResponderTerminate={handleSwipeRelease}
+      >
         {syllables.map((syl, idx) => {
           const isPrimary = syl.stress === 'primary';
           const isSecondary = syl.stress === 'secondary';
@@ -578,6 +766,7 @@ export function RhythmBlocks({
           return (
             <Animated.View
               key={`syl-${idx}-${syl.text}`}
+              onLayout={(e) => handleBlockLayout(idx, e)}
               style={[
                 styles.blockAnimWrap,
                 !isQuizHidingStress && isPrimary && styles.blockAnimWrapPrimary,
@@ -599,6 +788,7 @@ export function RhythmBlocks({
                   !isQuizHidingStress && isPrimary && styles.blockPrimary,
                   !isQuizHidingStress && !isPrimary && isSecondary && styles.blockSecondary,
                   !isQuizHidingStress && !isPrimary && !isSecondary && isSchwa && styles.blockSchwa,
+                  !isQuizHidingStress && !isPrimary && !isSecondary && !isSchwa && styles.blockWeak,
                   isQuizHidingStress && styles.blockQuizNeutral,
                   isQuizWrongBlock && styles.blockQuizWrong,
                   isQuizCorrectBlock && styles.blockQuizCorrect,
@@ -626,21 +816,25 @@ export function RhythmBlocks({
                   </View>
                 ) : isPrimary ? (
                   <View style={styles.primaryTag}>
+                    <View style={styles.tagDotPrimary} />
                     <Text style={styles.primaryTagText} maxFontSizeMultiplier={1.3}>
-                      ⬤ 강하게
+                      강하게
                     </Text>
                   </View>
                 ) : isSecondary ? (
                   <View style={styles.secondaryTag}>
+                    <View style={styles.tagDotSecondary} />
                     <Text
                       style={styles.secondaryTagText}
                       maxFontSizeMultiplier={1.3}
                     >
-                      ● 살짝 강하게
+                      중간
                     </Text>
                   </View>
                 ) : (
-                  <Text style={styles.normalDotSmall}>●</Text>
+                  <View style={styles.normalTag}>
+                    <View style={styles.tagDotNormal} />
+                  </View>
                 )}
 
                 {/* 음절 영문 */}
@@ -742,20 +936,43 @@ const styles = StyleSheet.create({
   dotsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
     marginLeft: 4,
   },
+  dotWithLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dotConnector: {
+    width: 8,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: COLORS.disabled,
+    marginHorizontal: 1,
+  },
+  dotConnectorActive: {
+    backgroundColor: '#FF6B6B',
+  },
   dotPrimary: {
-    fontSize: 20,
-    color: COLORS.accentText,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#FF6B6B',
+    ...Platform.select({
+      ios: { shadowColor: '#FF6B6B', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 4 },
+      android: { elevation: 3 },
+    }),
   },
   dotSecondary: {
-    fontSize: 16,
-    color: COLORS.teal,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: COLORS.teal,
   },
   dotNormal: {
-    fontSize: 13,
-    color: COLORS.textMuted,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.textMuted,
   },
   dotHidden: {
     fontSize: 15,
@@ -763,7 +980,11 @@ const styles = StyleSheet.create({
     color: COLORS.purpleText,
   },
   dotActive: {
-    color: COLORS.primary,
+    backgroundColor: '#FF4757',
+    ...Platform.select({
+      ios: { shadowColor: '#FF4757', shadowOpacity: 0.8, shadowRadius: 6, shadowOffset: { width: 0, height: 0 } },
+      android: { elevation: 5 },
+    }),
   },
   barActionsRow: {
     flexDirection: 'row',
@@ -811,6 +1032,21 @@ const styles = StyleSheet.create({
   },
   rhythmPlayBtnTextActive: {
     color: COLORS.white,
+  },
+  blendPlayBtn: {
+    minHeight: TOUCH.minTarget,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.tealSoft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  blendPlayBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.tealText,
   },
   quizBanner: {
     backgroundColor: COLORS.purpleSoft,
@@ -898,9 +1134,13 @@ const styles = StyleSheet.create({
   blockSecondary: {
     backgroundColor: COLORS.tealSoft,
   },
+  blockWeak: {
+    opacity: 0.7,
+  },
   blockSchwa: {
     backgroundColor: COLORS.background,
     paddingVertical: 9,
+    opacity: 0.55,
   },
   blockQuizNeutral: {
     backgroundColor: COLORS.background,
@@ -941,11 +1181,20 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   primaryTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     backgroundColor: COLORS.accent,
     borderRadius: RADIUS.pill,
     paddingHorizontal: 8,
     paddingVertical: 2,
     marginBottom: 3,
+  },
+  tagDotPrimary: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.white,
   },
   primaryTagText: {
     fontSize: 12,
@@ -953,21 +1202,35 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   secondaryTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.pill,
     paddingHorizontal: 8,
     paddingVertical: 2,
     marginBottom: 3,
   },
+  tagDotSecondary: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.teal,
+  },
   secondaryTagText: {
     fontSize: 12,
     fontWeight: '500',
     color: COLORS.tealText,
   },
-  normalDotSmall: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-    marginBottom: 2,
+  normalTag: {
+    alignItems: 'center',
+    marginBottom: 3,
+  },
+  tagDotNormal: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: COLORS.textMuted,
   },
   syllableText: {
     fontSize: TYPOGRAPHY.syllableNormal,
@@ -991,12 +1254,12 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
   },
   syllableIpa: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '400',
     color: COLORS.textMuted,
   },
   syllableIpaPrimary: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '500',
     color: COLORS.accentText,
   },

@@ -1669,13 +1669,8 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   heartBurstCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.tint,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOW.floating,
   },
   heartBurstPill: {
     backgroundColor: COLORS.text,
@@ -2036,8 +2031,6 @@ const styles = StyleSheet.create({
   exMiniSpeakBtn: {
     width: 34,
     height: 34,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.tealSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },

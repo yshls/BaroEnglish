@@ -114,14 +114,10 @@ const styles = StyleSheet.create({
   button: {
     width: 24,
     height: 24,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  buttonOpen: {
-    backgroundColor: COLORS.tint,
-  },
+  buttonOpen: {},
   box: {
     flexDirection: 'row',
     alignItems: 'flex-start',

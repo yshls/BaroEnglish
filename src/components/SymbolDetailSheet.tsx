@@ -83,9 +83,7 @@ function renderEmphasizedExampleWord(ex: SymbolExampleWord) {
               ) : null}
               {seg.role === 'stress' ? (
                 <View style={styles.stressChip}>
-                  <Text style={styles.stressChipDot} maxFontSizeMultiplier={1.2}>
-                    ⬤
-                  </Text>
+                  <View style={styles.stressChipDot} />
                   <Text style={styles.stressChipText} maxFontSizeMultiplier={1.35}>
                     {seg.text}
                   </Text>
@@ -380,8 +378,8 @@ export function SymbolDetailSheet({
               visible={showExamplesInfo}
               text={
                 activeSymbol.id === 'sym_schwa'
-                  ? '노란 표시(⬤)를 세게, 회색 표시는 힘 빼고 약하게 읽어 보세요.'
-                  : '노란 표시(⬤) 부분을 세게·또렷하게 발음해 보세요.'
+                  ? '빨간 점을 세게, 회색 점은 힘 빼고 약하게 읽어 보세요.'
+                  : '빨간 점 부분을 세게·또렷하게 발음해 보세요.'
               }
               variant="surface"
               onClose={() => setShowExamplesInfo(false)}
@@ -864,8 +862,10 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   stressChipDot: {
-    fontSize: 10,
-    color: COLORS.accent,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF6B6B',
   },
   stressChipText: {
     fontSize: 15,

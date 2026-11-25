@@ -21,7 +21,6 @@ import {
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -32,7 +31,9 @@ import { BookmarkFlipDeck, type DeckMode } from '../../components/BookmarkFlipDe
 import { DailyGoalRing } from '../../components/DailyGoalRing';
 import { InfoTipBox, InfoTipButton } from '../../components/InfoTip';
 import { LiveDot } from '../../components/LiveDot';
+import { SpringReveal } from '../../components/SpringMotion';
 import { SymbolDetailSheet } from '../../components/SymbolDetailSheet';
+import { Tap } from '../../components/Tap';
 import { IPA_SYMBOL_BY_ID } from '../../data/categories';
 import { useSpeechAudio } from '../../hooks/useSpeechAudio';
 import {
@@ -47,7 +48,6 @@ import {
 import { useWordCacheStore } from '../../store/useWordCacheStore';
 import { COLORS, LAYOUT, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
 import type { CoreWord, IpaSymbol } from '../../types/learning';
-import { triggerLightHaptic } from '../../utils/haptics';
 
 type BookmarkFilter = 'all' | 'words' | 'symbols';
 type WordViewMode = 'list' | 'deck';
@@ -185,7 +185,14 @@ export default function BookmarksScreen() {
     () => (Array.isArray(activeDateHistory) ? activeDateHistory : []),
     [activeDateHistory]
   );
-  const recentWeek = useMemo(() => getRecentWeekDays(7), [todayKey]);
+  const recentWeek = useMemo(() => {
+    const [y, m, d] = todayKey.split('-').map(Number);
+    const baseDate =
+      Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)
+        ? new Date(y, m - 1, d)
+        : new Date();
+    return getRecentWeekDays(7, baseDate);
+  }, [todayKey]);
   const activeDateSet = useMemo(() => new Set(safeHistory), [safeHistory]);
   const weekCheckedCount = recentWeek.filter(
     (d) => d.isToday || activeDateSet.has(d.key)
@@ -208,13 +215,18 @@ export default function BookmarksScreen() {
         {/* 1. 마이 프로필 & 닉네임 설정 카드 */}
         <View style={styles.profileCard}>
           <View style={styles.profileTopRow}>
-            <View style={styles.avatarCircle}>
+            <View
+              style={[
+                styles.avatarCircle,
+                Boolean(avatarInitial) && styles.avatarCircleInitial,
+              ]}
+            >
               {avatarInitial ? (
                 <Text style={styles.avatarInitialText} maxFontSizeMultiplier={1.2}>
                   {avatarInitial}
                 </Text>
               ) : (
-                <User size={26} color={COLORS.text} />
+                <User size={28} color={COLORS.text} />
               )}
             </View>
 
@@ -230,12 +242,10 @@ export default function BookmarksScreen() {
             </View>
 
             {!isEditingNickname ? (
-              <Pressable
+              <Tap
+                feel="playful"
                 onPress={handleStartEditNickname}
-                style={({ pressed }) => [
-                  styles.editNicknameBtn,
-                  pressed && styles.pressed,
-                ]}
+                style={styles.editNicknameBtn}
                 accessibilityRole="button"
                 accessibilityLabel="닉네임 설정 및 변경"
               >
@@ -243,12 +253,12 @@ export default function BookmarksScreen() {
                 <Text style={styles.editNicknameBtnText} maxFontSizeMultiplier={1.2}>
                   {nickname.trim() ? '변경' : '닉네임'}
                 </Text>
-              </Pressable>
+              </Tap>
             ) : null}
           </View>
 
           {isEditingNickname ? (
-            <View style={styles.nicknameEditorBox}>
+            <SpringReveal distance={-8} feel="snappy" style={styles.nicknameEditorBox}>
               <TextInput
                 value={nicknameDraft}
                 onChangeText={setNicknameDraft}
@@ -262,34 +272,30 @@ export default function BookmarksScreen() {
                 accessibilityLabel="닉네임 입력"
               />
               <View style={styles.nicknameEditorActions}>
-                <Pressable
+                <Tap
+                  feel="snappy"
                   onPress={() => setIsEditingNickname(false)}
-                  style={({ pressed }) => [
-                    styles.nicknameCancelBtn,
-                    pressed && styles.pressed,
-                  ]}
+                  style={styles.nicknameCancelBtn}
                   accessibilityRole="button"
                   accessibilityLabel="닉네임 수정 취소"
                 >
                   <Text style={styles.nicknameCancelText} maxFontSizeMultiplier={1.25}>
                     취소
                   </Text>
-                </Pressable>
-                <Pressable
+                </Tap>
+                <Tap
+                  feel="snappy"
                   onPress={handleSaveNickname}
-                  style={({ pressed }) => [
-                    styles.nicknameSaveBtn,
-                    pressed && styles.pressed,
-                  ]}
+                  style={styles.nicknameSaveBtn}
                   accessibilityRole="button"
                   accessibilityLabel="닉네임 저장"
                 >
                   <Text style={styles.nicknameSaveText} maxFontSizeMultiplier={1.25}>
                     저장하기
                   </Text>
-                </Pressable>
+                </Tap>
               </View>
-            </View>
+            </SpringReveal>
           ) : null}
         </View>
 
@@ -462,9 +468,9 @@ export default function BookmarksScreen() {
                 </View>
               )}
             </View>
-            <Pressable
+            <Tap
+              feel="snappy"
               onPress={() => {
-                triggerLightHaptic();
                 stop();
                 setFilter('words');
                 setFilterText('');
@@ -473,7 +479,7 @@ export default function BookmarksScreen() {
                 setDeckSessionId((prev) => prev + 1);
                 setWordViewMode('deck');
               }}
-              style={({ pressed }) => [styles.dueStartBtn, pressed && styles.pressed]}
+              style={styles.dueStartBtn}
               accessibilityRole="button"
               accessibilityLabel="오늘 다시 꺼낼 단어 뜻 보고 말하기 복습 시작"
             >
@@ -481,7 +487,7 @@ export default function BookmarksScreen() {
               <Text style={styles.dueStartBtnText} maxFontSizeMultiplier={1.25}>
                 뜻 보고 꺼내 말하기 ({dueWords.length}개)
               </Text>
-            </Pressable>
+            </Tap>
           </View>
         )}
 
@@ -522,13 +528,13 @@ export default function BookmarksScreen() {
             ).map((tab) => {
               const isActive = filter === tab.id;
               return (
-                <Pressable
+                <Tap
                   key={tab.id}
+                  feel="playful"
                   onPress={() => setFilter(tab.id)}
-                  style={({ pressed }) => [
+                  style={[
                     styles.filterTabBtn,
                     isActive && { backgroundColor: tab.activeBg },
-                    pressed && styles.pressed,
                   ]}
                   accessibilityRole="tab"
                   accessibilityState={{ selected: isActive }}
@@ -542,7 +548,7 @@ export default function BookmarksScreen() {
                   >
                     {tab.label}
                   </Text>
-                </Pressable>
+                </Tap>
               );
             })}
           </View>
@@ -562,17 +568,15 @@ export default function BookmarksScreen() {
                 accessibilityLabel="저장한 항목 검색"
               />
               {filterText.length > 0 ? (
-                <Pressable
+                <Tap
+                  feel="snappy"
                   onPress={() => setFilterText('')}
-                  style={({ pressed }) => [
-                    styles.clearFilterBtn,
-                    pressed && styles.pressed,
-                  ]}
+                  style={styles.clearFilterBtn}
                   accessibilityRole="button"
                   accessibilityLabel="검색어 지우기"
                 >
                   <XCircle size={22} color={COLORS.textMuted} />
-                </Pressable>
+                </Tap>
               ) : null}
             </View>
           ) : null}
@@ -592,12 +596,10 @@ export default function BookmarksScreen() {
               저장해 두세요. 오프라인에서도 바로 꺼내 들을 수 있어요!
             </Text>
             <View style={styles.emptyCtaRow}>
-              <Pressable
+              <Tap
+                feel="snappy"
                 onPress={() => router.push('/(tabs)')}
-                style={({ pressed }) => [
-                  styles.emptyPrimaryBtn,
-                  pressed && styles.pressed,
-                ]}
+                style={styles.emptyPrimaryBtn}
                 accessibilityRole="button"
                 accessibilityLabel="단어 바로 읽기 화면으로 이동"
               >
@@ -605,14 +607,12 @@ export default function BookmarksScreen() {
                 <Text style={styles.emptyPrimaryBtnText} maxFontSizeMultiplier={1.3}>
                   단어 읽기 가기
                 </Text>
-              </Pressable>
+              </Tap>
 
-              <Pressable
+              <Tap
+                feel="playful"
                 onPress={() => router.push('/(tabs)/shorts')}
-                style={({ pressed }) => [
-                  styles.emptySecondaryBtn,
-                  pressed && styles.pressed,
-                ]}
+                style={styles.emptySecondaryBtn}
                 accessibilityRole="button"
                 accessibilityLabel="발음 쇼츠 화면으로 이동"
               >
@@ -620,7 +620,7 @@ export default function BookmarksScreen() {
                 <Text style={styles.emptySecondaryBtnText} maxFontSizeMultiplier={1.3}>
                   발음 쇼츠 보기
                 </Text>
-              </Pressable>
+              </Tap>
             </View>
           </View>
         ) : !hasVisibleResults ? (
@@ -630,25 +630,28 @@ export default function BookmarksScreen() {
                 ? `'${filterText.trim()}'와 일치하는 항목이 없어요`
                 : '이 탭에 저장된 항목이 아직 없어요'}
             </Text>
-            <Pressable
+            <Tap
+              feel="snappy"
               onPress={() => {
                 setFilter('all');
                 setFilterText('');
               }}
-              style={({ pressed }) => [
-                styles.emptyResetBtn,
-                pressed && styles.pressed,
-              ]}
+              style={styles.emptyResetBtn}
               accessibilityRole="button"
               accessibilityLabel="전체 저장 목록 보기"
             >
               <Text style={styles.emptyResetBtnText} maxFontSizeMultiplier={1.3}>
                 전체 저장 목록 보기
               </Text>
-            </Pressable>
+            </Tap>
           </View>
         ) : (
-          <View style={styles.sectionsStack}>
+          <SpringReveal
+            triggerKey={`${filter}:${wordViewMode}`}
+            distance={10}
+            feel="gentle"
+            style={styles.sectionsStack}
+          >
             {/* 저장한 단어 섹션 */}
             {showWordsSection ? (
               <View style={styles.listStack}>
@@ -657,16 +660,15 @@ export default function BookmarksScreen() {
                     저장한 영단어 ({filteredWords.length})
                   </Text>
                   <View style={styles.viewModeSwitch}>
-                    <Pressable
+                    <Tap
+                      feel="playful"
                       onPress={() => {
-                        triggerLightHaptic();
                         setDueDeckSnapshot(null);
                         setWordViewMode('list');
                       }}
-                      style={({ pressed }) => [
+                      style={[
                         styles.viewModePill,
                         wordViewMode === 'list' && styles.viewModePillActive,
-                        pressed && styles.pressed,
                       ]}
                       accessibilityRole="tab"
                       accessibilityState={{ selected: wordViewMode === 'list' }}
@@ -680,20 +682,19 @@ export default function BookmarksScreen() {
                       >
                         목록
                       </Text>
-                    </Pressable>
-                    <Pressable
+                    </Tap>
+                    <Tap
+                      feel="playful"
                       onPress={() => {
-                        triggerLightHaptic();
                         stop();
                         setDueDeckSnapshot(null);
                         setDeckInitialMode('standard');
                         setDeckSessionId((prev) => prev + 1);
                         setWordViewMode('deck');
                       }}
-                      style={({ pressed }) => [
+                      style={[
                         styles.viewModePill,
                         wordViewMode === 'deck' && styles.viewModePillDeckActive,
-                        pressed && styles.pressed,
                       ]}
                       accessibilityRole="tab"
                       accessibilityState={{ selected: wordViewMode === 'deck' }}
@@ -707,7 +708,7 @@ export default function BookmarksScreen() {
                       >
                         카드 복습
                       </Text>
-                    </Pressable>
+                    </Tap>
                   </View>
                 </View>
 
@@ -740,7 +741,10 @@ export default function BookmarksScreen() {
                       ]}
                     >
                       <View style={styles.cardTopRow}>
-                        <Pressable
+                        <Tap
+                          feel="gentle"
+                          pressedScale={0.985}
+                          hoverLift={false}
                           style={styles.wordMainPressable}
                           onPress={() => handleOpenInReader(item.word)}
                           accessibilityRole="button"
@@ -788,26 +792,26 @@ export default function BookmarksScreen() {
                               </View>
                             );
                           })()}
-                        </Pressable>
+                        </Tap>
 
-                        <Pressable
+                        <Tap
+                          feel="playful"
+                          pressedScale={0.86}
                           onPress={() => {
                             stop();
                             toggleBookmark(item);
                           }}
-                          style={({ pressed }) => [
-                            styles.removeBookmarkBtn,
-                            pressed && styles.pressed,
-                          ]}
+                          style={styles.removeBookmarkBtn}
                           accessibilityRole="button"
                           accessibilityLabel={`${item.word} 저장 해제`}
                         >
                           <Heart size={22} color="#FF3B30" weight="fill" />
-                        </Pressable>
+                        </Tap>
                       </View>
 
                       <View style={styles.cardActionsRow}>
-                        <Pressable
+                        <Tap
+                          feel="snappy"
                           onPress={() =>
                             void playNormal(item.word, {
                               audioAsset: item.audioAsset,
@@ -815,10 +819,9 @@ export default function BookmarksScreen() {
                               key: normalKey,
                             })
                           }
-                          style={({ pressed }) => [
+                          style={[
                             styles.playNormalBtn,
                             isNormalPlaying && styles.playNormalBtnActive,
-                            pressed && styles.pressed,
                           ]}
                           accessibilityRole="button"
                           accessibilityLabel={`${item.word} 보통 속도 듣기`}
@@ -831,14 +834,14 @@ export default function BookmarksScreen() {
                           <Text style={styles.playNormalBtnText} maxFontSizeMultiplier={1.3}>
                             {isNormalPlaying ? '재생 중' : '듣기'}
                           </Text>
-                        </Pressable>
+                        </Tap>
 
-                        <Pressable
+                        <Tap
+                          feel="snappy"
                           onPress={() => void playSlow(item.word, { key: slowKey })}
-                          style={({ pressed }) => [
+                          style={[
                             styles.playSlowBtn,
                             isSlowPlaying && styles.playSlowBtnActive,
-                            pressed && styles.pressed,
                           ]}
                           accessibilityRole="button"
                           accessibilityLabel={`${item.word} 천천히 듣기`}
@@ -856,14 +859,12 @@ export default function BookmarksScreen() {
                           >
                             {isSlowPlaying ? '천천히 중' : '천천히'}
                           </Text>
-                        </Pressable>
+                        </Tap>
 
-                        <Pressable
+                        <Tap
+                          feel="playful"
                           onPress={() => handleOpenInReader(item.word)}
-                          style={({ pressed }) => [
-                            styles.detailBtn,
-                            pressed && styles.pressed,
-                          ]}
+                          style={styles.detailBtn}
                           accessibilityRole="button"
                           accessibilityLabel={`${item.word} 강세 리듬과 예문 자세히 보기`}
                         >
@@ -874,7 +875,7 @@ export default function BookmarksScreen() {
                             size={18}
                             color={COLORS.indigoText}
                           />
-                        </Pressable>
+                        </Tap>
                       </View>
                     </View>
                   );
@@ -901,7 +902,10 @@ export default function BookmarksScreen() {
                         isLearned && styles.symbolCardLearned,
                       ]}
                     >
-                      <Pressable
+                      <Tap
+                        feel="gentle"
+                        pressedScale={0.985}
+                        hoverLift={false}
                         style={styles.symbolMainPressable}
                         onPress={() => setActiveSymbol(sym)}
                         accessibilityRole="button"
@@ -931,25 +935,24 @@ export default function BookmarksScreen() {
                         <Text style={styles.symbolTitleText} maxFontSizeMultiplier={1.4}>
                           {sym.titleKo}
                         </Text>
-                      </Pressable>
+                      </Tap>
 
-                      <Pressable
+                      <Tap
+                        feel="playful"
+                        pressedScale={0.86}
                         onPress={() => toggleSymbolBookmark(sym.id)}
-                        style={({ pressed }) => [
-                          styles.removeBookmarkBtn,
-                          pressed && styles.pressed,
-                        ]}
+                        style={styles.removeBookmarkBtn}
                         accessibilityRole="button"
                         accessibilityLabel={`${sym.ipa} 저장 해제`}
                       >
                         <Heart size={22} color="#FF3B30" weight="fill" />
-                      </Pressable>
+                      </Tap>
                     </View>
                   );
                 })}
               </View>
             ) : null}
-          </View>
+          </SpringReveal>
         )}
       </ScrollView>
 
@@ -986,12 +989,16 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
   },
   avatarCircle: {
-    width: 54,
-    height: 54,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.surface,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarCircleInitial: {
+    width: 50,
+    height: 50,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.surface,
   },
   avatarInitialText: {
     fontSize: 22,
@@ -1316,10 +1323,6 @@ const styles = StyleSheet.create({
     ...SHADOW.card,
   },
   emptyIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.tint,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -677,10 +677,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   badgeIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.purpleSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },

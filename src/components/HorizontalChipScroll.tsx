@@ -17,7 +17,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { COLORS, RADIUS, SHADOW } from '../theme/tokens';
+import { COLORS } from '../theme/tokens';
 import { CaretRight } from './PlumpIcons';
 import { Tap } from './Tap';
 
@@ -236,12 +236,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 30,
     height: 30,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.card,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 5,
-    ...SHADOW.floating,
   },
   navBtnLeft: {
     left: 2,

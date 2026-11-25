@@ -518,6 +518,7 @@ export function BookmarkFlipDeck({
                         isPrimary && styles.sylChipPrimary,
                       ]}
                     >
+                      {isPrimary && <View style={styles.sylChipDot} />}
                       <Text
                         style={[
                           styles.sylChipText,
@@ -525,7 +526,6 @@ export function BookmarkFlipDeck({
                         ]}
                         maxFontSizeMultiplier={1.2}
                       >
-                        {isPrimary ? '⬤ ' : ''}
                         {syl.text}
                       </Text>
                     </View>
@@ -849,6 +849,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   sylChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.pill,
     paddingHorizontal: 10,
@@ -865,6 +867,13 @@ const styles = StyleSheet.create({
   sylChipTextPrimary: {
     fontWeight: '700',
     color: COLORS.accentText,
+  },
+  sylChipDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF6B6B',
+    marginRight: 3,
   },
   openDetailBtn: {
     alignSelf: 'center',
@@ -922,10 +931,6 @@ const styles = StyleSheet.create({
     ...SHADOW.card,
   },
   doneIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.successSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
