@@ -954,6 +954,13 @@ export default function BookmarksScreen() {
             ) : null}
           </SpringReveal>
         )}
+
+        <View style={styles.attributionBox}>
+          <Text style={styles.attributionText} maxFontSizeMultiplier={1.4}>
+            사전·발음·예문 데이터 출처: Wiktionary (CC BY-SA 4.0) · Tatoeba (CC BY
+            2.0 FR) · CMUdict / Datamuse · MyMemory
+          </Text>
+        </View>
       </ScrollView>
 
       <SymbolDetailSheet
@@ -1710,5 +1717,16 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.82,
+  },
+  attributionBox: {
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.xs,
+    alignItems: 'center',
+  },
+  attributionText: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });

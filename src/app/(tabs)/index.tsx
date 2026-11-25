@@ -1393,13 +1393,6 @@ export default function WordReaderScreen() {
           </SpringReveal>
         ) : null}
 
-        {/* 상업용 오픈 라이선스 출처 표기 */}
-        <View style={styles.attributionBox}>
-          <Text style={styles.attributionText} maxFontSizeMultiplier={1.4}>
-            사전·발음·예문 데이터 출처: Wiktionary (CC BY-SA 4.0) · Tatoeba (CC BY
-            2.0 FR) · CMUdict / Datamuse · MyMemory
-          </Text>
-        </View>
       </ScrollView>
 
       {/* 기호 역추적 바텀시트 (Tab 1 공용 컴포넌트) */}
@@ -2116,17 +2109,6 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.body,
     fontWeight: '500',
     color: COLORS.purpleText,
-  },
-  attributionBox: {
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.xs,
-    alignItems: 'center',
-  },
-  attributionText: {
-    fontSize: 16,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    lineHeight: 24,
   },
   pressed: {
     opacity: 0.82,
