@@ -299,7 +299,10 @@ const styles = StyleSheet.create({
     bottom: PILL_PADDING,
     left: PILL_PADDING,
     borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.surface,
+    backgroundColor: 'rgba(255, 255, 255, 0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.7)',
+    ...SHADOW.card,
   },
   tabItem: {
     flex: 1,
@@ -313,7 +316,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   tabItemActive: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: 'rgba(255, 255, 255, 0.55)',
   },
   tabItemInner: {
     alignItems: 'center',
