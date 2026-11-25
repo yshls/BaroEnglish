@@ -35,7 +35,7 @@ import {
 } from '../../services/wordApi';
 import { useLearningStore, type ShortsMode } from '../../store/useLearningStore';
 import { useWordCacheStore } from '../../store/useWordCacheStore';
-import { COLORS, LAYOUT, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
+import { COLORS, LAYOUT, PALETTE, RADIUS, SHADOW, SPACING, TOUCH, TYPOGRAPHY } from '../../theme/tokens';
 import type { CoreWord } from '../../types/learning';
 import { triggerLightHaptic, triggerSuccessHaptic } from '../../utils/haptics';
 
@@ -833,6 +833,23 @@ export default function PronunciationShortsScreen() {
                     accessibilityRole="button"
                     accessibilityLabel="문장 보통 속도 듣기"
                   >
+                    {!isExNormalPlaying ? (
+                      <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
+                        <Defs>
+                          <SvgLinearGradient id="ctaGrad" x1="0" y1="0" x2="1" y2="1">
+                            <Stop offset="0" stopColor={PALETTE.brand[400]} />
+                            <Stop offset="1" stopColor={PALETTE.brand[600]} />
+                          </SvgLinearGradient>
+                        </Defs>
+                        <Rect
+                          width="100%"
+                          height="100%"
+                          rx={RADIUS.md}
+                          ry={RADIUS.md}
+                          fill="url(#ctaGrad)"
+                        />
+                      </Svg>
+                    ) : null}
                     <SpeakerHigh size={20} color={COLORS.white} />
                     <Text style={styles.speedNormalText} maxFontSizeMultiplier={1.25}>
                       {isExNormalPlaying ? '재생 중' : '듣기'}
@@ -1015,6 +1032,23 @@ export default function PronunciationShortsScreen() {
                       accessibilityRole="button"
                       accessibilityLabel={`${item.word} 보통 속도 듣기`}
                     >
+                      {!isNormalPlaying ? (
+                        <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
+                          <Defs>
+                            <SvgLinearGradient id="ctaGrad" x1="0" y1="0" x2="1" y2="1">
+                              <Stop offset="0" stopColor={PALETTE.brand[400]} />
+                              <Stop offset="1" stopColor={PALETTE.brand[600]} />
+                            </SvgLinearGradient>
+                          </Defs>
+                          <Rect
+                            width="100%"
+                            height="100%"
+                            rx={RADIUS.md}
+                            ry={RADIUS.md}
+                            fill="url(#ctaGrad)"
+                          />
+                        </Svg>
+                      ) : null}
                       <SpeakerHigh size={20} color={COLORS.white} />
                       <Text style={styles.speedNormalText} maxFontSizeMultiplier={1.25}>
                         {isNormalPlaying ? '재생 중' : '듣기'}
