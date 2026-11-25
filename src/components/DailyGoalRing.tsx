@@ -95,8 +95,7 @@ export function DailyGoalRing({ todaySeconds, streakDays }: DailyGoalRingProps) 
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
             fill="none"
-            rotation="-90"
-            origin={`${size / 2}, ${size / 2}`}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
           />
         </Svg>
         <View style={styles.ringCenter}>
