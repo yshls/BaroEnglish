@@ -15,13 +15,8 @@ import {
   type NativeSyntheticEvent,
   type ViewStyle,
 } from 'react-native';
-import Svg, {
-  Defs,
-  LinearGradient as SvgLinearGradient,
-  RadialGradient,
-  Rect,
-  Stop,
-} from 'react-native-svg';
+import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
+import { LinearGradient } from 'expo-linear-gradient';
 import { InfoTipBox, InfoTipButton } from '../../components/InfoTip';
 import { PronunciationPracticeSheet } from '../../components/PronunciationPracticeCard';
 import { Tap } from '../../components/Tap';
@@ -834,21 +829,13 @@ export default function PronunciationShortsScreen() {
                     accessibilityLabel="문장 보통 속도 듣기"
                   >
                     {!isExNormalPlaying ? (
-                      <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
-                        <Defs>
-                          <SvgLinearGradient id="ctaGrad" x1="0" y1="0" x2="1" y2="1">
-                            <Stop offset="0" stopColor={PALETTE.brand[400]} />
-                            <Stop offset="1" stopColor={PALETTE.brand[600]} />
-                          </SvgLinearGradient>
-                        </Defs>
-                        <Rect
-                          width="100%"
-                          height="100%"
-                          rx={RADIUS.md}
-                          ry={RADIUS.md}
-                          fill="url(#ctaGrad)"
-                        />
-                      </Svg>
+                      <LinearGradient
+                        pointerEvents="none"
+                        colors={[PALETTE.brand[400], PALETTE.brand[600]]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={[StyleSheet.absoluteFill, { borderRadius: RADIUS.md }]}
+                      />
                     ) : null}
                     <SpeakerHigh size={20} color={COLORS.white} />
                     <Text style={styles.speedNormalText} maxFontSizeMultiplier={1.25}>
@@ -1033,21 +1020,13 @@ export default function PronunciationShortsScreen() {
                       accessibilityLabel={`${item.word} 보통 속도 듣기`}
                     >
                       {!isNormalPlaying ? (
-                        <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
-                          <Defs>
-                            <SvgLinearGradient id="ctaGrad" x1="0" y1="0" x2="1" y2="1">
-                              <Stop offset="0" stopColor={PALETTE.brand[400]} />
-                              <Stop offset="1" stopColor={PALETTE.brand[600]} />
-                            </SvgLinearGradient>
-                          </Defs>
-                          <Rect
-                            width="100%"
-                            height="100%"
-                            rx={RADIUS.md}
-                            ry={RADIUS.md}
-                            fill="url(#ctaGrad)"
-                          />
-                        </Svg>
+                        <LinearGradient
+                          pointerEvents="none"
+                          colors={[PALETTE.brand[400], PALETTE.brand[600]]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={[StyleSheet.absoluteFill, { borderRadius: RADIUS.md }]}
+                        />
                       ) : null}
                       <SpeakerHigh size={20} color={COLORS.white} />
                       <Text style={styles.speedNormalText} maxFontSizeMultiplier={1.25}>
@@ -1257,15 +1236,20 @@ export default function PronunciationShortsScreen() {
                   },
                 ]}
               >
-                {/* ④ 저장 축하 코랄 라디얼 글로우 */}
-                <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
+                {/* ④ 저장 축하 코랄 라디얼 글로우 (고정 px — 웹 svg 안전) */}
+                <Svg
+                  pointerEvents="none"
+                  width={280}
+                  height={280}
+                  style={styles.heartGlow}
+                >
                   <Defs>
                     <RadialGradient id="heartGlow" cx="50%" cy="50%" r="50%">
                       <Stop offset="0" stopColor={COLORS.primary} stopOpacity={0.3} />
                       <Stop offset="1" stopColor={COLORS.primary} stopOpacity={0} />
                     </RadialGradient>
                   </Defs>
-                  <Rect width="100%" height="100%" fill="url(#heartGlow)" />
+                  <Rect width={280} height={280} fill="url(#heartGlow)" />
                 </Svg>
                 <View style={styles.heartBurstCircle}>
                   <Heart size={56} color="#FF3B30" weight="fill" />
@@ -1498,28 +1482,16 @@ export default function PronunciationShortsScreen() {
         />
 
         {/* ① 피드 위/아래 소프트 스크림 (카드가 부드럽게 사라지며 스크롤) */}
-        <View pointerEvents="none" style={styles.feedScrimTop}>
-          <Svg width="100%" height="100%">
-            <Defs>
-              <SvgLinearGradient id="feedScrimTop" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor={COLORS.background} stopOpacity={1} />
-                <Stop offset="1" stopColor={COLORS.background} stopOpacity={0} />
-              </SvgLinearGradient>
-            </Defs>
-            <Rect width="100%" height="100%" fill="url(#feedScrimTop)" />
-          </Svg>
-        </View>
-        <View pointerEvents="none" style={styles.feedScrimBottom}>
-          <Svg width="100%" height="100%">
-            <Defs>
-              <SvgLinearGradient id="feedScrimBottom" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor={COLORS.background} stopOpacity={0} />
-                <Stop offset="1" stopColor={COLORS.background} stopOpacity={1} />
-              </SvgLinearGradient>
-            </Defs>
-            <Rect width="100%" height="100%" fill="url(#feedScrimBottom)" />
-          </Svg>
-        </View>
+        <LinearGradient
+          pointerEvents="none"
+          colors={[COLORS.background, `${COLORS.background}00`]}
+          style={styles.feedScrimTop}
+        />
+        <LinearGradient
+          pointerEvents="none"
+          colors={[`${COLORS.background}00`, COLORS.background]}
+          style={styles.feedScrimBottom}
+        />
       </View>
 
       <WordMeaningSheet
@@ -1591,6 +1563,13 @@ const styles = StyleSheet.create({
   },
   listViewport: {
     flex: 1,
+  },
+  heartGlow: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginTop: -140,
+    marginLeft: -140,
   },
   feedScrimTop: {
     position: 'absolute',
