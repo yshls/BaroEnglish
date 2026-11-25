@@ -82,6 +82,21 @@ function getFirstExample(item: CoreWord): { en: string; ko?: string } | null {
 export default function PronunciationShortsScreen() {
   const shortsMode = useLearningStore((s) => s.shortsMode);
   const setShortsMode = useLearningStore((s) => s.setShortsMode);
+
+  // 세그먼트 컨트롤 슬라이딩 인디케이터
+  const modeIndex = SHORTS_MODES.findIndex((m) => m.id === shortsMode);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- stable animated value
+  const slideAnim = useMemo(() => new Animated.Value(modeIndex), []);
+  const [trackWidth, setTrackWidth] = useState(0);
+
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: modeIndex,
+      useNativeDriver: USE_NATIVE_DRIVER,
+      tension: 300,
+      friction: 25,
+    }).start();
+  }, [modeIndex, slideAnim]);
   const [feedWords, setFeedWords] = useState<CoreWord[]>([]);
   const [viewportHeight, setViewportHeight] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -1409,7 +1424,31 @@ export default function PronunciationShortsScreen() {
     <View style={styles.screen}>
       {/* 모드 전환 바: 함께 · 단어 · 문장 */}
       <View style={styles.modeBarWrap}>
-        <View style={styles.modeSwitchTrack} accessibilityRole="tablist">
+        <View
+          style={styles.modeSwitchTrack}
+          accessibilityRole="tablist"
+          onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
+        >
+          {trackWidth > 0 && (
+            <Animated.View
+              style={[
+                styles.modeSwitchIndicator,
+                {
+                  width: (trackWidth - 4) / SHORTS_MODES.length,
+                  transform: [
+                    {
+                      translateX: slideAnim.interpolate({
+                        inputRange: SHORTS_MODES.map((_, i) => i),
+                        outputRange: SHORTS_MODES.map(
+                          (_, i) => 2 + i * ((trackWidth - 4) / SHORTS_MODES.length),
+                        ),
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            />
+          )}
           {SHORTS_MODES.map((m) => {
             const active = shortsMode === m.id;
             return (
@@ -1417,10 +1456,7 @@ export default function PronunciationShortsScreen() {
                 key={m.id}
                 feel="playful"
                 onPress={() => handleChangeMode(m.id)}
-                style={[
-                  styles.modeSwitchBtn,
-                  active && styles.modeSwitchBtnActive,
-                ]}
+                style={styles.modeSwitchBtn}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={`${m.label} 모드`}
@@ -1534,12 +1570,19 @@ const styles = StyleSheet.create({
   },
   modeSwitchTrack: {
     width: '100%',
-    maxWidth: 320,
+    maxWidth: 300,
     flexDirection: 'row',
-    backgroundColor: 'transparent',
+    backgroundColor: COLORS.surface,
     borderRadius: RADIUS.pill,
     padding: 2,
-    gap: 6,
+  },
+  modeSwitchIndicator: {
+    position: 'absolute',
+    top: 2,
+    bottom: 2,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.card,
+    ...SHADOW.card,
   },
   modeSwitchBtn: {
     flex: 1,
@@ -1548,10 +1591,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
-  },
-  modeSwitchBtnActive: {
-    backgroundColor: COLORS.card,
-    ...SHADOW.card,
   },
   modeSwitchText: {
     fontSize: 13,
