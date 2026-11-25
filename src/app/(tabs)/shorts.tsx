@@ -1223,6 +1223,16 @@ export default function PronunciationShortsScreen() {
                   },
                 ]}
               >
+                {/* ④ 저장 축하 코랄 라디얼 글로우 */}
+                <Svg pointerEvents="none" style={StyleSheet.absoluteFill}>
+                  <Defs>
+                    <RadialGradient id="heartGlow" cx="50%" cy="50%" r="50%">
+                      <Stop offset="0" stopColor={COLORS.primary} stopOpacity={0.3} />
+                      <Stop offset="1" stopColor={COLORS.primary} stopOpacity={0} />
+                    </RadialGradient>
+                  </Defs>
+                  <Rect width="100%" height="100%" fill="url(#heartGlow)" />
+                </Svg>
                 <View style={styles.heartBurstCircle}>
                   <Heart size={56} color="#FF3B30" weight="fill" />
                 </View>
@@ -1452,6 +1462,30 @@ export default function PronunciationShortsScreen() {
           maxToRenderPerBatch={3}
           removeClippedSubviews={false}
         />
+
+        {/* ① 피드 위/아래 소프트 스크림 (카드가 부드럽게 사라지며 스크롤) */}
+        <View pointerEvents="none" style={styles.feedScrimTop}>
+          <Svg width="100%" height="100%">
+            <Defs>
+              <SvgLinearGradient id="feedScrimTop" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor={COLORS.background} stopOpacity={1} />
+                <Stop offset="1" stopColor={COLORS.background} stopOpacity={0} />
+              </SvgLinearGradient>
+            </Defs>
+            <Rect width="100%" height="100%" fill="url(#feedScrimTop)" />
+          </Svg>
+        </View>
+        <View pointerEvents="none" style={styles.feedScrimBottom}>
+          <Svg width="100%" height="100%">
+            <Defs>
+              <SvgLinearGradient id="feedScrimBottom" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor={COLORS.background} stopOpacity={0} />
+                <Stop offset="1" stopColor={COLORS.background} stopOpacity={1} />
+              </SvgLinearGradient>
+            </Defs>
+            <Rect width="100%" height="100%" fill="url(#feedScrimBottom)" />
+          </Svg>
+        </View>
       </View>
 
       <WordMeaningSheet
@@ -1523,6 +1557,22 @@ const styles = StyleSheet.create({
   },
   listViewport: {
     flex: 1,
+  },
+  feedScrimTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 28,
+    zIndex: 5,
+  },
+  feedScrimBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 44,
+    zIndex: 5,
   },
   centerState: {
     flex: 1,
