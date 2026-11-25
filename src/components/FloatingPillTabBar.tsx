@@ -28,7 +28,7 @@ type OrderedTabName = (typeof TAB_ORDER)[number];
 const DEFAULT_LABELS: Record<OrderedTabName, string> = {
   index: '단어 읽기',
   symbols: '발음기호',
-  shorts: '발음 쇼츠',
+  shorts: '발음 피드',
   bookmarks: '마이페이지',
 };
 

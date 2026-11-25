@@ -1329,7 +1329,7 @@ export default function PronunciationShortsScreen() {
             <>
               <ActivityIndicator size="large" color={COLORS.rose} />
               <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
-                다음 발음 쇼츠를 불러오는 중...
+                다음 발음 피드를 불러오는 중...
               </Text>
               <Text style={styles.emptySub} maxFontSizeMultiplier={1.45}>
                 새로운 실생활 영단어와 원어민 발음을 실시간으로 가져오고 있어요.
@@ -1339,7 +1339,7 @@ export default function PronunciationShortsScreen() {
             <>
               <Sparkle size={34} color={COLORS.rose} />
               <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
-                새로운 발음 쇼츠가 준비돼 있어요
+                새로운 발음 피드가 준비돼 있어요
               </Text>
               <Text style={styles.emptySub} maxFontSizeMultiplier={1.45}>
                 아래 버튼을 누르면 새 실생활 영단어를 바로 이어서 볼 수 있어요.
@@ -1351,7 +1351,7 @@ export default function PronunciationShortsScreen() {
                   pressed && styles.pressed,
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel="새 발음 쇼츠 바로 불러오기"
+                accessibilityLabel="새 발음 피드 바로 불러오기"
               >
                 <Text style={styles.retryBtnText} maxFontSizeMultiplier={1.3}>
                   새 단어 바로 불러오기
@@ -1394,7 +1394,7 @@ export default function PronunciationShortsScreen() {
           <View style={styles.emptyCard}>
             <ActivityIndicator size="large" color={COLORS.rose} />
             <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
-              발음 쇼츠 카드를 준비하고 있어요
+              발음 피드 카드를 준비하고 있어요
             </Text>
             <Text style={styles.emptySub} maxFontSizeMultiplier={1.45}>
               원어민 음성과 생활 예문을 실시간으로 모으는 중입니다...

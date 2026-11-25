@@ -614,11 +614,11 @@ export default function BookmarksScreen() {
                 onPress={() => router.push('/(tabs)/shorts')}
                 style={styles.emptySecondaryBtn}
                 accessibilityRole="button"
-                accessibilityLabel="발음 쇼츠 화면으로 이동"
+                accessibilityLabel="발음 피드 화면으로 이동"
               >
                 <Play size={20} color={COLORS.roseText} />
                 <Text style={styles.emptySecondaryBtnText} maxFontSizeMultiplier={1.3}>
-                  발음 쇼츠 보기
+                  발음 피드 보기
                 </Text>
               </Tap>
             </View>
